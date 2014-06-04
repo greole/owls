@@ -196,7 +196,7 @@ class Plot():
         x = plot['x']
         y = plot['y']
         z = plot.get('z', False)
-        l = (plot.get('name') if plot.get('name',False) else "None")
+        l = (plot.get('name') if plot.get('name',False) else plot['x'].name)
         i = plot.get('subplot', 0)
         s = plot.get('symbol', '.')
         c = plot.get('color', False)
