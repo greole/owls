@@ -1,0 +1,48 @@
+# Installation
+python setup.py install
+python setup.py install -f
+
+
+# Introduction
+
+
+## sets
+
+
+~~~~.python
+sets_props = {
+       'fileRegExp': ["label for axis", "plotting range"],
+       '*$': ["axis label", [0,1]],
+}
+
+set = read_sets(folder, sets_props, name)
+~~~~
+
+other possibilites
+read_exp, read_eul, read_lag, read_log
+
+example for multiple radial plots for jet cases
+
+~~~~.python
+pos = ['-10', '+0','+25', '+50', '+85'] # 
+symb = ['-', '-.' ,'--',':','-','-.','--'] # symbol examples
+p=Plot(geom=[1, len(pos)], style='wide', leg=[0]) # create a wide multiplot with  5 sub plots
+for n, x in enumerate(reversed(pos)):
+    i=0
+    # EXPERIMENTAL DATA
+    POS = EXP.exp['TX{}'.format(x)] # access positons series
+    T = EXP.exp['TX{}_T'.format(x)] # access temperature series
+    p.add(x=POS, y=T, subplot=n, symbol='o' ) # add data to plot at subplot n, give it an 'o' symbol 
+    # CFD DATA
+    for name, case in cases.iteritems(): # go through all cases in cases dictionary
+        POS = case.set['X{}'.format(x)]
+        T = case.set['X{}_TMean'.format(x)]
+        p.add(x=POS, y=T, plot_type='Plot', subplot=n, symbol=symb[i])
+        i+=1
+p.show()
+~~~~
+
+further plot templates
+style='jet','matrix','dcol'
+plot_types='Plot', 'scatter'
+
