@@ -191,7 +191,7 @@ def evaluate_names(name):
         name = name.replace('UPrime2Mean','uu_uv_uw_vv_vw_ww')
         name = name.replace('Uc','uc_vc_wc')
         name = name.replace('U','u_v_w')
-        name = name.replace('positons','x_y_z_cell')
+        name = name.replace('positions','x_y_z_cell')
         name = name.replace('points','x_y_z')
     name = name.split('/')[-1]
     fields = name.split('_')
