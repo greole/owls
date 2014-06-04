@@ -173,7 +173,7 @@ def read_data_file(fn, skiplines, maxlines, plot_props):
             if len(names) == entries:
                 df = DataFrame(data=data, columns=names) 
             else:
-                names = [ fn + '_' + str(i) for i in range(entries)]
+                names = [ field + '_' + str(i) for i in range(entries)]
                 df = DataFrame(data=data, columns=names) 
             return names, df.astype(float)
         else:
@@ -191,9 +191,6 @@ def evaluate_names(name):
         name = name.replace('UPrime2Mean','uu_uv_uw_vv_vw_ww')
         name = name.replace('Uc','uc_vc_wc')
         name = name.replace('U','u_v_w')
-        name = name.replace('positions','pos_x_y_z_cell')
-        name = name.replace('points','pos_x_y_z')
-    name = name.split('/')[-1]
     fields = name.split('_')
     pos = fields[0]
     fields = [pos + '_' + val for val in fields[1:]]
