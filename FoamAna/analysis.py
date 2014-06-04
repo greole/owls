@@ -193,6 +193,7 @@ def evaluate_names(name):
         name = name.replace('U','u_v_w')
         name = name.replace('positons','x_y_z_cell')
         name = name.replace('points','x_y_z')
+    name = name.split('/')[-1]
     fields = name.split('_')
     pos = fields[0]
     fields = [pos + '_' + val for val in fields[1:]]
