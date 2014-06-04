@@ -8,7 +8,7 @@ def read_sets(folder, plot_props, name="None"):
 def read_lag(folder, files, plot_props, skiplines=1,
             name="None", cloud="coalCloud1"):
     return Item(folder, search_files=files,
-            search_pattern="{}/lagrangian/{}/".format(cloud),
+            search_pattern= "{}" + "/lagrangian/{}/".format(cloud),
             plot_props=plot_props, name=name, skiplines=skiplines)
 
 def read_eul(folder,  files, plot_props, skiplines=1, name="None"):
