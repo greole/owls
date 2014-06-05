@@ -1,7 +1,13 @@
 #!/usr/bin/ipython
 '''
-    Reads and converts OpenFoam logfiles and data
-    to Pandas DataFrames and Series
+Reads and converts OpenFoam logfiles and data
+to Pandas DataFrames and Series
+
+
+Bad Karma:
+    * read_data_file returns field names which is redundant to data.columns
+
+
 '''
 
 import numpy as np
@@ -124,7 +130,7 @@ def foam_to_DataFrame(search_format, file_names,
                 if perc > oldperc:
                     print "#",
                     oldperc += 0.1
-                columns,x = read_data_file(fn, skiplines, maxlines, plot_props)
+                columns, x = read_data_file(fn, skiplines, maxlines, plot_props)
                 origin = { (key,files[0]): fn for key in columns} 
                 origins.update(origin)
                 df = df.combine_first(x)
@@ -150,11 +156,12 @@ def read_boundary_names(fn):
             else:
                 pass
 
-def read_data_file(fn, skiplines, maxlines, plot_props):
+def read_data_file(fn, skiplines=1, maxlines=False, plot_props={}):
     '''
-        A function to read any foam data files
-        returning data and index after header
+    A function to read any foam data files returning data and 
+    index after header
     '''
+
     # print "opening file {}".format(fn)
     with open(fn) as f:
         field = fn.split('/')[-1]
