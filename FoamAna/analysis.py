@@ -169,12 +169,8 @@ def read_data_file(fn, skiplines, maxlines, plot_props):
         
         if is_a_vector:
             data = map(subst_split, content[start:end:skiplines])
-            names = evaluate_names(field)
-            if len(names) == entries:
-                df = DataFrame(data=data, columns=names) 
-            else:
-                names = [ field + '_' + str(i) for i in range(entries)]
-                df = DataFrame(data=data, columns=names) 
+            names = evaluate_names(fn, entries)
+            df = DataFrame(data=data, columns=names) 
             return names, df.astype(float)
         else:
             data = [np.float32(x) for x in content[start:end:skiplines]]
@@ -182,20 +178,26 @@ def read_data_file(fn, skiplines, maxlines, plot_props):
             df = DataFrame(data=data, columns=[field])
             return field, df
 
-def evaluate_names(name):
-    if '.dat' in name:
-        name = name.replace('.dat','')
-    else:
-        name = name.replace('.xy','')
-        name = name.replace('UMean','uMean_vMean_wMean')
-        name = name.replace('UPrime2Mean','uu_uv_uw_vv_vw_ww')
-        name = name.replace('Uc','uc_vc_wc')
-        name = name.replace('U','u_v_w')
+def evaluate_names(fullfilename, num_entries):
+    """  """
+    filename = fullfilename.split('/')[-1]
+    name = (filename.replace('.dat','')
+            .replace('.xy','')
+            .replace('UMean','uMean_vMean_wMean')
+            .replace('UPrime2Mean','uu_uv_uw_vv_vw_ww')
+            .replace('Uc','uc_vc_wc')
+            .replace('U','u_v_w')
+           )
     fields = name.split('_')
-    pos = fields[0]
-    fields = [pos + '_' + val for val in fields[1:]]
-    fields.insert(0, pos) 
-    return fields
+    if num_entries == len(fields):
+        if '.dat' in filename or '.xy' in filename:
+            pos = fields[0]
+            fields = [pos + '_' + val for val in fields[1:]]
+            fields.insert(0, pos)
+        return fields
+    else:
+        basename = filename.split('/')[-1]
+        return [basename + '_' + str(i) for i in range(num_entries)]
 
 def subst_split(entry):
     entry = re.sub(r'[()]', '', entry)
