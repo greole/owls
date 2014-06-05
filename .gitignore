@@ -15,6 +15,7 @@
 *.out
 *.pyc
 .svn/
+*.egg*
 #*log*
 
 
