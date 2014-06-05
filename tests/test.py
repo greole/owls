@@ -1,3 +1,4 @@
+import pandas as pd
 import unittest
 from mock import Mock
 from FoamAna import *
@@ -24,8 +25,27 @@ filename_to_fieldnames = zip(input_filenames,
                          file_entries,
                          )
 
+u_set = pd.Series([0, 0.00217143, 0.00434286, 0.00651429, 0.00868571, 0.0108571,
+    0.0130286, 0.0152, 0.0173714, 0.0195429, 0.0217143, 0.0238857, 0.0260571,
+    0.0282286, 0.0304, 0.0325714, 0.0347429, 0.0369143, 0.0390857, 0.0412571,  
+    0.0434286, 0.0456, 0.0477714, 0.0499429, 0.0521143, 0.0542857, 0.0564571,  
+    0.0586286, 0.0608, 0.0629714, 0.0651429, 0.0673143, 0.0694857, 0.0716571, 
+    0.0738286, 0.076])
+
 class AnalysisTest(unittest.TestCase):
-	pass
+
+    def test_Foam_to_DataFrame(self):
+        input_file = "../examples/buoyantCavity/1000/U"
+        test, data = read_data_file(input_file)
+        self.assertEqual(data['u'][78749], 0.00447051)
+        self.assertEqual(len(data),78750)
+    
+    def test_Foam_to_DataFrame(self):
+        input_file = "../examples/buoyantCavity/sets/1000/y0.1_U.xy"
+        test, data = read_data_file(input_file)
+        isEqual = (u_set == data['y0.1'])
+        self.assertTrue(isEqual.all())
+    
 
 def test_names_generator(filename, expect, entries):
     def test_evaluate_field_names(self):
