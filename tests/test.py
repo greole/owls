@@ -35,13 +35,13 @@ u_set = pd.Series([0, 0.00217143, 0.00434286, 0.00651429, 0.00868571, 0.0108571,
 class AnalysisTest(unittest.TestCase):
 
     def test_Foam_to_DataFrame(self):
-        input_file = "../examples/buoyantCavity/1000/U"
+        input_file = "examples/buoyantCavity/1000/U"
         test, data = read_data_file(input_file)
         self.assertEqual(data['u'][78749], 0.00447051)
         self.assertEqual(len(data),78750)
     
     def test_Foam_to_DataFrame(self):
-        input_file = "../examples/buoyantCavity/sets/1000/y0.1_U.xy"
+        input_file = "examples/buoyantCavity/sets/1000/y0.1_U.xy"
         test, data = read_data_file(input_file)
         isEqual = (u_set == data['y0.1'])
         self.assertTrue(isEqual.all())
