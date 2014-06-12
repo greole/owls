@@ -50,40 +50,48 @@ def match(d, event):
         if re.match(reg_exp_key, event):
             return d[reg_exp_key]
 
-def items_in_times(
+def find_datafiles(
         fold=False,
-        file_names=False,
-        search_format='{}',
-        ):
-    """ find all files in time sub folders """
-    results = []
-    old_path = os.getcwd()
-    time_fold = (fold if fold else find_times(search_format))
-    for time in time_fold:
-        time_path = search_format.format(time + '/')
-        os.chdir(time_path)
-        fn_found = items_in_time(file_names)
-        files = [fn.replace('./', time_path) for fn in fn_found]
-        entry = (time, files)
-        results.append(entry)
-        os.chdir(old_path)
-    return results
-
-def items_in_time(fn_filter):
-    """ data files in current path if filenames are in filter list """
-    cmd = "find . -maxdepth 1 -type f \( ! -iname '.*' \)"
-    fn_found = get_ipython().getoutput(cmd)
+        filelist=False,
+        subfolder="{}",
+    ):
+    """ Find all datafiles in each time folder,
+        
+        Returns a dictionary of lists containing data 
+        files for every found time step
+    """
+    times = (fold if fold else find_times(subfolder.format("")))
+    return {time: _get_datafiles_from_dir(path=subfolder.format(time)) 
+                for time in times}
+    
+def _get_datafiles_from_dir(path=False, fn_filter=False):
+    """ Return file names of Foam files from cwd if no path 
+        is specified explicitly. 
+        If no filter list is given the complete list of files will be returned 
+        else only files matching that list
+    """
+    search_dir = (path if path else os.getcwd())
+    cur_dir = os.walk(search_dir)
+    root, dirs, files = next(cur_dir)
     if fn_filter:
-        return filter(lambda fn: req_file(fn, fn_filter), fn_found)
+        return [search_dir + "/" + f for f in files if f in fn_filter] 
     else:
-        return fn_found 
+        return [search_dir + "/" + f for f in files if not f.startswith('.')] 
+
+def is_time(time):
+    try:
+        return float(time)
+    except:
+        return False
 
 def find_times(fold=None):
-    if fold:
-        fold = fold.split('{}')[0]
-    cmd = "ls -t {} | grep ^[0-9]\*[0-9]".format(fold)
-    times = get_ipython().getoutput(cmd)
-    return times
+    """ Find time folders in given or current folder
+        Returns list of times as strings
+    """
+    search_folder = (fold if fold else os.getcwd())
+    cur_dir = os.walk(search_folder)
+    root, dirs, files = next(cur_dir)
+    return [time for time in dirs if is_time(time)]
 
 def dataframe_to_foam(fullname, ftype, dataframe, boundaries):
     """ writes an OpenFOAM field file from given dataframe """
@@ -114,27 +122,26 @@ def foam_to_DataFrame(search_format, file_names,
                       skiplines=1, maxlines=0,
                       plot_props=None):
     """ returns a Dataframe for every file in fileList """
-    fileList = items_in_times(search_format=search_format, file_names=file_names)
+    fileList = find_datafiles(subfolder=search_format, filelist=file_names)
     samples = defaultdict(int)
     oldperc = 0.10
     file_count = 0 
     n_files_tot = 0
     origins = dict() 
-    for files in fileList:
-        n_files_tot += len(files[1])
-    for time, files in enumerate(fileList):
+    n_files_tot = sum([len(l) for l in fileList.itervalues()])
+    for time,files in fileList.iteritems():
             df = DataFrame()
-            for fn in files[1]:
+            for fn in files:
                 file_count +=1
                 perc = float(file_count)/float(n_files_tot)
                 if perc > oldperc:
                     print "#",
                     oldperc += 0.1
                 columns, x = read_data_file(fn, skiplines, maxlines, plot_props)
-                origin = { (key,files[0]): fn for key in columns} 
+                origin = { (key,time): fn for key in columns} 
                 origins.update(origin)
                 df = df.combine_first(x)
-            samples[files[0]] = df
+            samples[time] = df
     print "[done]"
     return origins, samples
 
