@@ -25,7 +25,7 @@ filename_to_fieldnames = zip(input_filenames,
                          file_entries,
                          )
 
-expected_times = ['1000','900', '950']
+expected_times = ['1000','900', '950' , '0']
 expected_times_in_sets = ['1000']
 
 u_set = pd.Series([0, 0.00217143, 0.00434286, 0.00651429, 0.00868571, 0.0108571,
@@ -37,13 +37,13 @@ u_set = pd.Series([0, 0.00217143, 0.00434286, 0.00651429, 0.00868571, 0.0108571,
 
 class AnalysisTest(unittest.TestCase):
 
-    def test_Foam_to_DataFrame(self):
+    def test_Foam_to_DataFrame_eul(self):
         input_file = "examples/buoyantCavity/1000/U"
         test, data = read_data_file(input_file)
         self.assertEqual(data['u'][78749], 0.00447051)
         self.assertEqual(len(data),78750)
 
-    def test_Foam_to_DataFrame(self):
+    def test_Foam_to_DataFrame_sets(self):
         input_file = "examples/buoyantCavity/sets/1000/y0.1_U.xy"
         test, data = read_data_file(input_file)
         isEqual = (u_set == data['y0.1'])
@@ -51,13 +51,13 @@ class AnalysisTest(unittest.TestCase):
 
     def test_find_times(self):
         input_folder = "examples/buoyantCavity/"
-        times = find_times(input_folder)
-        self.assertEqual(times,expected_times)
+        times = sorted(find_times(input_folder))
+        self.assertEqual(times,sorted(expected_times))
 
-    def test_find_times(self):
+    def test_find_times_sets(self):
         input_folder = "examples/buoyantCavity/sets/"
-        times = find_times(input_folder)
-        self.assertEqual(times,expected_times_in_sets)
+        times = sorted(find_times(input_folder))
+        self.assertEqual(times,sorted(expected_times_in_sets))
 
 def test_names_generator(filename, expect, entries):
     def test_evaluate_field_names(self):
