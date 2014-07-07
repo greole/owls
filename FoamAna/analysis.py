@@ -49,7 +49,7 @@ def match(d, event):
     for reg_exp_key in d.keys():
         if re.match(reg_exp_key, event):
             return d[reg_exp_key]
-
+search_format
 def find_datafiles(
         fold=False,
         filelist=False,
@@ -60,8 +60,9 @@ def find_datafiles(
         Returns a dictionary of lists containing data 
         files for every found time step
     """
-    times = (fold if fold else find_times(subfolder.format("")))
-    return {time: _get_datafiles_from_dir(subfolder.format(time), filelist)
+    search_folder = (subfolder if not subfolder.startswith('{}') else "{}")
+    times = (fold if fold else find_times(search_folder.format("")))
+    return {time: _get_datafiles_from_dir(search_folder.format(time), filelist)
                 for time in times}
 
 def _get_datafiles_from_dir(path=False, fn_filter=False):

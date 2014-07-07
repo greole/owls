@@ -81,7 +81,7 @@ class Item():
 
     def _read_data(self):
         """ call foam_to_DataFrame for all entries in read_list """
-        search = self.folder+self.search_pattern
+        search = self.search_pattern
         origins, data = ana.foam_to_DataFrame(search_format=search,
                                  file_names=self.search_files,
                                  plot_props=self.plot_props,
