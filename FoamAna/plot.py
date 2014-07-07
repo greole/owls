@@ -7,6 +7,15 @@ import hashlib
 from collections import Counter
 import datetime
 
+
+class Annotation():
+
+    def __init__(self, x, y, text, subplot):
+        self.text = text
+        self.subplot = subplot
+        self.x = x
+        self.y = y
+
 class Plot():
     ''' wrapper class around mpl
         supported styles: [classic, jet, wide, dcol, row]
@@ -40,6 +49,7 @@ class Plot():
                                         time,
                                         fileformat)
         self._create_backup_dir()
+        self.annotations =[]
 
     def _create_backup_dir(self):
         try:
@@ -201,7 +211,6 @@ class Plot():
         s = plot.get('symbol', '.')
         c = plot.get('color', False)
 
-
         if s in ['o', '.', ',', '+', 'x' ]:
             style = "scatter"
         else:
@@ -221,7 +230,6 @@ class Plot():
             else:
                 return self.ax[i].plot(x, y, label=l, lw=3, linestyle=s)
 
-
     def show(self):
         self.f, ax = self.create_plot_array()
         try:
@@ -236,6 +244,12 @@ class Plot():
             if self.add_legend(i):
                 ncol = (1 if len(self.plots)/len(self.ax) < 3 else 2)
                 ax.legend(ncol=ncol)
+        for ann in self.annotations:
+            subplot = ann.subplot
+            posx = (ann.x if ann.x else max(self.ax[subplot].get_xlim())*0.2)
+            posy = (ann.y if ann.y else max(self.ax[subplot].get_ylim())*0.8)
+            pos = (posx,posy)
+            self.ax[ann.subplot].annotate(ann.text, xy=pos, xytext=pos)
         if self.backupdir:
             self._savefig_and_origins()
 
@@ -245,15 +259,11 @@ class Plot():
         if y:
             self.ax[subplot].set_ylim(y[0],y[1])
 
-    def annotate(self, subplot=0, annotation="", position="ul", x=False, y=False):
+    def annotate(self, subplot=0, text="", position="ul", x=False, y=False):
         """ add an annotation to a subplot """
-        posx = (x if x else max(self.ax[subplot].get_xlim())*0.2)
-        posy = (y if y else max(self.ax[subplot].get_ylim())*0.8)
-        self.ax[subplot].annotate(annotation,
-            xytext=(posx, posy),
-            xy=(posx, posy),
+        self.annotations.append(
+                Annotation(text=text, subplot=subplot, x=x, y=y)
             )
-
 
     def pci_style(self):
         plt.rcParams.update({'font.size': 14, 'family': 'Helvetica'})
