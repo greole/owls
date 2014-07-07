@@ -61,9 +61,9 @@ def find_datafiles(
         files for every found time step
     """
     times = (fold if fold else find_times(subfolder.format("")))
-    return {time: _get_datafiles_from_dir(path=subfolder.format(time)) 
+    return {time: _get_datafiles_from_dir(subfolder.format(time), filelist)
                 for time in times}
-    
+
 def _get_datafiles_from_dir(path=False, fn_filter=False):
     """ Return file names of Foam files from cwd if no path 
         is specified explicitly. 
@@ -171,6 +171,9 @@ def read_data_file(fn, skiplines=1, maxlines=False, plot_props={}):
     '''
 
     # print "opening file {}".format(fn)
+    if not os.path.exists(fn):
+        print "Can not open file " + fn
+        return None
     with open(fn) as f:
         field = fn.split('/')[-1]
         content = f.readlines()
