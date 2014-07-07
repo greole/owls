@@ -59,6 +59,11 @@ class AnalysisTest(unittest.TestCase):
         times = sorted(find_times(input_folder))
         self.assertEqual(times,sorted(expected_times_in_sets))
 
+    def test_get_datafiles_from_dir_with_filelist(self):
+        import FoamAna as FA
+        found = FA.analysis._get_datafiles_from_dir("examples/buoyantCavity/950",['U'])
+        self.assertEqual(['examples/buoyantCavity/950/U'],found)
+
 def test_names_generator(filename, expect, entries):
     def test_evaluate_field_names(self):
         names = evaluate_names(filename, entries)
