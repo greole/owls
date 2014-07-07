@@ -49,7 +49,7 @@ def match(d, event):
     for reg_exp_key in d.keys():
         if re.match(reg_exp_key, event):
             return d[reg_exp_key]
-search_format
+
 def find_datafiles(
         fold=False,
         filelist=False,
@@ -60,9 +60,9 @@ def find_datafiles(
         Returns a dictionary of lists containing data 
         files for every found time step
     """
-    search_folder = (subfolder if not subfolder.startswith('{}') else "{}")
+    search_folder = (subfolder if not subfolder.startswith('./{}') else "./{}/")
     times = (fold if fold else find_times(search_folder.format("")))
-    return {time: _get_datafiles_from_dir(search_folder.format(time), filelist)
+    return {time: _get_datafiles_from_dir(subfolder.format(time), filelist)
                 for time in times}
 
 def _get_datafiles_from_dir(path=False, fn_filter=False):
@@ -71,13 +71,13 @@ def _get_datafiles_from_dir(path=False, fn_filter=False):
         If no filter list is given the complete list of files will be returned 
         else only files matching that list
     """
-    search_dir = (path if path else os.getcwd())
+    search_dir = (path if path else os.getcwd() + "/")
     cur_dir = os.walk(search_dir)
     root, dirs, files = next(cur_dir)
     if fn_filter:
-        return [search_dir + "/" + f for f in files if f in fn_filter] 
+        return [search_dir + f for f in files if f in fn_filter] 
     else:
-        return [search_dir + "/" + f for f in files if not f.startswith('.')] 
+        return [search_dir + f for f in files if not f.startswith('.')] 
 
 def is_time(time):
     try:
@@ -305,12 +305,12 @@ def begins_with_int(line):
 
 def if_header_skip(content):
     first_line = content[0]
-    if '#' in first_line:
-        return 1,-2
-    if '/*-' in first_line:
+    if not first_line.startswith('#') and not first_line.startswith('/*'):
+        return 0, -1
+    elif first_line.startswith('#'):
+        return 1, -2 #FIXME dont append bla
+    elif first_line.startswith('/*'):
         for line_number, line in enumerate(content):
             entries = begins_with_int(line)
             if entries or line_number >= 100:
                 return line_number + 2, entries
-    else:
-        return 0, -1

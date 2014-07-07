@@ -2,22 +2,22 @@ import os
 import analysis as ana
 
 def read_sets(folder, plot_props, name="None"):
-    return Item(folder, search_files=False, search_pattern="sets/{}",
+    return Item(folder, search_files=False, search_pattern="./sets/{}/",
             plot_props=plot_props, name=name)
 
 def read_lag(folder, files, plot_props, skiplines=1,
             name="None", cloud="coalCloud1"):
     return Item(folder, search_files=files,
-            search_pattern= "{}" + "/lagrangian/{}/".format(cloud),
+            search_pattern= "./{}/" + "lagrangian/{}/".format(cloud),
             plot_props=plot_props, name=name, skiplines=skiplines)
 
 def read_eul(folder,  files, plot_props, skiplines=1, name="None"):
-    return Item(folder, search_files=files, search_pattern="{}",
+    return Item(folder, search_files=files, search_pattern="./{}/",
             plot_props=plot_props, name=name, skiplines=skiplines)
 
 def read_exp(folder, plot_props, name="None"):
     return Item(folder, search_files=False, plot_props=plot_props,
-            search_pattern="{}", name=name)
+            search_pattern="./{}/", name=name)
 
 
 def read_logs(folder, log_name='*log*', keys=None):
