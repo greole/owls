@@ -65,8 +65,8 @@ class Plot():
     def backup_origin(self):
         """ copy origins to backup dest"""
         for obj in self.objects():
-            origin = obj.origin
             try:
+                origin = obj.origin
                 file_hash = self._md5sum(origin)
                 file_dest = "{}/{}_{}_{}".format(self.data_dir,
                         origin.split('/')[-1],
