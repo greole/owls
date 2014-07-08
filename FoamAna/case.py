@@ -1,5 +1,6 @@
 import os
 import analysis as ana
+from pandas import Series
 
 def read_sets(folder, plot_props, name="None"):
     return Item(folder, search_files=False, search_pattern="./sets/{}/",
@@ -131,7 +132,7 @@ class Item():
         latest_time = max(self.data.keys())
         return latest_time
 
-    def iteratetimes(self, delta=0):
+    def iteratetimes(self, delta_t=0):
         """ iterator to iterate over all sets entries
             to create convergence check plots """
         for time, df in self.data.iteritems():
@@ -139,7 +140,22 @@ class Item():
                 df[col].name = "{} @{:1.4}s".format(self.name, float(time))
             yield time, df
 
+    def values_at_position(self, field, position):
+        times = Series()
+        values = Series()
+        field_ind = field.split('_')[0]
+        for time, df in self.data.iteritems():
+            val = df[field].where(df[field_ind] == position).dropna()
+            times.append(Series(time))
+            values.append(Series(val))
+        return times, values
+
     ############################################################################
+    @property
+    def vars(self):
+        """ return names of all entries for latest timestep """
+        latest_time = max(self.data.keys())
+        return self.data[latest_time].columns
 
     def __getitem__(self, field):
         return self.data[self.latest_time][field]
