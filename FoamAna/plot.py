@@ -95,7 +95,8 @@ class Plot():
     def add(self,
           **kwargs
         ):
-        self.plots.append(kwargs)
+        if len(kwargs['x']) == len(kwargs['y']):
+            self.plots.append(kwargs)
 
     def create_plot_array(self):
         height = 4
