@@ -1,24 +1,30 @@
 import os
 import analysis as ana
 from pandas import Series
+from pandas import concat
 
-def read_sets(folder, plot_props, name="None"):
+
+def items_from_dict(dict, func, **kwargs):
+    return {name: func(folder=folder,name=name, symb=symb, **kwargs)
+               for name, (folder,symb) in dict.iteritems()}
+
+def read_sets(folder, plot_props={}, name="None", **kwargs):
     return Item(folder, search_files=False, search_pattern="./sets/{}/",
-            plot_props=plot_props, name=name)
+            plot_props=plot_props, name=name, **kwargs)
 
-def read_lag(folder, files, plot_props, skiplines=1,
-            name="None", cloud="coalCloud1"):
+def read_lag(folder, files, plot_props={}, skiplines=1,
+            name="None", cloud="coalCloud1", **kwargs):
     return Item(folder, search_files=files,
             search_pattern= "./{}/" + "lagrangian/{}/".format(cloud),
-            plot_props=plot_props, name=name, skiplines=skiplines)
+            plot_props=plot_props, name=name, skiplines=skiplines, **kwargs)
 
-def read_eul(folder,  files, plot_props, skiplines=1, name="None"):
+def read_eul(folder,  files, plot_props={}, skiplines=1, name="None", **kwargs):
     return Item(folder, search_files=files, search_pattern="./{}/",
-            plot_props=plot_props, name=name, skiplines=skiplines)
+            plot_props=plot_props, name=name, skiplines=skiplines, **kwargs)
 
-def read_exp(folder, plot_props, name="None"):
+def read_exp(folder, plot_props={}, name="None",**kwargs):
     return Item(folder, search_files=False, plot_props=plot_props,
-            search_pattern="./{}/", name=name)
+            search_pattern="./{}/", name=name, **kwargs)
 
 
 def read_logs(folder, log_name='*log*', keys=None):
@@ -26,7 +32,6 @@ def read_logs(folder, log_name='*log*', keys=None):
     if keys:
         print "reading logs"
         return extractFromLog(keys, older, log_name)
-
 
 class Item():
     """ Data reprensentation of OpenFOAM field (eulerian and lagrangian)
@@ -67,6 +72,7 @@ class Item():
                  files=None,
                  skiplines=1,
                  name="None",
+                 symb="o",
                 ):
 
         self.plot_props = plot_props
@@ -79,10 +85,12 @@ class Item():
         self.skiplines = skiplines
         self.origins, self.data = self._read_data()
         self.append_plot_props()
+        self.symb=symb
 
     def _read_data(self):
         """ call foam_to_DataFrame for all entries in read_list """
         search = self.search_pattern
+        print self.name + ": ",
         origins, data = ana.foam_to_DataFrame(search_format=search,
                                  file_names=self.search_files,
                                  plot_props=self.plot_props,
@@ -150,6 +158,94 @@ class Item():
             values.append(Series(val))
         return times, values
 
+    #########################################################################
+    def _get_idx_names(self, keyword):
+        """ search for all index names matching keyword"""
+        if type(keyword) != list:
+            return [field for field in self.vars
+                 if keyword in field and self._is_index(field)]
+        else:
+            return [_ for key in keyword for _ in self._get_idx_names(key)]
+
+    def _get_field_names(self, keyword):
+        """ search for all field names matching keyword"""
+        if type(keyword) != list:
+            return [field for field in self.vars
+                 if keyword in field and not self._is_index(field)]
+        else:
+            return [_ for key in keyword for _ in self._get_field_names(key)]
+
+    #########################################################################
+
+
+    def combine(self, inp):# idxs, name):
+        """ combines multiple separate index fields 
+        """
+        def replace_names(lst, new_name, old_idxs):
+            return [field.replace(_, new_name)
+                         for field in lst
+                         for _ in old_idxs if _ in field]
+        def unique(lst):
+            return list(set(lst))
+
+        from collections import defaultdict
+        d = defaultdict(dict)
+        for combined_name, fields in inp.iteritems():
+            concat_fields = unique(self._get_field_names(fields))
+            concat_idx = self._get_idx_names([_.split('_')[0] for _ in concat_fields])
+            new_idx = replace_names(concat_idx, combined_name, concat_idx)
+            new_fields = replace_names(concat_fields, combined_name, unique(concat_idx))
+            for time, df in self.data.iteritems():
+                ids = concat([Series([_ for _ in concat_fields for i in df[_]])])
+                concat_idx_vals = [df[_] for _ in concat_idx]
+                concat_val = [df[_] for _ in concat_fields]
+                new_idx_name = new_idx[0]
+                new_idx = concat(concat_idx_vals).reset_index(level=0,drop=True)
+                d[time].update({new_idx_name:new_idx})
+                d[time].update({"ids"+new_idx_name:ids})
+                new_val_concat = concat(concat_val).reset_index(level=0,drop=True)
+                """
+                print concat_fields
+                for i,val in enumerate(new_val_concat):
+                    print i, new_idx[i], new_val_concat[i], ids[i]
+                print new_val_concat
+                """
+                for i, target in enumerate(concat_fields):
+                    selection_mask = ids.isin([target])#[concat_fields[i]])
+                    new_val = new_val_concat[selection_mask]
+                    d[time].update({new_fields[i]:new_val})
+                    d[time].update({"select" + new_fields[i]:selection_mask})
+
+        for time, fields in d.iteritems():
+            self.data[time] = self.data[time].reindex(range(1000))
+            for name, field in fields.iteritems():
+                self.data[time][name] = field
+
+    def rename(self, names):
+        for time, df in self.data.iteritems():
+            renamed=[]
+            for name in df.columns:
+                if name in names:
+                    renamed.append(names[name])
+                else:
+                    renamed.append(name)
+            df.columns = renamed
+
+    def get(self, form, pos, vals, times=False):
+        pos_inserted = form.split('_')[0].format(pos) #FIXME support pos lists
+        index = self.__getitem__(pos_inserted)
+        vals_inserted = [self.__getitem__(form.format(pos,val)) 
+                            for val in vals]
+        return [index] + vals_inserted
+
+    def _is_index(self, name):
+        """ test if given column name is an index """
+        _ = name.split('_')
+        if len(_) == 1 or _[-1] == '0':
+            return True
+        else:
+            return False
+
     ############################################################################
     @property
     def vars(self):
@@ -158,7 +254,11 @@ class Item():
         return self.data[latest_time].columns
 
     def __getitem__(self, field):
-        return self.data[self.latest_time][field]
+        try:
+            return self.data[self.latest_time][field]
+        except:
+            print "requested field %s not in data base" %field
+            return Series()
 
     @staticmethod
     def condition(field, target, condition, operator):
