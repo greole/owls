@@ -172,30 +172,34 @@ def read_data_file(fn, skiplines=1, maxlines=False, plot_props={}):
     '''
 
     # print "opening file {}".format(fn)
-    if not os.path.exists(fn):
-        print "Can not open file " + fn
+    try:
+        if not os.path.exists(fn):
+            print "Can not open file " + fn
+            return None
+        with open(fn) as f:
+            field = fn.split('/')[-1]
+            content = f.readlines()
+            content.append('bla')
+            start, num_entries = if_header_skip(content)
+            entries = len(content[start].split())
+            is_a_vector = (True if entries > 1 else False)
+            line_numbers = range(0, num_entries, skiplines)   # unused atm
+            end = start + num_entries
+            label = plot_props.get('label', 'no label')
+            
+            if is_a_vector:
+                data = map(subst_split, content[start:end:skiplines])
+                names = evaluate_names(fn, entries)
+                df = DataFrame(data=data, columns=names) 
+                return names, df.astype(float)
+            else:
+                data = [np.float32(x) for x in content[start:end:skiplines]]
+                entries = 1
+                df = DataFrame(data=data, columns=[field])
+                return field, df
+    except:
+        print "Error processing datafile " + fn
         return None
-    with open(fn) as f:
-        field = fn.split('/')[-1]
-        content = f.readlines()
-        content.append('bla')
-        start, num_entries = if_header_skip(content)
-        entries = len(content[start].split())
-        is_a_vector = (True if entries > 1 else False)
-        line_numbers = range(0, num_entries, skiplines)   # unused atm
-        end = start + num_entries
-        label = plot_props.get('label', 'no label')
-        
-        if is_a_vector:
-            data = map(subst_split, content[start:end:skiplines])
-            names = evaluate_names(fn, entries)
-            df = DataFrame(data=data, columns=names) 
-            return names, df.astype(float)
-        else:
-            data = [np.float32(x) for x in content[start:end:skiplines]]
-            entries = 1
-            df = DataFrame(data=data, columns=[field])
-            return field, df
 
 def evaluate_names(fullfilename, num_entries):
     """  """

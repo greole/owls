@@ -27,6 +27,7 @@ class Plot():
             case="",
             figurename="figure",
             backupdir="",
+            backup=False,
             fileformat="eps",
             ):
 
@@ -48,6 +49,7 @@ class Plot():
                                         figurename,
                                         time,
                                         fileformat)
+        self.backup = backup
         self._create_backup_dir()
         self.annotations =[]
 
@@ -95,7 +97,7 @@ class Plot():
     def add(self,
           **kwargs
         ):
-        if len(kwargs['x']) == len(kwargs['y']):
+        if len(kwargs['x']) == len(kwargs['y']) and len(kwargs['x']) != 0:
             self.plots.append(kwargs)
 
     def create_plot_array(self):
@@ -251,7 +253,7 @@ class Plot():
             posy = (ann.y if ann.y else max(self.ax[subplot].get_ylim())*0.8)
             pos = (posx,posy)
             self.ax[ann.subplot].annotate(ann.text, xy=pos, xytext=pos)
-        if self.backupdir:
+        if self.backupdir and self.backup:
             self._savefig_and_origins()
 
     def zoom(self, subplot=0, x=None, y=None):

@@ -73,12 +73,14 @@ class Item():
                  skiplines=1,
                  name="None",
                  symb="o",
+                 maxlines=0,
                 ):
 
         self.plot_props = plot_props
         self.folder = folder
         self.name = name
         os.chdir(folder)
+        self.maxlines=maxlines
         self.search_files=search_files
         self.search_pattern=search_pattern
         self.times = ana.find_times(self.folder)
@@ -94,7 +96,8 @@ class Item():
         origins, data = ana.foam_to_DataFrame(search_format=search,
                                  file_names=self.search_files,
                                  plot_props=self.plot_props,
-                                 skiplines=self.skiplines
+                                 skiplines=self.skiplines,
+                                 maxlines=self.maxlines
                                  )
         return origins, data
 
@@ -257,7 +260,7 @@ class Item():
         try:
             return self.data[self.latest_time][field]
         except:
-            print "requested field %s not in data base" %field
+            print "%s Warning: requested field %s not in data base" %(self.name, field)
             return Series()
 
     @staticmethod
