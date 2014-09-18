@@ -86,7 +86,8 @@ class Item():
         self.times = ana.find_times(self.folder)
         self.skiplines = skiplines
         self.origins, self.data = self._read_data()
-        self.append_plot_props()
+        if self.data:
+            self.append_plot_props()
         self.symb=symb
 
     def _read_data(self):
@@ -109,6 +110,8 @@ class Item():
         -------
         case.add(sqrt(uu),'u_rms')
         """
+        if not self.data:
+            return
         time = max(self.data.keys())
         self.data[time][label] = data
         self.append_plot_props()
@@ -124,6 +127,8 @@ class Item():
 
     def append_plot_props(self):
         """ """
+        if not self.data:
+            return
         for time, df in self.data.iteritems():
             for col in df.columns:
                 prop = ana.match(self.plot_props, col)
@@ -140,18 +145,24 @@ class Item():
     @property
     def latest_time(self):
         """ return latest time instance """
+        if not self.data:
+            return
         latest_time = max(self.data.keys())
         return latest_time
 
     def iteratetimes(self, delta_t=0):
         """ iterator to iterate over all sets entries
             to create convergence check plots """
+        if not self.data:
+            return
         for time, df in self.data.iteritems():
             for col in df.columns:
                 df[col].name = "{} @{:1.4}s".format(self.name, float(time))
             yield time, df
 
     def values_at_position(self, field, position):
+        if not self.data:
+            return
         times = Series()
         values = Series()
         field_ind = field.split('_')[0]
@@ -184,10 +195,13 @@ class Item():
     def combine(self, inp):# idxs, name):
         """ combines multiple separate index fields 
         """
+        if not self.data:
+            return
         def replace_names(lst, new_name, old_idxs):
             return [field.replace(_, new_name)
                          for field in lst
                          for _ in old_idxs if _ in field]
+
         def unique(lst):
             return list(set(lst))
 
@@ -225,6 +239,8 @@ class Item():
                 self.data[time][name] = field
 
     def rename(self, names):
+        if not self.data:
+            return
         for time, df in self.data.iteritems():
             renamed=[]
             for name in df.columns:
@@ -233,6 +249,7 @@ class Item():
                 else:
                     renamed.append(name)
             df.columns = renamed
+            self.append_plot_props()
 
     def get(self, form, pos, vals, times=False):
         pos_inserted = form.split('_')[0].format(pos) #FIXME support pos lists
@@ -252,6 +269,8 @@ class Item():
     ############################################################################
     @property
     def vars(self):
+        if not self.data:
+            return
         """ return names of all entries for latest timestep """
         latest_time = max(self.data.keys())
         return self.data[latest_time].columns

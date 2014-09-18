@@ -61,9 +61,12 @@ def find_datafiles(
         files for every found time step
     """
     search_folder = (subfolder if not subfolder.startswith('./{}') else "./{}/")
-    times = (fold if fold else find_times(search_folder.format("")))
-    return {time: _get_datafiles_from_dir(subfolder.format(time), filelist)
+    try:
+        times = (fold if fold else find_times(search_folder.format("")))
+        return {time: _get_datafiles_from_dir(subfolder.format(time), filelist)
                 for time in times}
+    except:
+        return dict()
 
 def _get_datafiles_from_dir(path=False, fn_filter=False):
     """ Return file names of Foam files from cwd if no path 
@@ -125,11 +128,14 @@ def foam_to_DataFrame(search_format, file_names,
                       plot_props=None):
     """ returns a Dataframe for every file in fileList """
     fileList = find_datafiles(subfolder=search_format, filelist=file_names)
+    origins = dict() 
+    if not fileList:
+        print "no files found"
+        return origins, [] 
     samples = defaultdict(int)
     oldperc = 0.10
     file_count = 0 
     n_files_tot = 0
-    origins = dict() 
     n_files_tot = sum([len(l) for l in fileList.itervalues()])
     for time,files in fileList.iteritems():
             df = DataFrame()
@@ -139,8 +145,11 @@ def foam_to_DataFrame(search_format, file_names,
                 if perc > oldperc:
                     print "#",
                     oldperc += 0.1
-                columns, x = read_data_file(fn, skiplines, maxlines, plot_props)
-                origin = { (key,time): fn for key in columns} 
+                ret = read_data_file(fn, skiplines, maxlines, plot_props)
+                if not ret:
+                    continue
+                columns, x = ret
+                origin = {(key,time): fn for key in columns} 
                 origins.update(origin)
                 df = df.combine_first(x)
             samples[time] = df
@@ -197,8 +206,9 @@ def read_data_file(fn, skiplines=1, maxlines=False, plot_props={}):
                 entries = 1
                 df = DataFrame(data=data, columns=[field])
                 return field, df
-    except:
+    except Exception as e:
         print "Error processing datafile " + fn
+        print e
         return None
 
 def evaluate_names(fullfilename, num_entries):

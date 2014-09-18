@@ -97,12 +97,16 @@ class Plot():
     def add(self,
           **kwargs
         ):
-        if len(kwargs['x']) == len(kwargs['y']) and len(kwargs['x']) != 0:
-            self.plots.append(kwargs)
+        try:
+            if len(kwargs['x']) == len(kwargs['y']) and len(kwargs['x']) != 0:
+                self.plots.append(kwargs)
+        except:
+            pass
 
     def create_plot_array(self):
         height = 4
         width = (2*height if self.style == "wide" else height)
+        width = (4*height if self.style == "extra_wide" else height)
         return  plt.subplots(self.ny, self.nx,
                     figsize=(self.nx*width, self.ny*height)
                     )
