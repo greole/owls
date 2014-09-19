@@ -195,7 +195,6 @@ def read_data_file(fn, skiplines=1, maxlines=False, plot_props={}):
             line_numbers = range(0, num_entries, skiplines)   # unused atm
             end = start + num_entries
             label = plot_props.get('label', 'no label')
-            
             if is_a_vector:
                 data = map(subst_split, content[start:end:skiplines])
                 names = evaluate_names(fn, entries)
@@ -318,11 +317,16 @@ def begins_with_int(line):
 
 
 def if_header_skip(content):
+    """ go through first lines of file and check if has header
+        return start of content and total lines
+    """
     first_line = content[0]
     if not first_line.startswith('#') and not first_line.startswith('/*'):
         return 0, -1
     elif first_line.startswith('#'):
-        return 1, -2 #FIXME dont append bla
+        for line_number, line in enumerate(content):
+            if not line.startswith('#'):
+                return line_number, -line_number-1 #FIXME dont append bla
     elif first_line.startswith('/*'):
         for line_number, line in enumerate(content):
             entries = begins_with_int(line)
