@@ -6,7 +6,31 @@ import shutil
 import hashlib
 from collections import Counter
 import datetime
+from pandas import Series
 
+
+def rolling_mean(x,y,z):
+    """ function that takes a x,y-Series to x,average(y)-Series 
+        and returns a plotable object """
+
+class ():
+
+    def __init__():
+
+    
+    def execute(x,y):
+        t0 = x[0]
+        ave_els = [y[0]]
+        for i,t in enumerate(x[1:]):
+            dt = t - t0
+            rt = 1/t
+            alpha = t0*rt
+            beta  = dt*rt
+            ave_els.append(alpha*ave_els[-1]
+                            +beta*y[i+1])
+        average = pandas.Series(ave_els)
+        average.name = "average" + y.name  
+        return y, average
 
 class Annotation():
 
@@ -97,8 +121,16 @@ class Plot():
     def add(self,
           **kwargs
         ):
+        """ add series for plotting, valid arguments are 
+            x,y,z = Series
+            name  = name of the series to displayed in the legend box, default is x.name
+            symbol 
+            func = 
+        """
         try:
             if len(kwargs['x']) == len(kwargs['y']) and len(kwargs['x']) != 0:
+                if kwargs['func']:
+                    print (kwargs['func'].execute((kwargs['x'],kwargs['y'],kwargs['z'])))
                 self.plots.append(kwargs)
         except:
             pass
