@@ -12,13 +12,14 @@ from pandas import Series
 def rolling_mean(x,y,z):
     """ function that takes a x,y-Series to x,average(y)-Series 
         and returns a plotable object """
+    pass
 
-class ():
+class Process():
 
-    def __init__():
-
+    def __init__(self):
+        pass
     
-    def execute(x,y):
+    def execute(self,x,y):
         t0 = x[0]
         ave_els = [y[0]]
         for i,t in enumerate(x[1:]):
@@ -26,11 +27,10 @@ class ():
             rt = 1/t
             alpha = t0*rt
             beta  = dt*rt
-            ave_els.append(alpha*ave_els[-1]
-                            +beta*y[i+1])
-        average = pandas.Series(ave_els)
-        average.name = "average" + y.name  
-        return y, average
+            ave_els.append(alpha*ave_els[-1] + beta*y[i+1])
+            t0 = t
+        average = Series(ave_els)
+        return {'y':average, 'x':x, 'symbol':'--'}
 
 class Annotation():
 
@@ -129,10 +129,13 @@ class Plot():
         """
         try:
             if len(kwargs['x']) == len(kwargs['y']) and len(kwargs['x']) != 0:
-                if kwargs['func']:
-                    print (kwargs['func'].execute((kwargs['x'],kwargs['y'],kwargs['z'])))
+                if kwargs.get('func', False):
+                    self.plots.append(kwargs['func'].execute(
+                                                        kwargs['x'],
+                                                        kwargs['y']))
                 self.plots.append(kwargs)
-        except:
+        except Exception as e:
+            print e
             pass
 
     def create_plot_array(self):
