@@ -30,6 +30,7 @@ class Process():
             ave_els.append(alpha*ave_els[-1] + beta*y[i+1])
             t0 = t
         average = Series(ave_els)
+        average.name = "avg_" + y.name
         return {'y':average, 'x':x, 'symbol':'--'}
 
 class Annotation():
@@ -109,8 +110,8 @@ class Plot():
                         obj.name,
                         file_hash)
                 shutil.copy2(origin, file_dest)
-            except:
-                pass
+            except Exception as e:
+                pass #print "back up of origins failed: " + str(e) 
 
     def _savefig_and_origins(self):
         self.backup_origin()
@@ -123,7 +124,7 @@ class Plot():
         ):
         """ add series for plotting, valid arguments are 
             x,y,z = Series
-            name  = name of the series to displayed in the legend box, default is x.name
+            name  = name of the series to displayed in the legend box, default is y.name
             symbol 
             func = 
         """
@@ -248,7 +249,7 @@ class Plot():
         x = plot['x']
         y = plot['y']
         z = plot.get('z', False)
-        l = (plot.get('name') if plot.get('name',False) else plot['x'].name)
+        l = (plot.get('name') if plot.get('name',False) else plot['y'].name)
         i = plot.get('subplot', 0)
         s = plot.get('symbol', '.')
         c = plot.get('color', False)
@@ -272,7 +273,7 @@ class Plot():
             else:
                 return self.ax[i].plot(x, y, label=l, lw=3, linestyle=s)
 
-    def show(self):
+    def show(self, suppress=False):
         self.f, ax = self.create_plot_array()
         try:
             self.ax = ax.flatten()
@@ -294,6 +295,8 @@ class Plot():
             self.ax[ann.subplot].annotate(ann.text, xy=pos, xytext=pos)
         if self.backupdir and self.backup:
             self._savefig_and_origins()
+        if suppress:
+            plt.close()
 
     def zoom(self, subplot=0, x=None, y=None):
         if x:
