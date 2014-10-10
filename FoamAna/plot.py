@@ -204,11 +204,13 @@ class Plot():
             plot_index = plot.get('subplot',0)
             try:
                 self.xlabels[plot_index] = plot['x'].label
-                self.ylabels[plot_index] = plot['y'].label
                 self.xranges[plot_index] = plot['x'].data_range
-                self.yranges[plot_index] = plot['y'].data_range
             except:
                  self.xlabels[plot_index] = "None"
+            try:
+                self.ylabels[plot_index] = plot['y'].label
+                self.yranges[plot_index] = plot['y'].data_range
+            except:
                  self.ylabels[plot_index] = "None"
 
     def iterate_axis(self):

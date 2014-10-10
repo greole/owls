@@ -42,6 +42,7 @@ dimensions      [0 0 0 0 0 0 0];
 internalField   nonuniform List<{}>
 """
 
+DEBUG = False
 
 ####################### helper functions ################################
 def match(d, event):
@@ -206,8 +207,9 @@ def read_data_file(fn, skiplines=1, maxlines=False, plot_props={}):
                 df = DataFrame(data=data, columns=[field])
                 return field, df
     except Exception as e:
-        print "Error processing datafile " + fn
-        print e
+        if DEBUG:
+            print "Error processing datafile " + fn
+            print e
         return None
 
 def evaluate_names(fullfilename, num_entries):
