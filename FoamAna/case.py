@@ -8,8 +8,8 @@ def items_from_dict(dict, func, **kwargs):
     return {name: func(folder=folder,name=name, symb=symb, **kwargs)
                for name, (folder,symb) in dict.iteritems()}
 
-def read_sets(folder, plot_props={}, name="None", **kwargs):
-    return Item(folder, search_files=False, search_pattern="./sets/{}/",
+def read_sets(folder, plot_props={}, name="None", search="./sets/{}/", **kwargs):
+    return Item(folder, search_files=False, search_pattern=search,
             plot_props=plot_props, name=name, **kwargs)
 
 def read_lag(folder, files, plot_props={}, skiplines=1,
