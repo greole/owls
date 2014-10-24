@@ -158,6 +158,24 @@ def foam_to_DataFrame(search_format, file_names,
     return origins, samples
 
 
+def foam_to_csv(fn, ):
+    """ helper function for d3.js data conversion 
+        prints data directly to std:out
+    """
+    import re
+    try: 
+        with open(fn) as f:
+            content = f.readlines()
+            start, num_entries = if_header_skip(content)
+            entries = len(content[start].split())
+            for l in content:
+                print re.sub("\t",",",re.sub("[\(\)\\n]","",l))
+    except Exception as e:
+        print e
+
+
+
+
 def read_boundary_names(fn):
     """ Todo use iterator method to avoid reading complete file """
     with open(fn) as f:
