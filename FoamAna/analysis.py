@@ -60,6 +60,9 @@ def find_datafiles(
         
         Returns a dictionary of lists containing data 
         files for every found time step
+        
+        Subfolders: specify wheter to search in cwd or in a specific subfolder
+                    accepting a search pattern
     """
     search_folder = (subfolder if not subfolder.startswith('./{}') else "./{}/")
     try:
