@@ -130,35 +130,53 @@ def dataframe_to_foam(fullname, ftype, dataframe, boundaries):
 def foam_to_DataFrame(search_format, file_names,
                       skiplines=1, maxlines=0,
                       plot_props=None):
-    """ returns a Dataframe for every file in fileList """
+    """ returns a Dataframe for every file in fileList
+    
+    """
+    #import StringIO
+    class ProgressBar():
+
+        def __init__(self, n_tot, bins=10):
+            #FEATURE: Add timings 
+            self.tot = float(n_tot)
+            self.count = 0.0   
+            self.cur = 0.0
+
+        def next(self):
+            self.count += 1.0 
+            if self.count/self.tot > self.cur:
+                print "#",
+                self.cur += 0.1
+
+        def done(self):
+            print "[done]"
+           
+
     fileList = find_datafiles(subfolder=search_format, filelist=file_names)
     origins = dict() 
     if not fileList:
         print "no files found"
         return origins, [] 
-    samples = defaultdict(int)
-    oldperc = 0.10
-    file_count = 0 
-    n_files_tot = 0
-    n_files_tot = sum([len(l) for l in fileList.itervalues()])
-    for time,files in fileList.iteritems():
-            df = DataFrame()
-            for fn in files:
-                file_count +=1
-                perc = float(file_count)/float(n_files_tot)
-                if perc > oldperc:
-                    print "#",
-                    oldperc += 0.1
-                ret = read_data_file(fn, skiplines, maxlines, plot_props)
-                if not ret:
-                    continue
-                columns, x = ret
-                origin = {(key,time): fn for key in columns} 
-                origins.update(origin)
-                df = df.combine_first(x)
-            samples[time] = df
-    print "[done]"
-    return origins, samples
+    times = []
+    p_bar = ProgressBar(n_tot=sum([len(l) for l in fileList.itervalues()]))
+    df = DataFrame()
+    for time, files in fileList.iteritems(): #FIXME dont iterate twice
+        df_tmp = DataFrame()
+        for fn in files:
+            #ret = read_table(StringIO.StringIO(foam_to_csv(fn)))
+            ret = read_data_file(fn, skiplines, maxlines, plot_props)
+            p_bar.next()
+            if not ret:
+                continue
+            columns, x = ret
+            origin = {(key, time): fn for key in columns} 
+            origins.update(origin)
+            df_tmp = df_tmp.combine_first(x)
+        times = times + ([float(time) for i in range(len(df_tmp))]) #FIXME use smthing less ugly
+        df = df.append(df_tmp)
+    df.index = MultiIndex.from_tuples(zip(times, df.index)) 
+    p_bar.done()    
+    return origins, df 
 
 
 def foam_to_csv(fn, ):
@@ -175,9 +193,6 @@ def foam_to_csv(fn, ):
                 print re.sub("\t",",",re.sub("[\(\)\\n]","",l))
     except Exception as e:
         print e
-
-
-
 
 def read_boundary_names(fn):
     """ Todo use iterator method to avoid reading complete file """

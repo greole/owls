@@ -3,6 +3,7 @@ import analysis as ana
 from pandas import Series
 from pandas import concat
 
+#FIXME fix all the if self.data.empty tests
 
 def items_from_dict(dict, func, **kwargs):
     return {name: func(folder=folder,name=name, symb=symb, **kwargs)
@@ -62,7 +63,9 @@ class Item():
 
 
     TODO:
-
+        refactor plot into case objects itself,
+            ?case.show('t','u', time_series = False)
+        refactor origins
         make iteratetimes() access a delta
     """
     def __init__(self, folder,
@@ -83,11 +86,10 @@ class Item():
         self.maxlines=maxlines
         self.search_files=search_files
         self.search_pattern=search_pattern
-        self.times = ana.find_times(self.folder)
+        self.times = [float(_) for _ in ana.find_times(self.folder)]
         self.skiplines = skiplines
         self.origins, self.data = self._read_data()
-        if self.data:
-            self.append_plot_props()
+        self.append_plot_props()
         self.symb=symb
 
     def _read_data(self):
@@ -110,8 +112,6 @@ class Item():
         -------
         case.add(sqrt(uu),'u_rms')
         """
-        if not self.data:
-            return
         time = max(self.data.keys())
         self.data[time][label] = data
         self.append_plot_props()
@@ -126,43 +126,40 @@ class Item():
             return "NONE"
 
     def append_plot_props(self):
-        """ """
-        if not self.data:
-            return
-        for time, df in self.data.iteritems():
-            for col in df.columns:
-                prop = ana.match(self.plot_props, col)
-                df[col].name = self.name
-                df[col].origin = self._column_to_file(time, col)
-                if prop:
-                        df[col].label = prop[0]
-                        df[col].data_range = prop[1]
-                else:
-                    df[col].label = 'no label'
-                    df[col].data_range = [df[col].min(), df[col].max()]
+        """ bind data to pandas df column wise """
+        for col in self.data.columns:
+            prop = ana.match(self.plot_props, col)
+            self.data[col].name = self.name
+            #self.data[col].origin = self._column_to_file(time, col)
+            if prop:
+                    self.data[col].label = prop[0]
+                    self.data[col].data_range = prop[1]
+            else:
+                self.data[col].label = 'no label'
+                self.data[col].data_range = [
+                                        self.data[col].min(), 
+                                        self.data[col].max()]
 
     ############################# Time access ##################################
     @property
     def latest_time(self):
         """ return latest time instance """
-        if not self.data:
-            return
-        latest_time = max(self.data.keys())
-        return latest_time
+        return max(self.times)
+
 
     def iteratetimes(self, delta_t=0):
         """ iterator to iterate over all sets entries
             to create convergence check plots """
-        if not self.data:
-            return
-        for time, df in self.data.iteritems():
+        for time in self.times:
+            df = self.data.loc[float(time)]
             for col in df.columns:
                 df[col].name = "{} @{:1.4}s".format(self.name, float(time))
             yield time, df
 
     def values_at_position(self, field, position):
-        if not self.data:
-            return
+        # if self.data.empty:
+        #     return
+        #FIXME
         times = Series()
         values = Series()
         field_ind = field.split('_')[0]
@@ -195,7 +192,7 @@ class Item():
     def combine(self, inp):# idxs, name):
         """ combines multiple separate index fields 
         """
-        if not self.data:
+        if self.data.empty:
             return
         def replace_names(lst, new_name, old_idxs):
             return [field.replace(_, new_name)
@@ -239,7 +236,7 @@ class Item():
                 self.data[time][name] = field
 
     def rename(self, names):
-        if not self.data:
+        if self.data.empty:
             return
         for time, df in self.data.iteritems():
             renamed=[]
@@ -269,23 +266,31 @@ class Item():
     ############################################################################
     @property
     def vars(self):
-        if not self.data:
-            return
-        """ return names of all entries for latest timestep """
-        latest_time = max(self.data.keys())
-        return self.data[latest_time].columns
+        # if self.data.empty:
+        #     return
+        """ delete this methode and replace by columns ??"""
+        return self.data.columns
 
     def __getitem__(self, field):
         try:
-            return self.data[self.latest_time][field]
-        except:
+            return self.data.loc[self.latest_time][field]
+        except Exception as e:
             print "%s Warning: requested field %s not in data base" %(self.name, field)
+            print e
             return Series()
+    
+    def __str__(self):
+        return """Foam case object
+  Data Fields: {}
+  Total number of items {} 
+  Data root: {}""".format(
+    str([_ for _ in self.vars]), "unknown", self.folder)
+                    
 
     @staticmethod
     def condition(field, target, condition, operator):
         return eval('{field}[{target} {condition}]'.format(field,
-                                                           target,
+                                                           ctarget,
                                                            condition))
     ############### REV !! ####################################################
 
