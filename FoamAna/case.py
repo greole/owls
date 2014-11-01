@@ -6,26 +6,24 @@ from pandas import concat
 #FIXME fix all the if self.data.empty tests
 
 def items_from_dict(dict, func, **kwargs):
-    return {name: func(folder=folder,name=name, symb=symb, **kwargs)
-               for name, (folder,symb) in dict.iteritems()}
+    return Cases([func(folder=folder,name=name, symb=symb, **kwargs)
+               for name, (folder,symb) in dict.iteritems()])
 
-def read_sets(folder, plot_props={}, name="None", search="./sets/{}/", **kwargs):
-    return Item(folder, search_files=False, search_pattern=search,
-            plot_props=plot_props, name=name, **kwargs)
+def read_sets(folder, name="None", search="./sets/{}/", **kwargs):
+    return Item(folder, search_files=False, search_pattern=search, name=name, **kwargs)
 
-def read_lag(folder, files, plot_props={}, skiplines=1,
-            name="None", cloud="coalCloud1", **kwargs):
+def read_lag(folder, files, skiplines=1, name="None", cloud="coalCloud1", **kwargs):
     return Item(folder, search_files=files,
             search_pattern= "./{}/" + "lagrangian/{}/".format(cloud),
-            plot_props=plot_props, name=name, skiplines=skiplines, **kwargs)
+            name=name, skiplines=skiplines, **kwargs)
 
-def read_eul(folder,  files, plot_props={}, skiplines=1, name="None", **kwargs):
-    return Item(folder, search_files=files, search_pattern="./{}/",
-            plot_props=plot_props, name=name, skiplines=skiplines, **kwargs)
+def read_eul(folder, files, skiplines=1, name="None", **kwargs):
+    return Item(folder, search_files=files, 
+            search_pattern="./{}/", name=name, skiplines=skiplines, **kwargs)
 
-def read_exp(folder, plot_props={}, name="None",**kwargs):
-    return Item(folder, search_files=False, plot_props=plot_props,
-            search_pattern="./{}/", name=name, **kwargs)
+def read_exp(folder, name="None",**kwargs):
+    return Item(folder, search_files=False,
+             search_pattern="./{}/", name=name, **kwargs)
 
 
 def read_logs(folder, log_name='*log*', keys=None):
@@ -33,6 +31,37 @@ def read_logs(folder, log_name='*log*', keys=None):
     if keys:
         print "reading logs"
         return extractFromLog(keys, older, log_name)
+
+class Cases():
+    """ Class for storage of multiple case items """
+    def __init__(self, cases=[]):
+        self.cases = {case.name:case for case in cases}
+
+    def __getitem__(self, field):
+        return [serie[field] for serie in self.cases.itervalues()]
+
+    def names(self):
+        return [name for name in self.cases]
+
+    def select(self, case):
+        """ select a specific case """
+        return self.cases[case]
+
+class PlotProps():
+
+    def __init__(self):
+        from collections import defaultdict
+        self.props = defaultdict(dict)
+
+    def insert(self, field, props):
+        self.props[field].update(props)
+
+    def select(self,field, prop):
+        field = self.props[field]
+        if not field:
+            return 
+        else:
+            return field.get(prop,False)
 
 class Item():
     """ Data reprensentation of OpenFOAM field (eulerian and lagrangian)
@@ -62,7 +91,21 @@ class Item():
     access iteratetimes() can be used.
 
 
+
+    Categories:
+
+        { "rad_pos": lambda field -> position
+          "centreLine": [] lambda field -> i of []
+        
+        } 
+
+        example:
+            lambda field: re.search('[0-9]*\.[0-9]*').group()[0]
+
     TODO:
+        use case as cases ojects with a 3-level index
+             case['u'] 
+             acces time of all cases -> df.iloc[df.index.isin([1],level=1)]
         refactor plot into case objects itself,
             ?case.show('t','u', time_series = False)
         refactor origins
@@ -89,19 +132,21 @@ class Item():
         self.times = [float(_) for _ in ana.find_times(self.folder)]
         self.skiplines = skiplines
         self.origins, self.data = self._read_data()
-        self.append_plot_props()
+        self.categories = {}
         self.symb=symb
 
     def _read_data(self):
         """ call foam_to_DataFrame for all entries in read_list """
         search = self.search_pattern
         print self.name + ": ",
-        origins, data = ana.foam_to_DataFrame(search_format=search,
+        origins, data = ana.import_foam_folder(search_format=search,
                                  file_names=self.search_files,
-                                 plot_props=self.plot_props,
                                  skiplines=self.skiplines,
                                  maxlines=self.maxlines
                                  )
+        #data['Case'] = self.name
+        #data.set_index('Case', append=True, inplace=True)
+        #data = data.reorder_levels(['Case','Time',0])
         return origins, data
 
     def add(self, data, label):
@@ -114,7 +159,6 @@ class Item():
         """
         time = max(self.data.keys())
         self.data[time][label] = data
-        self.append_plot_props()
         return self.data[time][label]
 
     def _column_to_file(self, time, col):
@@ -125,25 +169,9 @@ class Item():
         else:
             return "NONE"
 
-    def append_plot_props(self):
-        """ bind data to pandas df column wise """
-        for col in self.data.columns:
-            prop = ana.match(self.plot_props, col)
-            self.data[col].name = self.name
-            #self.data[col].origin = self._column_to_file(time, col)
-            if prop:
-                    self.data[col].label = prop[0]
-                    self.data[col].data_range = prop[1]
-            else:
-                self.data[col].label = 'no label'
-                self.data[col].data_range = [
-                                        self.data[col].min(), 
-                                        self.data[col].max()]
-
-    ############################# Time access ##################################
     @property
     def latest_time(self):
-        """ return latest time instance """
+        """ return latest time for case """
         return max(self.times)
 
 
@@ -169,7 +197,7 @@ class Item():
             values.append(Series(val))
         return times, values
 
-    #########################################################################
+
     def _get_idx_names(self, keyword):
         """ search for all index names matching keyword"""
         if type(keyword) != list:
@@ -186,74 +214,11 @@ class Item():
         else:
             return [_ for key in keyword for _ in self._get_field_names(key)]
 
-    #########################################################################
-
-
-    def combine(self, inp):# idxs, name):
-        """ combines multiple separate index fields 
-        """
-        if self.data.empty:
-            return
-        def replace_names(lst, new_name, old_idxs):
-            return [field.replace(_, new_name)
-                         for field in lst
-                         for _ in old_idxs if _ in field]
-
-        def unique(lst):
-            return list(set(lst))
-
-        from collections import defaultdict
-        d = defaultdict(dict)
-        for combined_name, fields in inp.iteritems():
-            concat_fields = unique(self._get_field_names(fields))
-            concat_idx = self._get_idx_names([_.split('_')[0] for _ in concat_fields])
-            new_idx = replace_names(concat_idx, combined_name, concat_idx)
-            new_fields = replace_names(concat_fields, combined_name, unique(concat_idx))
-            for time, df in self.data.iteritems():
-                ids = concat([Series([_ for _ in concat_fields for i in df[_]])])
-                concat_idx_vals = [df[_] for _ in concat_idx]
-                concat_val = [df[_] for _ in concat_fields]
-                new_idx_name = new_idx[0]
-                new_idx = concat(concat_idx_vals).reset_index(level=0,drop=True)
-                d[time].update({new_idx_name:new_idx})
-                d[time].update({"ids"+new_idx_name:ids})
-                new_val_concat = concat(concat_val).reset_index(level=0,drop=True)
-                """
-                print concat_fields
-                for i,val in enumerate(new_val_concat):
-                    print i, new_idx[i], new_val_concat[i], ids[i]
-                print new_val_concat
-                """
-                for i, target in enumerate(concat_fields):
-                    selection_mask = ids.isin([target])#[concat_fields[i]])
-                    new_val = new_val_concat[selection_mask]
-                    d[time].update({new_fields[i]:new_val})
-                    d[time].update({"select" + new_fields[i]:selection_mask})
-
-        for time, fields in d.iteritems():
-            self.data[time] = self.data[time].reindex(range(1000))
-            for name, field in fields.iteritems():
-                self.data[time][name] = field
-
-    def rename(self, names):
-        if self.data.empty:
-            return
-        for time, df in self.data.iteritems():
-            renamed=[]
-            for name in df.columns:
-                if name in names:
-                    renamed.append(names[name])
-                else:
-                    renamed.append(name)
-            df.columns = renamed
-            self.append_plot_props()
-
-    def get(self, form, pos, vals, times=False):
-        pos_inserted = form.split('_')[0].format(pos) #FIXME support pos lists
-        index = self.__getitem__(pos_inserted)
-        vals_inserted = [self.__getitem__(form.format(pos,val)) 
-                            for val in vals]
-        return [index] + vals_inserted
+    def rename(self, search, replace):
+        import re
+        names = self.data.columns
+        names = [re.sub(search,replace,name) for name in names]
+        self.data.columns = names
 
     def _is_index(self, name):
         """ test if given column name is an index """
@@ -262,6 +227,147 @@ class Item():
             return True
         else:
             return False
+
+    def scatter(self, x, y, title="", rec_call=False, **kwargs):
+        import bokeh.plotting as bk
+        import numpy as np
+        def greates_divisor(number):
+            if number == 1:
+                return 1
+            for i in reversed(range(number)):
+                if number % i == 0:
+                    return i
+            else:
+                return 1
+
+        if type(x) == dict:
+            rows=[]
+            for y_title, y_data in y.iteritems():
+                x_data = x[y_title]
+                rows.append(self.scatter(
+                           x=x_data,
+                           y=y_data,
+                           title=y_title,
+                           **kwargs)
+                    )
+            rows = np.array(rows).reshape(greates_divisor(len(rows)),-1).tolist()
+            return bk.GridPlot(children=rows, title="Scatter") 
+        else:
+            if type(x) == str and type(y) == str:
+                x = self.__getitem__(x)
+                y = self.__getitem__(y)
+            else:
+                x=x
+                y=y
+            kwargs.update({ "outline_line_color":"black",
+                            "plot_width":300,
+                            "plot_height":300,
+                          })
+            return bk.scatter(x=x,
+                       y=y,
+                       title=title,
+                       **kwargs)
+    
+ 
+    def plot(self, x, y, title="", **kwargs):
+        import bokeh.plotting as bk
+        if type(x) == str and type(y) == str:
+            x = self.__getitem__(x)
+            y = self.__getitem__(y)
+        else:
+            x=x
+            y=y
+        return bk.line(x=x,
+                   y=y,
+                   title=title,
+                   plot_width =300,
+                   plot_height=300,
+                   xlabel="ffo",
+                   **kwargs)
+
+    def display(self, data_handler=None, title=False, plot=scatter, geom=[1,1]):
+        rows=[]
+        for i in geom[0]:
+            cols=[]
+            for j in geom[1]:
+                x_data,y_data=next(data_handler)
+                x = x_data.data
+                y = y_data.data
+                title = y_data.title
+                cols.append(plot(x,y), title=title)
+            row.append(cols)
+        return GridPlot(children=rows)
+
+    def data_handler(self, x="pos",y="u", facet="rad", filter_func=None):
+        return 
+
+    def _facet_by_name(self, regex, data=None):
+        """ Return series seletected based on its name and given regex """
+        import re
+        data = (self.data if type(data) == type(None) else data)
+        if type(data) == dict:
+            return  { k:self._facet_by_name(regexp,inner_data) 
+                        for k,inner_data in data.iteritems()}
+        else:
+            return {s:data[s] for s in data if re.match(regex,s)}
+
+    def _facet_by_loc(self, loc, data=None, field=False):
+        """ Return series seletected based on its name and given regex """
+        data = (self.data if type(data) == type(None) else data)
+        if type(data) == dict:
+            return  { k:self._facet_by_loc(loc,inner_data) 
+                        for k,inner_data in data.iteritems()}
+        else:
+            if field:
+                return {val:data[data.index.get_level_values(loc) == val][field]
+                        for val in data.index.get_level_values(loc)}   
+            else:
+                return { val:data[data.index.get_level_values(loc) == val] 
+                        for val in data.index.get_level_values(loc)}   
+
+    def select(self, field, latest_Time=True, data=None, **kwargs):
+        from numpy import array
+        from numpy import bitwise_and
+        data = (self.data if type(data) == type(None) else data)
+        if latest_Time:
+            kwargs.update({'Time':self.latest_time})
+        if not kwargs:
+            return self.data[field]
+        mask = [self.data.index.get_level_values(loc) == val 
+                for loc, val in kwargs.iteritems()]
+        mask = reduce(bitwise_and, mask)
+        return self.data[mask][field]
+    
+    def facet_select(self, inp, field, **kwargs):    
+        """ selected from dictionary """
+        if type(inp) == dict:
+           return [self.select(data=data,field=field)
+                    for _,data in inp.iteritems()] 
+        else:
+           return self.select(field)
+
+    def _facet_by_booleans(self, field, boolean):
+        return None
+
+    def _facet_by_category(self, category):
+        """ returns position, categorie or False """
+        from collections import defaultdict
+        ret = defaultdict(list)
+        cat_func = self.categories[category]
+        for s in self.data:
+            try: 
+                r = cat_func(s)
+                ret[r].append(self.data[s])
+            except Exception as e:
+                print e      
+        return ret 
+    
+    def add_category(self, entry, func=False):
+        if type(entry) == dict:
+            self.category.update(entry)
+        else:
+            self.category[entry] = func
+
 
     ############################################################################
     @property
@@ -286,17 +392,7 @@ class Item():
   Data root: {}""".format(
     str([_ for _ in self.vars]), "unknown", self.folder)
                     
-
-    @staticmethod
-    def condition(field, target, condition, operator):
-        return eval('{field}[{target} {condition}]'.format(field,
-                                                           ctarget,
-                                                           condition))
-    ############### REV !! ####################################################
-
-    def refresh(self, name):
-        print "refresh"
-        find_times()
-        refreshed = getattr(self, 'read_' + name)()
-        setattr(self, name, refreshed)
+    def reread(self):
+        """ re-read foam data """ 
+        self.origins, self.data = self._read_data()
 
