@@ -6,7 +6,7 @@ to Pandas DataFrames and Series
 
 Bad Karma:
     * read_data_file returns field names which is redundant to data.columns
-
+    * rename to FoamAna.io
 
 '''
 
@@ -42,7 +42,7 @@ dimensions      [0 0 0 0 0 0 0];
 internalField   nonuniform List<{}>
 """
 
-DEBUG = False
+DEBUG = True
 
 ####################### helper functions ################################
 def match(d, event):
@@ -127,13 +127,15 @@ def dataframe_to_foam(fullname, ftype, dataframe, boundaries):
         f.write("}")
         f.write("\n// ************************************************************************* //")
 
-def foam_to_DataFrame(search_format, file_names,
-                      skiplines=1, maxlines=0,
-                      plot_props=None):
-    """ returns a Dataframe for every file in fileList
-    
-    """
+def import_foam_folder(
+            search_format, 
+            file_names,
+            skiplines=1,
+            maxlines=0,
+        ):
+    """ returns a Dataframe for every file in fileList """
     #import StringIO
+    from pandas import concat
     class ProgressBar():
 
         def __init__(self, n_tot, bins=10):
@@ -153,30 +155,49 @@ def foam_to_DataFrame(search_format, file_names,
            
 
     fileList = find_datafiles(subfolder=search_format, filelist=file_names)
-    origins = dict() 
     if not fileList:
         print "no files found"
-        return origins, [] 
-    times = []
+        return 
     p_bar = ProgressBar(n_tot=sum([len(l) for l in fileList.itervalues()]))
     df = DataFrame()
+    #df.index = MultiIndex.from_tuples(zip([],[]),names=['Loc',0])
+    origins = dict() 
     for time, files in fileList.iteritems(): #FIXME dont iterate twice
         df_tmp = DataFrame()
         for fn in files:
             #ret = read_table(StringIO.StringIO(foam_to_csv(fn)))
-            ret = read_data_file(fn, skiplines, maxlines, plot_props)
+            ret = read_data_file(fn, skiplines, maxlines)
             p_bar.next()
             if not ret:
                 continue
-            columns, x = ret
-            origin = {(key, time): fn for key in columns} 
+            field_names, x = ret
+            origin = {(key, time): fn for key in field_names} #FIXME use nested dicts 
             origins.update(origin)
-            df_tmp = df_tmp.combine_first(x)
-        times = times + ([float(time) for i in range(len(df_tmp))]) #FIXME use smthing less ugly
+            if df_tmp.empty:
+                df_tmp = x
+            else: 
+                if x.index.levels[0][0] in df_tmp.index.levels[0]:
+                    # use combine first for all df at existing Loc or 
+                    # if not Loc is specified (Eul or Lag fields)
+                    df_tmp = df_tmp.combine_first(x)
+                    #df_tmp = concat([df_tmp, x], axis=1)
+                    pass
+                else:
+                    df_tmp = concat([df_tmp, x])
+        df_tmp['Time'] = float(time)
         df = df.append(df_tmp)
-    df.index = MultiIndex.from_tuples(zip(times, df.index)) 
+    df.set_index('Time', append=True, inplace=True)
+    df = df.reorder_levels(['Time','Loc','Id'])
     p_bar.done()    
-    return origins, df 
+    return origins, df,
+
+"""
+Time Loc        Pos U V
+1000 radVel+10  0.1 
+                0.2
+     radVel+20  0.1
+                0.2
+"""
 
 
 def foam_to_csv(fn, ):
@@ -211,17 +232,16 @@ def read_boundary_names(fn):
             else:
                 pass
 
-def read_data_file(fn, skiplines=1, maxlines=False, plot_props={}):
-    '''
-    A function to read any foam data files returning data and 
-    index after header
-    '''
+def read_data_file(fn, skiplines=1, maxlines=False):
+    """  A function to read any foam data files returning data and 
+         index after header
+    """
 
     # print "opening file {}".format(fn)
+    if not os.path.exists(fn):
+        print "Can not open file " + fn
+        return None
     try:
-        if not os.path.exists(fn):
-            print "Can not open file " + fn
-            return None
         with open(fn) as f:
             field = fn.split('/')[-1]
             content = f.readlines()
@@ -229,13 +249,19 @@ def read_data_file(fn, skiplines=1, maxlines=False, plot_props={}):
             start, num_entries = if_header_skip(content)
             entries = len(content[start].split())
             is_a_vector = (True if entries > 1 else False)
-            line_numbers = range(0, num_entries, skiplines)   # unused atm
             end = start + num_entries
-            label = plot_props.get('label', 'no label')
             if is_a_vector:
-                data = map(subst_split, content[start:end:skiplines])
-                names = evaluate_names(fn, entries)
-                df = DataFrame(data=data, columns=names) 
+                data = map(lambda x: re.sub(r'[()]', '', x).split(),
+                            content[start:end:skiplines])
+                loc, names = evaluate_names(fn, entries)
+                df = DataFrame(data=data, columns=names)
+                if loc:
+                    df['Loc'] = loc
+                else: 
+                    df['Loc'] = range(len(df))
+                df.set_index('Loc', append=True, inplace=True)
+                df.index.names=['Id','Loc'] 
+                df = df.reorder_levels(['Loc','Id'])
                 return names, df.astype(float)
             else:
                 data = [np.float32(x) for x in content[start:end:skiplines]]
@@ -249,7 +275,12 @@ def read_data_file(fn, skiplines=1, maxlines=False, plot_props={}):
         return None
 
 def evaluate_names(fullfilename, num_entries):
-    """  """
+    """ Infere field names and Loc from given filename 
+
+        Example: 
+            U -> None, [u,v,w]
+            centreLine_U.xy -> centreLine, [Pos,u,v,w]
+    """
     filename = fullfilename.split('/')[-1]
     name = (filename.replace('.dat','')
             .replace('.xy','')
@@ -260,18 +291,14 @@ def evaluate_names(fullfilename, num_entries):
            )
     fields = name.split('_')
     if num_entries == len(fields):
+        pos = None
         if '.dat' in filename or '.xy' in filename:
             pos = fields[0]
-            fields = [pos + '_' + val for val in fields[1:]]
-            fields.insert(0, pos)
-        return fields
+            fields[0] = "Pos" 
+        return pos, fields
     else:
-        basename = filename.split('/')[-1]
-        return [basename + '_' + str(i) for i in range(num_entries)]
+        return None, [filename + '_' + str(i) for i in range(num_entries)]
 
-def subst_split(entry):
-    entry = re.sub(r'[()]', '', entry)
-    return entry.split()
 
 def req_file(file_name, requested):
     """ True if file name is list of requested files """
