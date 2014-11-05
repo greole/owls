@@ -176,14 +176,18 @@ def import_foam_folder(
             if df_tmp.empty:
                 df_tmp = x
             else: 
-                if x.index.levels[0][0] in df_tmp.index.levels[0]:
-                    # use combine first for all df at existing Loc or 
-                    # if not Loc is specified (Eul or Lag fields)
-                    df_tmp = df_tmp.combine_first(x)
-                    #df_tmp = concat([df_tmp, x], axis=1)
-                    pass
-                else:
-                    df_tmp = concat([df_tmp, x])
+                try:
+                    if x.index.levels[0][0] in df_tmp.index.levels[0]:
+                        # use combine first for all df at existing Loc or 
+                        # if not Loc is specified (Eul or Lag fields)
+                        df_tmp = df_tmp.combine_first(x)
+                        #df_tmp = concat([df_tmp, x], axis=1)
+                        pass
+                    else:
+                        df_tmp = concat([df_tmp, x])
+                except Exception as e:
+                    print x
+                    print e
         df_tmp['Time'] = float(time)
         df = df.append(df_tmp)
     df.set_index('Time', append=True, inplace=True)
@@ -267,6 +271,10 @@ def read_data_file(fn, skiplines=1, maxlines=False):
                 data = [np.float32(x) for x in content[start:end:skiplines]]
                 entries = 1
                 df = DataFrame(data=data, columns=[field])
+                df['Loc'] = "Field"
+                df.set_index('Loc', append=True, inplace=True)
+                df.index.names=['Id','Loc'] 
+                df = df.reorder_levels(['Loc','Id'])
                 return field, df
     except Exception as e:
         if DEBUG:
@@ -278,7 +286,7 @@ def evaluate_names(fullfilename, num_entries):
     """ Infere field names and Loc from given filename 
 
         Example: 
-            U -> None, [u,v,w]
+            U -> Field, [u,v,w]
             centreLine_U.xy -> centreLine, [Pos,u,v,w]
     """
     filename = fullfilename.split('/')[-1]
@@ -291,13 +299,13 @@ def evaluate_names(fullfilename, num_entries):
            )
     fields = name.split('_')
     if num_entries == len(fields):
-        pos = None
+        pos = "Field"
         if '.dat' in filename or '.xy' in filename:
             pos = fields[0]
             fields[0] = "Pos" 
         return pos, fields
     else:
-        return None, [filename + '_' + str(i) for i in range(num_entries)]
+        return "Unknown", [filename + '_' + str(i) for i in range(num_entries)]
 
 
 def req_file(file_name, requested):

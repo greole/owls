@@ -9,6 +9,16 @@ import datetime
 from pandas import Series
 
 
+config = {
+    "color_cycle": ["aqua", "black", "blue", "fuchsia", "gray", "green", 
+                     "lime", "maroon", "navy", "olive", "orange", "purple", 
+                     "red", "silver", "teal", "yellow"]
+    }
+
+def next_color():
+    for col in config['color_cycle']:
+        yield col
+
 def rolling_mean(x,y,z):
     """ function that takes a x,y-Series to x,average(y)-Series 
         and returns a plotable object """
@@ -198,10 +208,10 @@ class Plot():
         ''' create a list of ax labels for every plot '''
         self.xlabels = ['no label' for i in range(self.nx*self.ny)]
         self.ylabels = ['no label' for i in range(self.nx*self.ny)]
-        self.xranges = [(0, 1) for i in range(self.nx*self.ny)]
-        self.yranges = [(0, 1) for i in range(self.nx*self.ny)]
+        self.xranges = ["auto" for i in range(self.nx*self.ny)]
+        self.yranges = ["auto" for i in range(self.nx*self.ny)]
         for plot in self.plots:
-            plot_index = plot.get('subplot',0)
+            plot_index = plot.get('subplot', 0)
             try:
                 self.xlabels[plot_index] = plot['x'].label
                 self.xranges[plot_index] = plot['x'].data_range
@@ -237,12 +247,13 @@ class Plot():
             else:
                 a.set_xticklabels([])
             x_range = self.xranges[index]
-            if self.invert_x(index):
-                a.set_xlim(x_range[1], x_range[0])
-            else:
-                a.set_xlim(x_range[0], x_range[1])
-            y_range = self.yranges[index]
-            a.set_ylim(y_range[0], y_range[1])
+            if x_range != "auto" and  x_range != "auto":
+                if self.invert_x(index):
+                    a.set_xlim(x_range[1], x_range[0])
+                else:
+                    a.set_xlim(x_range[0], x_range[1])
+                y_range = self.yranges[index]
+                a.set_ylim(y_range[0], y_range[1])
             a.locator_params(nbins=10)
             a.grid(True)
 
@@ -255,6 +266,7 @@ class Plot():
         i = plot.get('subplot', 0)
         s = plot.get('symbol', '.')
         c = plot.get('color', False)
+        self.labels.append(l)
 
         if s in ['o', '.', ',', '+', 'x' ]:
             style = "scatter"
@@ -263,17 +275,17 @@ class Plot():
 
         if style == 'scatter' and type(z) is not bool:
             return self.ax[i].scatter(x, y, c=z, s=40, cmap=self.cmap,
-                                     marker='.', lw=0, label=l)
+                                     marker='.', lw=0, label=l),
 
         elif style == 'scatter' and not z:
             return self.ax[i].scatter(x, y, s=40, marker=s,
-                                 lw=2, label=l, facecolors='none')
+                                 lw=2, label=l, facecolors='none'),
 
         if not style == 'scatter':
             if c:
-                return self.ax[i].plot(x, y, label=l, lw=3, linestyle=s, color=c)
+                return self.ax[i].plot(x, y, label=l, lw=3, linestyle=s, color=c),
             else:
-                return self.ax[i].plot(x, y, label=l, lw=3, linestyle=s)
+                return self.ax[i].plot(x, y, label=l, lw=3, linestyle=s),
 
     def show(self, suppress=False):
         self.f, ax = self.create_plot_array()
@@ -283,8 +295,10 @@ class Plot():
             self.ax = [ax]
         self.ax_labels()
         self.decorate_axis()
+        self.lines = []
+        self.labels = []
         for plot in self.plots:
-            self.draw(plot)
+            self.lines.append(self.draw(plot))
         for i, ax in self.iterate_axis():
             if self.add_legend(i):
                 ncol = (1 if len(self.plots)/len(self.ax) < 3 else 2)
