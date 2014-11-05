@@ -88,7 +88,7 @@ class MultiItem():
            colors = plt.next_color()
            for name, instance in self.cases.iteritems():
                 color = next(colors)
-                getattr(instance, inst_func)(x=x, y=y, title=name, color=color, **kwargs)
+                getattr(instance, inst_func)(x=x, y=y, title="", color=color, **kwargs)
 
 
 class PlotProperties():
