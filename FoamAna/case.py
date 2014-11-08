@@ -28,11 +28,18 @@ def read_exp(folder, name="None",**kwargs):
              search_pattern="./{}/", name=name, **kwargs)
 
 
-def read_logs(folder, log_name='*log*', keys=None):
-    os.chdir(folder)
-    if keys:
-        print "reading logs"
-        return extractFromLog(keys, older, log_name)
+def read_log(folder, keys, log_name='*log*', plot_properties=False):
+    origins,df = ana.import_logs(folder,keys)
+    ff = FoamFrame(df)
+    ff.properties=Props(
+            origins=origins,
+            name='LogFiles',
+            plot_properties=plot_properties,
+            folder=folder,  
+            times=[0],
+            symb="-")
+    return ff
+    
 
 class MultiItem():
     """ Class for storage of multiple case items 
@@ -197,7 +204,7 @@ class FoamFrame(DataFrame):
 
       if folder == None:
            #super(FoamFrame, self).__init__(*args, **kwargs)   
-           DataFrame.__init__(self, *args,**kwargs)
+           DataFrame.__init__(self, *args, **kwargs)
       else: 
            os.chdir(folder) #FIXME necessary for read in?
            print name + ": ",

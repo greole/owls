@@ -127,6 +127,23 @@ def dataframe_to_foam(fullname, ftype, dataframe, boundaries):
         f.write("}")
         f.write("\n// ************************************************************************* //")
 
+class ProgressBar():
+
+    def __init__(self, n_tot, bins=10):
+        #FEATURE: Add timings 
+        self.tot = float(n_tot)
+        self.count = 0.0   
+        self.cur = 0.0
+
+    def next(self):
+        self.count += 1.0 
+        if self.count/self.tot > self.cur:
+            print "#",
+            self.cur += 0.1
+
+    def done(self):
+        print "[done]"
+
 def import_foam_folder(
             search_format, 
             file_names,
@@ -136,24 +153,7 @@ def import_foam_folder(
     """ returns a Dataframe for every file in fileList """
     #import StringIO
     from pandas import concat
-    class ProgressBar():
-
-        def __init__(self, n_tot, bins=10):
-            #FEATURE: Add timings 
-            self.tot = float(n_tot)
-            self.count = 0.0   
-            self.cur = 0.0
-
-        def next(self):
-            self.count += 1.0 
-            if self.count/self.tot > self.cur:
-                print "#",
-                self.cur += 0.1
-
-        def done(self):
-            print "[done]"
            
-
     fileList = find_datafiles(subfolder=search_format, filelist=file_names)
     if not fileList:
         print "no files found"
@@ -315,84 +315,94 @@ def req_file(file_name, requested):
     else:
         return file_name.split('/')[-1] in requested
 
-def key_lines(lines, keys):
-    for line in lines:
-        if "Time = " in line and not "s" in line:
-            yield 'time', line
-        for key, key_w in keys.iteritems():
-            if key_w in line:
-                yield key, line
+
+def import_logs(folder, keys):
+    """
+        keys = {"ExectionTime": ["ExecTime", "ClockTime"]}
+        
+        return a DataFrame 
+    
+              Loc, Time KeyName1 Keyname2
+                1   0.1  
+                    
+                    0.2
+                2
+
+    
+    """
+    def find_start(log):
+        """ Fast forward through file till 'Starting time loop' """
+        for i, line in enumerate(log):
+            if "Starting time loop" in line:
+                return i
 
 
-def find_start_of_log(log):
-    for i, line in enumerate(log):
-        if "Time = " in line and not "s" in line:
-            return i
+    def extract(line, keys):
+        """ 
+            returns key and values as list
+                "ExecutionTime":[0,1]
+        """
+        import re
+        for key, col_names in keys.iteritems():
+            if re.search(key, line): 
+                return col_names, map(float,filter(lambda x: 
+                        x, re.findall("[0-9]+[.]?[0-9]*[e]?[\-]?[0-9]*", line)))
+        return None, None
 
+    fold,dirs,files = next(os.walk(folder))
+    logs = [fold + "/" + log for log in files if 'log' in log]
+    p_bar = ProgressBar(n_tot = len(logs))
+    # Lets make sure that we find Timesteps in the log
+    keys.update({"^Time = ": ['Time']}) 
 
-def extractFromLog(keys, path, logString):
-    '''
-        A function using grep to search for a string (ss) in a logfile
-
-        Using regexep to extract only numbers
-        converts to  floats and returns the data
-    '''
-    logs = get_ipython().getoutput("ls {0}{1}".format(path, logString))
-    logInd = []
-    old_it = 0
-    df0 = DataFrame()
     for log_number, log_name in enumerate(logs):
-        dataDict = defaultdict(list)
+        with open(log_name) as log:
+            f = log.readlines()
+            start = find_start(f)
+            dataDict = defaultdict(list) 
+            df=DataFrame()
+            for line in f[start:-1]:
+                 col_names, values = extract(line, keys)
+                 if not col_names:
+                    continue
+                 if col_names[0] == 'Time':
+                    # a new time step has begun
+                    # flush datadict and concat to df
+                    # Very slow but, so far the solution 
+                    # to keep subiterations attached to correct time 
+                    # FIXME: still needs handling of different length dictionaries
+                    df = concat([df,DataFrame(dataDict)]) 
+                    dataDict = defaultdict(list) 
+                 for i, col in enumerate(col_names):
+                    dataDict[col].append(values[i])
+        p_bar.next()
         try:
-            with open(log_name) as log:
-                f = log.readlines()
-                start = find_start_of_log(f)
-                for key, line in key_lines(f[start:-1], keys):
-                    readAndCleanLinesDict(line, dataDict, key)
-            print "finished log file {} of {} ".format(log_number+1, len(logs))
+            df.index=range(len(df))
+            df.index.names=['Id']
+            df['Loc'] = log_number
+            df.set_index('Time', append=True, inplace=True)
+            df.set_index('Loc', append=True, inplace=True)
+            df = df.reorder_levels(['Loc','Time','Id'])
+            p_bar.done()
+        except Exception as e:
+            print log_name
+            print "failed to process"
+            print e
+            return None
+    return {},df
 
-            for key, value in dataDict.iteritems():
-                cur_it = old_it + len(value)
-                dataDict[key] = Series(value, index=range(old_it, cur_it))
-
-            df = DataFrame(dataDict)
-            df['log'] = log_number
-            df2 = DataFrame(df.describe())
-            inner = int(max(df2.ix['count']))
-            tot = inner + old_it
-            logInd = logInd + [log_number] * inner
-            df0 = df0.combine_first(df)
-            old_it = tot
-        except:
-            pass
-    return df0
-
-
-def readAndCleanLinesDict(line, dic, key):
-    ''' Takes a string splits it and converts it to a number '''
-    conv = []
-    line = line.replace(',', '')             # move to caller
-    for i, elem in enumerate(line.split()):
-        try:
-            conv.append(np.float32(elem))
-        except:
-            pass
-    for i, elem in enumerate(conv):
-        dic[key + str(i)].append(elem)
-
-
-def begins_with_int(line):
-    try:
-        num = int(line)
-        return num
-    except:
-        return False
 
 
 def if_header_skip(content):
     """ go through first lines of file and check if has header
         return start of content and total lines
     """
+    def begins_with_int(line):
+        try:
+            num = int(line)
+            return num
+        except:
+            return False
     first_line = content[0]
     if not first_line.startswith('#') and not first_line.startswith('/*'):
         return 0, -1
