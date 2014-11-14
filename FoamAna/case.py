@@ -12,21 +12,26 @@ def items_from_dict(dict, func, **kwargs):
                for name, (folder,symb) in dict.iteritems()])
 
 def read_sets(folder, name="None", search="./sets/{}/", **kwargs):
-    return FoamFrame(folder=folder, search_files=False, search_pattern=search, name=name, **kwargs)
+    return FoamFrame(folder=folder, search_files=False, 
+            search_pattern=search, name=name, show_func="plot", **kwargs)
 
-def read_lag(folder, files, skiplines=1, name="None", cloud="coalCloud1", **kwargs):
+def read_lag(folder, files, skiplines=1, 
+        name="None", cloud="coalCloud1", **kwargs
+    ):
     return FoamFrame(folder=folder, search_files=files,
             search_pattern= "./{}/" + "lagrangian/{}/".format(cloud),
-            name=name, skiplines=skiplines, **kwargs)
+            name=name, skiplines=skiplines, show_func="scatter", **kwargs)
 
 def read_eul(folder, files, skiplines=1, name="None", **kwargs):
     return FoamFrame(folder=folder, search_files=files, 
-            search_pattern="./{}/", name=name, skiplines=skiplines, **kwargs)
+            search_pattern="./{}/", name=name, 
+            skiplines=skiplines, show_func="scatter",
+             **kwargs)
 
-def read_exp(folder, name="None",**kwargs):
+def read_exp(folder, name="None", **kwargs):
     #FIXME make it read exp/*dat directly without 0 folder
     return FoamFrame(folder=folder, search_files=False,
-             search_pattern="./{}/", name=name, **kwargs)
+             search_pattern="./{}/", name=name, show_func="scatter", **kwargs)
 
 
 def read_log(folder, keys, log_name='*log*', plot_properties=False):
@@ -38,7 +43,9 @@ def read_log(folder, keys, log_name='*log*', plot_properties=False):
             plot_properties=plot_properties,
             folder=folder,  
             times=[0],
-            symb="-")
+            symb="-",
+            show_func="plot",
+            )
     return ff
     
 
@@ -117,7 +124,8 @@ class PlotProperties():
 
 class Props():
 
-    def __init__(self, origins, name, plot_properties, folder, times, symb):
+    def __init__(self, origins, name, 
+            plot_properties, folder, times, symb,show_func,):
         self.origins=origins
         self.name=name
         self.plot_properties=plot_properties
@@ -125,6 +133,7 @@ class Props():
         self.times=times
         self.latest_time = max(times)
         self.symb=symb
+        self.show_func=show_func
 
 
 
@@ -176,15 +185,16 @@ class FoamFrame(DataFrame):
     """
     def __init__(self, *args, **kwargs):
 
-      skip = kwargs.get('skiplines',1)
-      name = kwargs.get('name','None')
-      symb = kwargs.get('symb','o')
-      files = kwargs.get('search_files',None)
-      properties = kwargs.get('properties',None)
-      lines = kwargs.get('maxlines',0)
-      search = kwargs.get('search_pattern',"{}")
-      folder = kwargs.get('folder',None)
-      plot_properties = kwargs.get('plot_properties',None)
+      skip = kwargs.get('skiplines', 1)
+      name = kwargs.get('name', 'None')
+      symb = kwargs.get('symb', 'o')
+      files = kwargs.get('search_files', None)
+      properties = kwargs.get('properties', None)
+      lines = kwargs.get('maxlines', 0)
+      search = kwargs.get('search_pattern', "{}")
+      folder = kwargs.get('folder', None)
+      plot_properties = kwargs.get('plot_properties', None)
+      show_func = kwargs.get('show_func', None)
 
       keys = [
           'skiplines',
@@ -195,7 +205,8 @@ class FoamFrame(DataFrame):
           'maxlines',
           'search_pattern',
           'folder',
-          'plot_properties']
+          'plot_properties',
+          'show_func']
 
       for k in keys:
         try:
@@ -223,7 +234,8 @@ class FoamFrame(DataFrame):
                 folder,
                 # FIXME fix it for read logs
                 data.index.levels[0],
-                symb)
+                symb,
+                show_func)
 
 
     def add(self, data, label):
@@ -316,6 +328,14 @@ class FoamFrame(DataFrame):
     def plot(self, y, x='Pos', z=False, title="", **kwargs):
         import bokeh.plotting as bk
         return self.draw(x, y, z, title, func=bk.line, **kwargs)
+
+
+    def show(self, field, x=None, **kwargs):
+        if x:
+            return getattr(self,self.properties.show_func)(y=field, x=x, **kwargs) 
+        else:
+            return getattr(self,self.properties.show_func)(y=field, **kwargs) 
+            
 
     def filter(self, name, index=None, field=None):
         """ filter on index or field values by given functioni
