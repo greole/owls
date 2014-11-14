@@ -177,9 +177,9 @@ def import_foam_folder(
                 df_tmp = x
             else: 
                 try:
+                    # use combine first for all df at existing Loc or
+                    # if not Loc is specified (Eul or Lag fields)
                     if x.index.levels[0][0] in df_tmp.index.levels[0]:
-                        # use combine first for all df at existing Loc or 
-                        # if not Loc is specified (Eul or Lag fields)
                         df_tmp = df_tmp.combine_first(x)
                         #df_tmp = concat([df_tmp, x], axis=1)
                         pass
@@ -189,7 +189,10 @@ def import_foam_folder(
                     print x
                     print e
         df_tmp['Time'] = float(time)
-        df = df.append(df_tmp)
+        if df.empty:
+            df = df_tmp
+        else:
+            df = df.append(df_tmp)
     df.set_index('Time', append=True, inplace=True)
     df = df.reorder_levels(['Time','Loc','Id'])
     p_bar.done()    
@@ -290,7 +293,7 @@ def evaluate_names(fullfilename, num_entries):
             centreLine_U.xy -> centreLine, [Pos,u,v,w]
     """
     filename = fullfilename.split('/')[-1]
-    name = (filename.replace('.dat','')
+    name = (filename.replace('.dat','') #FIXME use regex here
             .replace('.xy','')
             .replace('UMean','uMean_vMean_wMean')
             .replace('UPrime2Mean','uu_uv_uw_vv_vw_ww')
