@@ -24,6 +24,7 @@ def read_eul(folder, files, skiplines=1, name="None", **kwargs):
             search_pattern="./{}/", name=name, skiplines=skiplines, **kwargs)
 
 def read_exp(folder, name="None",**kwargs):
+    #FIXME make it read exp/*dat directly without 0 folder
     return FoamFrame(folder=folder, search_files=False,
              search_pattern="./{}/", name=name, **kwargs)
 
@@ -63,11 +64,11 @@ class MultiItem():
         """ select a specific case """
         return self.cases[case]
 
-    def scatter(self, x, y, z=False, overlay=False, **kwargs):
+    def scatter(self, y, x='Pos', z=False, overlay=False, **kwargs):
         import bokeh.plotting as bk
         return self.draw(x, y, z=z, overlay=overlay, inst_func="scatter", **kwargs)
 
-    def plot(self, x, y, z=False, overlay=False, **kwargs):
+    def plot(self, y, x='Pos', z=False, overlay=False, **kwargs):
         return self.draw(x, y, z=z, overlay=overlay, inst_func="plot", **kwargs)
 
     def draw(self, x, y, z, overlay, inst_func, **kwargs):
@@ -220,9 +221,8 @@ class FoamFrame(DataFrame):
                 name,
                 plot_properties,
                 folder,
-                # FIXME get it from import folder, 
-                # so that find times isnt called twice
-                [float(_) for _ in ana.find_times(folder)],
+                # FIXME fix it for read logs
+                data.index.levels[0],
                 symb)
 
 
@@ -309,11 +309,11 @@ class FoamFrame(DataFrame):
         bk.yaxis().axis_label = _label('y', y)
         return ret
 
-    def scatter(self, x, y, z=False, title="", **kwargs):
+    def scatter(self, y, x='Pos', z=False, title="", **kwargs):
         import bokeh.plotting as bk
         return self.draw(x, y, z, title, func=bk.scatter, **kwargs)
     
-    def plot(self, x, y, z=False, title="", **kwargs):
+    def plot(self, y, x='Pos', z=False, title="", **kwargs):
         import bokeh.plotting as bk
         return self.draw(x, y, z, title, func=bk.line, **kwargs)
 
