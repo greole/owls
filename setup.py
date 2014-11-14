@@ -19,6 +19,7 @@ config = {
                          'pyzmq',
                          'tornado',
                          'jinja2',
+                         'bokeh',
                         ],
    'name': 'FoamAna' 
 }
