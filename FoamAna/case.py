@@ -12,10 +12,10 @@ def items_from_dict(dict, func, **kwargs):
                for name, (folder,symb) in dict.iteritems()])
 
 def read_sets(folder, name="None", search="./sets/{}/", **kwargs):
-    return FoamFrame(folder=folder, search_files=False, 
+    return FoamFrame(folder=folder, search_files=False,
             search_pattern=search, name=name, show_func="plot", **kwargs)
 
-def read_lag(folder, files, skiplines=1, 
+def read_lag(folder, files, skiplines=1,
         name="None", cloud="coalCloud1", **kwargs
     ):
     return FoamFrame(folder=folder, search_files=files,
@@ -23,8 +23,8 @@ def read_lag(folder, files, skiplines=1,
             name=name, skiplines=skiplines, show_func="scatter", **kwargs)
 
 def read_eul(folder, files, skiplines=1, name="None", **kwargs):
-    return FoamFrame(folder=folder, search_files=files, 
-            search_pattern="./{}/", name=name, 
+    return FoamFrame(folder=folder, search_files=files,
+            search_pattern="./{}/", name=name,
             skiplines=skiplines, show_func="scatter",
              **kwargs)
 
@@ -41,18 +41,23 @@ def read_log(folder, keys, log_name='*log*', plot_properties=False):
             origins=origins,
             name='LogFiles',
             plot_properties=plot_properties,
-            folder=folder,  
+            folder=folder,
             times=[0],
             symb="-",
             show_func="plot",
             )
     return ff
-    
+
 
 class MultiItem():
-    """ Class for storage of multiple case items 
-        or faceted data from FoamFrame    
+    """ Class for storage of multiple case items
+        or faceted data from FoamFrame
     """
+    #TODO:  implememt multi-facetting
+    #       e.g. (cases.by_index('Loc')    <- returns a MultiItem
+    #               .by_case(overlay=True) <- MultiItem method
+    #               .show('T')
+    #TODO: implement __repr__ method
     def __init__(self, cases=None):
         if type(cases) == list:
             self.cases = {case.name:case for case in cases}
@@ -68,17 +73,45 @@ class MultiItem():
         return [name for name in self.cases]
 
     def select(self, case):
-        """ select a specific case """
+        """ select a specific item """
         return self.cases[case]
+
+    def by(self, overlay=True):
+        """
+            recursiv grouping function
+            
+            Examples:
+            
+                mi.by(overlay=True) -> { cat1_1:{cat2_1:FoamFrame1,
+                                                 cat2_2:FoamFrame2,
+                                                    ...            }    
+                                         cat1_2:{cat2_1:FoamFrame3,
+                                                    ...            }
+                                        }
+                
+                m1.by(overlay=False) -> { (cat1_1,cat2_1): FoamFrame1,
+                                          (cat1_1,cat2_2): FoamFrame2,
+                                            ...
+                                        }  
+        
+               needs .show() to check if self.data is recursive
+        """
+        pass
 
     def scatter(self, y, x='Pos', z=False, overlay=False, **kwargs):
         import bokeh.plotting as bk
-        return self.draw(x, y, z=z, overlay=overlay, inst_func="scatter", **kwargs)
+        return self._draw(x, y, z=z, overlay=overlay,
+                    inst_func="scatter", **kwargs)
 
     def plot(self, y, x='Pos', z=False, overlay=False, **kwargs):
-        return self.draw(x, y, z=z, overlay=overlay, inst_func="plot", **kwargs)
+        return self._draw(x, y, z=z, overlay=overlay,
+                    inst_func="plot", **kwargs)
 
-    def draw(self, x, y, z, overlay, inst_func, **kwargs):
+    def show(self, y, x='Pos', z=False, overlay=False, **kwargs):
+        return self._draw(x, y, z=z, overlay=overlay,
+                    inst_func="show", **kwargs)
+
+    def _draw(self, x, y, z, overlay, inst_func, **kwargs):
         import bokeh.plotting as bk
         import numpy as np
         def greatest_divisor(number):
@@ -94,10 +127,10 @@ class MultiItem():
             rows=[]
             for name, instance in self.cases.iteritems():
                 rows.append(
-                        getattr(instance, inst_func)(x=x, y=y, title=name, **kwargs)
+                        getattr(instance, inst_func)(x=x, y=y, title=name, **kwargs) #FIXME num cars
                     )
             rows = np.array(rows).reshape(greatest_divisor(len(rows)),-1).tolist()
-            return bk.GridPlot(children=rows, title="Scatter") 
+            return bk.GridPlot(children=rows, title="Scatter")
         else:
            bk.hold()
            colors = plt.next_color()
@@ -118,13 +151,13 @@ class PlotProperties():
     def select(self, field, prop, default=None):
         field = self.properties[field]
         if not field:
-            return 
+            return
         else:
             return field.get(prop, default)
 
 class Props():
 
-    def __init__(self, origins, name, 
+    def __init__(self, origins, name,
             plot_properties, folder, times, symb,show_func,):
         self.origins=origins
         self.name=name
@@ -176,7 +209,7 @@ class FoamFrame(DataFrame):
 
     TODO:
         use case as cases ojects with a 3-level index
-             case['u'] 
+             case['u']
              acces time of all cases -> df.iloc[df.index.isin([1],level=1)]
         refactor plot into case objects itself,
             ?case.show('t','u', time_series = False)
@@ -210,14 +243,14 @@ class FoamFrame(DataFrame):
 
       for k in keys:
         try:
-            kwargs.pop(k)  
+            kwargs.pop(k)
         except:
             pass
 
       if folder == None:
-           #super(FoamFrame, self).__init__(*args, **kwargs)   
+           #super(FoamFrame, self).__init__(*args, **kwargs)
            DataFrame.__init__(self, *args, **kwargs)
-      else: 
+      else:
            os.chdir(folder) #FIXME necessary for read in?
            print name + ": ",
            origins, data = ana.import_foam_folder(
@@ -253,12 +286,12 @@ class FoamFrame(DataFrame):
         """ find corresponding file for given time and column """
         # return get time loc  and return dict for every column
         # latest.source['u']
-        return 
+        return
 
     def __str__(self):
         ret =  "FoamFrame: \n" + super(FoamFrame,self).__str__()
         return ret
-    
+
     @property
     def _constructor(self):
         # override DataFrames constructor
@@ -277,11 +310,19 @@ class FoamFrame(DataFrame):
         ret.properties = self.properties
         return ret
 
-    def location(self, loc):
-        """ Return FoamFrame based on location """
-        ret = self[self.index.get_level_values("Loc") == loc]
+    def at(self, idx_name, idx_val):
+        """ select from foamframe based on index name and value"""
+        ret = self[self.index.get_level_values(idx_name) == idx_val]
         ret.properties = self.properties
         return ret
+
+    def id(self, loc):
+        """ Return FoamFrame based on location """
+        return self.at(idx_name='Id', loc)
+
+    def location(self, loc):
+        """ Return FoamFrame based on location """
+        return self.at(idx_name='Loc', loc)
 
     def loc_names(self, key):
         """ search for all index names matching keyword"""
@@ -299,15 +340,22 @@ class FoamFrame(DataFrame):
 
     def draw(self, x, y, z, title, func, **kwargs):
         import bokeh.plotting as bk
-        kwargs.update({ "outline_line_color":"black",
+        #TODO: change colors if y is of list type
+        y = (y if type(y) == list else [y]) # wrap y to a list so that we can iterate
+
+        kwargs.update({ "outline_line_color":"black", #FIXME refactor
                         "plot_width":300,
                         "plot_height":300,
                       })
-        x_data, y_data = self[x], self[y]
-        ret = func(x=x_data,
-                   y=y_data,
-                   title=title,
-                   **kwargs)
+        bk.hold(True)
+        for yi in y:
+            x_data, y_data = self[x], self[yi]
+            func(x=x_data,
+                 y=y_data,
+                 title=title,
+                 **kwargs)
+        bk.hold(False)
+        ret = bk.curplot()
 
         def _label(axis, field):
            label = kwargs.get(axis + '_label', False)
@@ -316,26 +364,26 @@ class FoamFrame(DataFrame):
            else:
                label = self.properties.plot_properties.select(field, 'label', "None")
            return label
-        
+
         bk.xaxis().axis_label = _label('x', x)
-        bk.yaxis().axis_label = _label('y', y)
+        bk.yaxis().axis_label = _label('y', y[0]) #TODO can this make sense for multiplots?
         return ret
 
     def scatter(self, y, x='Pos', z=False, title="", **kwargs):
         import bokeh.plotting as bk
         return self.draw(x, y, z, title, func=bk.scatter, **kwargs)
-    
+
     def plot(self, y, x='Pos', z=False, title="", **kwargs):
         import bokeh.plotting as bk
         return self.draw(x, y, z, title, func=bk.line, **kwargs)
 
 
-    def show(self, field, x=None, **kwargs):
+    def show(self, y, x=None, **kwargs):
         if x:
-            return getattr(self,self.properties.show_func)(y=field, x=x, **kwargs) 
+            return getattr(self,self.properties.show_func)(y=y, x=x, **kwargs)
         else:
-            return getattr(self,self.properties.show_func)(y=field, **kwargs) 
-            
+            return getattr(self,self.properties.show_func)(y=y, **kwargs)
+
 
     def filter(self, name, index=None, field=None):
         """ filter on index or field values by given functioni
@@ -348,11 +396,11 @@ class FoamFrame(DataFrame):
         if index:
             ret = self[map(index,self.get_level_values(name))]
             ret.properties = self.properties
-            return ret 
+            return ret
         elif field:
             ret = self[map(field,self[name])]
             ret.properties = self.properties
-            return ret 
+            return ret
         else:
             return self
 
@@ -367,15 +415,15 @@ class FoamFrame(DataFrame):
 
     def by(self, name, index=None, field=None):
         """ facet by given function
-        
+
             Examples:
 
             .by(index=lambda x: x)
             .by(field=lambda x: ('T_high' if x['T'] > 1000 else 'T_low'))
         """
         if index:
-            ret = {index(val):self[self.index.get_level_values(name) == val] 
-                        for val in self.index.get_level_values(name)}   
+            ret = {index(val):self[self.index.get_level_values(name) == val]
+                        for val in self.index.get_level_values(name)}
             for _ in ret.itervalues():
                 _.properties = self.properties
             return MultiItem(ret)
