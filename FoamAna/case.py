@@ -48,6 +48,15 @@ def read_log(folder, keys, log_name='*log*', plot_properties=False):
             )
     return ff
 
+def merge(*kargs, x='Pos', y=None, **kwargs):
+    import bokeh.plotting as bk
+    bk.figure()
+    bk.hold()
+    y = (y if type(y) == list else [y]*len(kargs)) 
+    for p in kargs:
+        p.show(x=x, y=y, **kwargs)
+    return bk.curplot()    
+        
 
 class MultiItem():
     """ Class for storage of multiple case items
