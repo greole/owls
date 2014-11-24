@@ -1,4 +1,5 @@
 import os
+import re
 import analysis as ana
 import plot as plt
 
@@ -48,15 +49,43 @@ def read_log(folder, keys, log_name='*log*', plot_properties=False):
             )
     return ff
 
-def merge(*kargs, x='Pos', y=None, **kwargs):
+def merge(*args, **kwargs):
     import bokeh.plotting as bk
     bk.figure()
     bk.hold()
-    y = (y if type(y) == list else [y]*len(kargs)) 
-    for p in kargs:
-        p.show(x=x, y=y, **kwargs)
-    return bk.curplot()    
-        
+    y = kwargs.get('y',None)
+    x = kwargs.get('x','Pos')
+    try:
+        kwargs.pop('y')
+        kwargs.pop('x')
+    except:
+        pass
+    y = (y if type(y) == list else [y]*len(args)) #FIXME do the same for x
+    for yi,p in zip(y,args):
+        p.show(x=x, y=yi, **kwargs)
+    return bk.curplot()
+
+def multi_merge(*args, **kwargs):
+    """ call merge for all args """
+    import bokeh.plotting as bk
+    y = kwargs.get('y',None)
+    x = kwargs.get('x','Pos')
+    plots=[]
+    c = args[0]
+    for name, data in c.iteritems():
+        sub_plots=[data]
+        for c_ in args[1:]:
+            for name_, plot_ in c_.iteritems():
+                # now see if we have a match
+                selector = kwargs.get('by', True) #FIXME
+                if (not re.search(selector,name) or
+                    not re.search(selector,name_)):
+                    continue
+                if (re.search(selector,name).group()
+                    == re.search(selector,name_).group()):
+                    sub_plots.append(plot_)
+        plots.append(merge(*sub_plots,x=x,y=y,title=name))
+    return plots
 
 class MultiItem():
     """ Class for storage of multiple case items
@@ -84,6 +113,19 @@ class MultiItem():
     def select(self, case):
         """ select a specific item """
         return self.cases[case]
+
+    def filter(self, selector):
+        """ select a specific item """
+        if type(selector) == list:
+            return MultiItem({name:case for name,case in self.cases if 
+                            name in selector})
+        else:
+            return MultiItem({name:case for name,case in self.cases if 
+                            func(name)})
+
+    def iteritems(self):
+        for name,case in self.cases.iteritems():
+            yield name,case
 
     def by(self, overlay=True):
         """
