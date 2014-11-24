@@ -327,11 +327,11 @@ class FoamFrame(DataFrame):
 
     def id(self, loc):
         """ Return FoamFrame based on location """
-        return self.at(idx_name='Id', loc)
+        return self.at(idx_name='Id', idx_val=loc)
 
-    def location(self, loc):
+    def location(self, loc):#
         """ Return FoamFrame based on location """
-        return self.at(idx_name='Loc', loc)
+        return self.at(idx_name='Loc', idx_val=loc)
 
     def loc_names(self, key):
         """ search for all index names matching keyword"""
