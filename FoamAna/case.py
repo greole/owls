@@ -291,8 +291,8 @@ class FoamFrame(DataFrame):
         self.latest[label] = data
         return self
 
-    def source(self,):
-        """ find corresponding file for given time and column """
+    def source(self, col):
+        """ find corresponding file for column """
         # return get time loc  and return dict for every column
         # latest.source['u']
         return
@@ -346,6 +346,20 @@ class FoamFrame(DataFrame):
         import re
         self.columns = [re.sub(search, replace, name) for name in self.columns]
 
+
+    def _is_idx(self, item):
+        """ test if item is column or idx """
+        return item in self.index.names
+
+    def __getitem__(self, item):
+        """ call pandas DataFrame __getitem__ if item is not
+            an index
+        """
+        if self._is_idx(item):
+            level = self.index.names.index(item)
+            return zip(*self.index.values)[level]
+        else:
+           return super(FoamFrame, self).__getitem__(item)
 
     def draw(self, x, y, z, title, func, **kwargs):
         import bokeh.plotting as bk
