@@ -90,16 +90,17 @@ def is_time(time):
     try:
         return float(time)
     except:
-        return "False"
+        return False
 
 def find_times(fold=None):
     """ Find time folders in given or current folder
-        Returns list of times as strings
+        Returns sorted list of times as strings
     """
     search_folder = (fold if fold else os.getcwd())
     cur_dir = os.walk(search_folder)
     root, dirs, files = next(cur_dir)
-    return [time for time in dirs if is_time(time) != "False"]
+    times = [time for time in dirs if is_time(time) is not False]
+    return times.sort()
 
 def dataframe_to_foam(fullname, ftype, dataframe, boundaries):
     """ writes an OpenFOAM field file from given dataframe """
