@@ -187,7 +187,7 @@ class MultiItem():
            colors = plt.next_color()
            for name, instance in self.cases.iteritems():
                 color = next(colors)
-                getattr(instance, inst_func)(x=x, y=y, title="", color=color, **kwargs)
+                getattr(instance, inst_func)(x=x, y=y, title="", color=color, legend=name, **kwargs)
 
 
 class PlotProperties():
@@ -350,9 +350,15 @@ class FoamFrame(DataFrame):
         return FoamFrame
 
     @property
-    def latest_time(self):
-        """ return latest time for case """
-        return max(self.times)
+    def times(self):
+        """ return times for case """
+        return set([_[0] for _ in self.index.values])
+
+    @property
+    def locations(self):
+        """ return times for case """
+        return set([_[1] for _ in self.index.values])
+
 
     @property
     def latest(self):
