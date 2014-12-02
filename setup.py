@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'FoamAna'
+package_name = 'Owls'
 # Get the version from FoamAna/version.py without importing the package
 exec(compile(open(package_name + '/version.py').read(),
              package_name + '/version.py', 'exec'))
@@ -21,7 +21,7 @@ config = {
                          'jinja2',
                          'bokeh',
                         ],
-   'name': 'FoamAna' 
+   'name': 'Owls' 
 }
 
 

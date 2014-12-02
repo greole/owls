@@ -4,7 +4,7 @@
         ana.py case2case [--avg] [--div] --times=<times> --vectors=<fields> --scalars=<fields> --tensors=<field> --case=<dir>
 """
 
-from analysis import *
+from io import *
 import os
 from docopt import docopt
 from pandas import *

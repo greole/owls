@@ -1,6 +1,6 @@
 import os
 import re
-import analysis as ana
+import io
 import plot as plt
 from collections import OrderedDict
 
@@ -37,7 +37,7 @@ def read_exp(folder, name="None", **kwargs):
 
 
 def read_log(folder, keys, log_name='*log*', plot_properties=False):
-    origins,df = ana.import_logs(folder,keys)
+    origins,df = io.import_logs(folder,keys)
     ff = FoamFrame(df)
     ff.properties=Props(
             origins=origins,
@@ -99,7 +99,7 @@ class MultiItem():
     #TODO: implement __repr__ method
     def __init__(self, cases=None):
         if type(cases) == list:
-            self.cases = OrderedDict([case.name,case) for case in cases])
+            self.cases = OrderedDict([(case.name,case) for case in cases])
         elif type(cases) == OrderedDict:
             self.cases=cases
         else:
@@ -308,7 +308,7 @@ class FoamFrame(DataFrame):
       else:
            os.chdir(folder) #FIXME necessary for read in?
            print name + ": ",
-           origins, data = ana.import_foam_folder(
+           origins, data = io.import_foam_folder(
                        search_format=search,
                        file_names=files,
                        skiplines=skip,
