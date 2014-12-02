@@ -2,6 +2,7 @@ import os
 import re
 import analysis as ana
 import plot as plt
+from collections import OrderedDict
 
 from pandas import Series
 from pandas import DataFrame
@@ -98,8 +99,8 @@ class MultiItem():
     #TODO: implement __repr__ method
     def __init__(self, cases=None):
         if type(cases) == list:
-            self.cases = {case.name:case for case in cases}
-        elif type(cases) == dict:
+            self.cases = OrderedDict([case.name,case) for case in cases])
+        elif type(cases) == OrderedDict:
             self.cases=cases
         else:
             self.cases={}
@@ -135,7 +136,7 @@ class MultiItem():
             
                 mi.by(overlay=True) -> { cat1_1:{cat2_1:FoamFrame1,
                                                  cat2_2:FoamFrame2,
-                                                    ...            }    
+                                                    ...            }
                                          cat1_2:{cat2_1:FoamFrame3,
                                                     ...            }
                                         }
@@ -143,7 +144,7 @@ class MultiItem():
                 m1.by(overlay=False) -> { (cat1_1,cat2_1): FoamFrame1,
                                           (cat1_1,cat2_2): FoamFrame2,
                                             ...
-                                        }  
+                                        }
         
                needs .show() to check if self.data is recursive
         """
@@ -177,8 +178,10 @@ class MultiItem():
         if not overlay:
             rows=[]
             for name, instance in self.cases.iteritems():
+                bk.figure()
                 rows.append(
-                        getattr(instance, inst_func)(x=x, y=y, title=name, **kwargs) #FIXME num cars
+                        getattr(instance, inst_func)
+                            (x=x, y=y, title=name, **kwargs) #FIXME num cars
                     )
             rows = np.array(rows).reshape(greatest_divisor(len(rows)),-1).tolist()
             return bk.GridPlot(children=rows, title="Scatter")
@@ -188,7 +191,8 @@ class MultiItem():
            for name, instance in self.cases.iteritems():
                 color = next(colors)
                 getattr(instance, inst_func)(x=x, y=y, title="", color=color, legend=name, **kwargs)
-
+           bk.hold(False)
+           return bk.curplot()
 
 class PlotProperties():
 
@@ -493,15 +497,19 @@ class FoamFrame(DataFrame):
             .by(field=lambda x: ('T_high' if x['T'] > 1000 else 'T_low'))
         """
         if index:
-            ret = {index(val):self[self.index.get_level_values(name) == val]
-                        for val in self.index.get_level_values(name)}
+            ret = OrderedDict(
+                   [(index(val),self[self.index.get_level_values(name) == val])
+                        for val in self.index.get_level_values(name)]
+                  )
             for _ in ret.itervalues():
                 _.properties = self.properties
             return MultiItem(ret)
         else:
             self['cat'] = map(field, self[name])
             cats = self.groupby('cat').groups.keys()
-            ret =  {cat:self[self['cat'] == cat] for cat in cats}
+            ret =  OrderedDict(
+                    [(cat,self[self['cat'] == cat]) for cat in cats]
+                )
             for _ in ret.itervalues():
                 _.properties = self.properties
             return MultiItem(ret)

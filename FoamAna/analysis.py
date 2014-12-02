@@ -15,6 +15,7 @@ import re
 import os
 from pandas import *
 from collections import defaultdict
+from collections import OrderedDict
 from IPython.display import display, clear_output
 from case import *
 from plot import *
@@ -67,8 +68,11 @@ def find_datafiles(
     search_folder = (subfolder if not subfolder.startswith('./{}') else "./{}/")
     try:
         times = (fold if fold else find_times(search_folder.format("")))
-        return {time: _get_datafiles_from_dir(subfolder.format(time), filelist)
-                for time in times}
+        od = OrderedDict()
+        return  OrderedDict(
+            [(time, _get_datafiles_from_dir(subfolder.format(time), filelist)) #FIXME use ordered dict here
+                for time in times]
+            )
     except:
         return dict()
 
@@ -82,9 +86,11 @@ def _get_datafiles_from_dir(path=False, fn_filter=False):
     cur_dir = os.walk(search_dir)
     root, dirs, files = next(cur_dir)
     if fn_filter:
-        return [search_dir + f for f in files if f in fn_filter] 
+        l = [search_dir + f for f in files if f in fn_filter]
     else:
-        return [search_dir + f for f in files if not f.startswith('.')] 
+        l = [search_dir + f for f in files if not f.startswith('.')]
+    l.sort()
+    return l
 
 def is_time(time):
     try:
@@ -100,7 +106,8 @@ def find_times(fold=None):
     cur_dir = os.walk(search_folder)
     root, dirs, files = next(cur_dir)
     times = [time for time in dirs if is_time(time) is not False]
-    return times.sort()
+    times.sort()
+    return times
 
 def dataframe_to_foam(fullname, ftype, dataframe, boundaries):
     """ writes an OpenFOAM field file from given dataframe """
@@ -133,7 +140,7 @@ class ProgressBar():
     def __init__(self, n_tot, bins=10):
         #FEATURE: Add timings 
         self.tot = float(n_tot)
-        self.count = 0.0   
+        self.count = 0.0
         self.cur = 0.0
 
     def next(self):
@@ -146,7 +153,7 @@ class ProgressBar():
         print "[done]"
 
 def import_foam_folder(
-            search_format, 
+            search_format,
             file_names,
             skiplines=1,
             maxlines=0,
@@ -196,7 +203,7 @@ def import_foam_folder(
             df = df.append(df_tmp)
     df.set_index('Time', append=True, inplace=True)
     df = df.reorder_levels(['Time','Loc','Id'])
-    p_bar.done()    
+    p_bar.done()
     return origins, df,
 
 """
@@ -268,7 +275,7 @@ def read_data_file(fn, skiplines=1, maxlines=False):
                 else: 
                     df['Loc'] = range(len(df))
                 df.set_index('Loc', append=True, inplace=True)
-                df.index.names=['Id','Loc'] 
+                df.index.names=['Id','Loc']
                 df = df.reorder_levels(['Loc','Id'])
                 return names, df.astype(float)
             else:
@@ -306,7 +313,7 @@ def evaluate_names(fullfilename, num_entries):
         pos = "Field"
         if '.dat' in filename or '.xy' in filename:
             pos = fields[0]
-            fields[0] = "Pos" 
+            fields[0] = "Pos"
         return pos, fields
     else:
         return "Unknown", [filename + '_' + str(i) for i in range(num_entries)]
@@ -363,7 +370,7 @@ def import_logs(folder, keys):
         with open(log_name) as log:
             f = log.readlines()
             start = find_start(f)
-            dataDict = defaultdict(list) 
+            dataDict = defaultdict(list)
             df=DataFrame()
             for line in f[start:-1]:
                  col_names, values = extract(line, keys)
@@ -372,11 +379,11 @@ def import_logs(folder, keys):
                  if col_names[0] == 'Time':
                     # a new time step has begun
                     # flush datadict and concat to df
-                    # Very slow but, so far the solution 
+                    # Very slow but, so far the solution
                     # to keep subiterations attached to correct time 
                     # FIXME: still needs handling of different length dictionaries
-                    df = concat([df,DataFrame(dataDict)]) 
-                    dataDict = defaultdict(list) 
+                    df = concat([df,DataFrame(dataDict)])
+                    dataDict = defaultdict(list)
                  for i, col in enumerate(col_names):
                     dataDict[col].append(values[i])
         p_bar.next()
