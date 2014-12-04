@@ -74,3 +74,17 @@ If the field names cannot be determined by the file name the fields will have
 the following naming convetion *setname_field1_field2.xy_0 ,.. *setname_field1_field2.xy_2
 
 ## Data Visualisation
+Data can be passed to any standard python plotting library i.e. matplotlib, ggplot, seaborn.
+Currently bokeh is choosen to generate on the fly data visualisations.
+
+If .show is called the natural representation of the FoamFrame will be choosen, i.e. line plots for sets and scatter experimental data. To make standard calls concise the default value of x='Pos'.
+~~~~.python
+s1.by_index('Loc').show(y='v') 
+s1.by_index('Loc').scatter(x='u',y='v') 
+~~~~
+
+you can pass bokeh arguments through the plot function for styling
+~~~~.python
+s1.by_index('Loc').show(y='v', y_label='foo') 
+s1.by_index('Loc').scatter(x='u',y='v',legend='bar') 
+~~~~
