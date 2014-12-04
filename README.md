@@ -91,3 +91,8 @@ s1.by_index('Loc').scatter(x='u',y='v',legend='bar')
 
 ## Further Information
 you will find an example Owls demo notebook for ipython in the examples folder.
+
+
+##Contribution
+
+Yes please!
