@@ -88,3 +88,6 @@ you can pass bokeh arguments through the plot function for styling
 s1.by_index('Loc').show(y='v', y_label='foo') 
 s1.by_index('Loc').scatter(x='u',y='v',legend='bar') 
 ~~~~
+
+## Further Information
+you will find an example Owls demo notebook for ipython in the examples folder.
