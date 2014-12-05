@@ -136,6 +136,7 @@ def dataframe_to_foam(fullname, ftype, dataframe, boundaries):
         f.write("\n// ************************************************************************* //")
 
 class ProgressBar():
+    """ A class providing progress bars """
 
     def __init__(self, n_tot, bins=10):
         #FEATURE: Add timings 
