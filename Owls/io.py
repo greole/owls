@@ -180,7 +180,8 @@ def import_foam_folder(
             if not ret:
                 continue
             field_names, x = ret
-            origin = {(key, time): fn for key in field_names} #FIXME use nested dicts 
+            loc = x.index.values[-1][0]
+            origin = {(key, time, loc): fn for key in field_names} #FIXME use nested dicts 
             origins.update(origin)
             if df_tmp.empty:
                 df_tmp = x
