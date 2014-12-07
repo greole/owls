@@ -3,13 +3,13 @@
 ![](https://badge.fury.io/py/owls.svg)
 
 The Owls package is a collection of python tools for data analysis and 
-plotting of OpenFOAM cases. It provides the following basic functunality: 
+plotting of OpenFOAM cases. It provides the following basic functionality: 
 
 - A reader for OpenFOAM scalar and vector fields, set files and log files
 - Converting OpenFOAM data to FoamFrames which are derived DataFrames from the pandas library
 
 This tutorial aims to illustrate the basic workflow of the Owls package.
-After installing, make sure that the module following imports are availible
+After installing, make sure that the module following imports are available
 
 # Installation
 ~~~~.bash
@@ -40,7 +40,7 @@ s1 = read_sets(
     )
 ~~~~
 
-also availible read_eul, read_lag, and read_exp, read_log
+also available read_eul, read_lag, and read_exp, read_log
 
 ## Accessing Data
 ~~~~.python
