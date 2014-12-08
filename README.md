@@ -41,6 +41,17 @@ s1 = read_sets(
 ~~~~
 
 also available read_eul, read_lag, and read_exp, read_log
+### OpenFOAM v.2.0.x
+Newer versions of OpenFOAM write sets in a folder called postprocessing/sets
+to use Owls you can import sets as
+~~~~.python
+s1 = read_sets(
+    folder='/some/path/', 
+    name='foo', # name of the case 
+    search='./postProcessing/sets/{}/',
+    plot_properties=PlotProperties() # an object to store plotting info
+    )
+~~~~
 
 ## Accessing Data
 ~~~~.python
