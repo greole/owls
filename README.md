@@ -41,7 +41,7 @@ s1 = read_sets(
 ~~~~
 
 also available read_eul, read_lag, and read_exp, read_log
-### OpenFOAM v.2.0.x
+### Import Data from OpenFOAM Version > 2.0.x
 Newer versions of OpenFOAM write sets in a folder called postprocessing/sets
 to use Owls you can import sets as
 ~~~~.python
