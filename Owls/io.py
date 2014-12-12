@@ -17,7 +17,7 @@ from pandas import *
 from collections import defaultdict
 from collections import OrderedDict
 from IPython.display import display, clear_output
-from case import *
+from frames import *
 from plot import *
 
 FOAM_HEADER = """
