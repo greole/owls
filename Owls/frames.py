@@ -63,7 +63,7 @@ def merge(*args, **kwargs):
         pass
     y = (y if type(y) == list else [y]*len(args)) #FIXME do the same for x
     for yi,p in zip(y,args):
-        p.show(x=x, y=yi, **kwargs)
+        p.show(x=x, y=yi, color=next(kwargs["colors"]), **kwargs)
     return bk.curplot()
 
 def multi_merge(*args, **kwargs):
@@ -75,6 +75,7 @@ def multi_merge(*args, **kwargs):
     c = args[0]
     for name, data in c.iteritems():
         sub_plots=[data]
+        colors = plt.next_color()
         for c_ in args[1:]:
             for name_, plot_ in c_.iteritems():
                 # now see if we have a match
@@ -85,7 +86,7 @@ def multi_merge(*args, **kwargs):
                 if (re.search(selector,name).group()
                     == re.search(selector,name_).group()):
                     sub_plots.append(plot_)
-        plots.append(merge(*sub_plots,x=x,y=y,title=name))
+        plots.append(merge(*sub_plots, x=x, y=y, title=name, colors=colors))
     return plots
 
 class MultiItem():
