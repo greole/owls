@@ -99,7 +99,8 @@ def multi_merge(*args, **kwargs):
                     # now see if we have a match
                     selector = kwargs.get('by', "[A-Za-z0-9_\-]")
                     # skip if search is empty 
-                    if not re.search(selector, name_):
+                    if (not re.search(selector, name) or
+                        not re.search(selector, name_)):
                         continue
                     # append to subplot if same schema
                     if (re.search(selector, name).group()
