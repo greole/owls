@@ -13,6 +13,7 @@ Bad Karma:
 import numpy as np
 import re
 import os
+import hashlib
 from pandas import *
 from collections import defaultdict
 from collections import OrderedDict
@@ -151,7 +152,7 @@ class ProgressBar():
             self.cur += 0.1
 
     def done(self):
-        print "[done]"
+        print "[done]",
 
 def import_foam_folder(
             search_format,
@@ -170,19 +171,19 @@ def import_foam_folder(
     p_bar = ProgressBar(n_tot=sum([len(l) for l in fileList.itervalues()]))
     df = DataFrame()
     #df.index = MultiIndex.from_tuples(zip([],[]),names=['Loc',0])
-    origins = dict() 
+    from collections import defaultdict
+    origins = defaultdict(dict) #  
     for time, files in fileList.iteritems(): #FIXME dont iterate twice
         df_tmp = DataFrame()
+        origin_field = dict()
         for fn in files:
             #ret = read_table(StringIO.StringIO(foam_to_csv(fn)))
             ret = read_data_file(fn, skiplines, maxlines)
             p_bar.next()
             if not ret:
                 continue
-            field_names, x = ret
+            field_names, x, hashes = ret
             loc = x.index.values[-1][0]
-            origin = {(key, time, loc): fn for key in field_names} #FIXME use nested dicts 
-            origins.update(origin)
             if df_tmp.empty:
                 df_tmp = x
             else: 
@@ -198,20 +199,30 @@ def import_foam_folder(
                 except Exception as e:
                     print x
                     print e
+            for i, field in enumerate(field_names):
+                origin_field[field] = fn, hashes[field]
+            origins[time][loc] = {"hash": sum([_[1] for _ in origin_field.values()]),
+                         "fields":origin_field}
+        origins[time].update({"hash": sum(
+                [_["hash"] for _ in origins[time].values()])}
+        )
         df_tmp['Time'] = float(time)
         if df.empty:
             df = df_tmp
         else:
             df = df.append(df_tmp)
+    origins.update({"hash": sum(
+                [_["hash"] for _ in origins.values()])}
+    )
     df.set_index('Time', append=True, inplace=True)
     df = df.reorder_levels(['Time','Loc','Id'])
     p_bar.done()
-    return origins, df,
+    return origins, df
 
 """
 Time Loc        Pos U V
 1000 radVel+10  0.1 
-                0.2
+              2
      radVel+20  0.1
                 0.2
 """
@@ -279,7 +290,13 @@ def read_data_file(fn, skiplines=1, maxlines=False):
                 df.set_index('Loc', append=True, inplace=True)
                 df.index.names=['Id','Loc']
                 df = df.reorder_levels(['Loc','Id'])
-                return names, df.astype(float)
+                hashes = {}
+                for row in df.columns:
+                    d = df[row].values
+                    d.flags.writeable = False
+                    hash_ = int(hashlib.md5(str(d)).hexdigest(),16)
+                    hashes.update({row:hash_})
+                return names, df.astype(float), hashes
             else:
                 data = [np.float32(x) for x in content[start:end:skiplines]]
                 entries = 1
@@ -288,7 +305,8 @@ def read_data_file(fn, skiplines=1, maxlines=False):
                 df.set_index('Loc', append=True, inplace=True)
                 df.index.names=['Id','Loc'] 
                 df = df.reorder_levels(['Loc','Id'])
-                return field, df
+                hashes={field: int(hashlib.md5(str(data)).hexdigest(),16)}
+                return field, df, hashes
     except Exception as e:
         if DEBUG:
             print "Error processing datafile " + fn

@@ -1,6 +1,7 @@
 import os
 import re
 import io
+import shelve
 import plot as plt
 from collections import OrderedDict
 
@@ -8,6 +9,7 @@ from pandas import Series
 from pandas import DataFrame
 from pandas import concat
 
+case_data_base = shelve.open(os.path.expanduser('~') + "/.owls/db")
 
 def items_from_dict(dict, func, **kwargs):
     return Cases([func(folder=folder,name=name, symb=symb, **kwargs)
@@ -63,29 +65,54 @@ def merge(*args, **kwargs):
         pass
     y = (y if type(y) == list else [y]*len(args)) #FIXME do the same for x
     for yi,p in zip(y,args):
-        p.show(x=x, y=yi, **kwargs)
+        p.show(x=x, y=yi, color=next(kwargs["colors"]), **kwargs)
     return bk.curplot()
 
 def multi_merge(*args, **kwargs):
-    """ call merge for all args """
+    """ call merge for all args
+
+        Examples:   mm=multi_merge(
+                        sets1.latest.by_index('Loc'),
+                        sets2.latest.by_index('Loc'),
+                        by='[0-9]+',
+                        x='Pos',
+                        y='vMean'
+                        order=[x-10,x+25])
+
+    """
     import bokeh.plotting as bk
     y = kwargs.get('y',None)
     x = kwargs.get('x','Pos')
     plots=[]
     c = args[0]
-    for name, data in c.iteritems():
+    # go through all items to be plotted
+    items = (
+        ((name,data) for name, data in c.iteritems() if name in kwargs['order'])
+        if kwargs.get('order',False) else c.iteritems()
+    )
+    for name, data in items:
         sub_plots=[data]
+        colors = plt.next_color()
         for c_ in args[1:]:
+            # and through all sets to be plotted
             for name_, plot_ in c_.iteritems():
-                # now see if we have a match
-                selector = kwargs.get('by', True) #FIXME
-                if (not re.search(selector,name) or
-                    not re.search(selector,name_)):
-                    continue
-                if (re.search(selector,name).group()
-                    == re.search(selector,name_).group()):
-                    sub_plots.append(plot_)
-        plots.append(merge(*sub_plots,x=x,y=y,title=name))
+                if not kwargs.get('order', False):
+                    # select by regex
+                    # now see if we have a match
+                    selector = kwargs.get('by', "[A-Za-z0-9_\-]")
+                    # skip if search is empty 
+                    if (not re.search(selector, name) or
+                        not re.search(selector, name_)):
+                        continue
+                    # append to subplot if same schema
+                    if (re.search(selector, name).group()
+                        == re.search(selector, name_).group()):
+                        sub_plots.append(plot_)
+                else:
+                    #select by name in order list
+                    if name_ == name:
+                        sub_plots.append(plot_)
+        plots.append(merge(*sub_plots, x=x, y=y, title=name, colors=colors))
     return plots
 
 class MultiItem():
@@ -302,11 +329,16 @@ class FoamFrame(DataFrame):
         except:
             pass
 
+      #TODO explain what happens here 
       if folder == None:
            #super(FoamFrame, self).__init__(*args, **kwargs)
            DataFrame.__init__(self, *args, **kwargs)
       else:
            os.chdir(folder) #FIXME necessary for read in?
+           if case_data_base.has_key(folder):
+                print "re-importing ",
+           else:
+                print "importing ",
            print name + ": ",
            origins, data = io.import_foam_folder(
                        search_format=search,
@@ -324,14 +356,47 @@ class FoamFrame(DataFrame):
                 data.index.levels[0],
                 symb,
                 show_func)
+           self.validate_origins(folder, origins)
+           # register to database
+           case_data_base.sync()
 
+    def validate_origins(self, folder, origins):
+        if case_data_base.has_key(folder):
+            if (case_data_base[folder]["hash"] == origins["hash"]):
+                print " [consistent]"
+            else:
+                print " [inconsistent]",
+                for time_key, time in origins.iteritems():
+                    if time_key == "hash":
+                        continue
+                    if not case_data_base[folder].get(time_key, False):
+                        print " new timestep "  + str(time_key)
+                    else:
+                        for loc_key, loc in time.iteritems():
+                            if loc_key == "hash":
+                                loc_hash = loc_key
+                                continue
+                            for field_key, files in loc['fields'].iteritems():
+                                if field_key == "hash":
+                                    field_hash = fields_key
+                                    continue
+                                if files[1] != case_data_base[folder][time_key][loc_key]['fields'][field_key][1]:
+                                    # FIXME for all fields it prints that one column is corrupted
+                                    print "corrupted: " + field_key + " in file: " +  files[0] 
+                print "overwriting" 
+                # TODO think what to do
+                # raise an error, flag as dirty, backup old
+                case_data_base[folder] = origins
+        else:
+             print "[stored]"
+             case_data_base[folder] = origins
 
     def add(self, data, label):
         """
         Add a given Series
 
         Usage:
-        -------
+        ------ing-
         case.add(sqrt(uu),'u_rms')
         """
         self.latest[label] = data
