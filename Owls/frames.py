@@ -369,17 +369,20 @@ class FoamFrame(DataFrame):
                 for time_key, time in origins.iteritems():
                     if time_key == "hash":
                         continue
-                    for loc_key, loc in time.iteritems():
-                        if loc_key == "hash":
-                            loc_hash = loc_key
-                            continue
-                        for field_key, files in loc['fields'].iteritems():
-                            if field_key == "hash":
-                                field_hash = fields_key
+                    if not case_data_base[folder].get(time_key, False):
+                        print " new timestep "  + str(time_key)
+                    else:
+                        for loc_key, loc in time.iteritems():
+                            if loc_key == "hash":
+                                loc_hash = loc_key
                                 continue
-                            if files[1] != case_data_base[folder][time_key][loc_key]['fields'][field_key][1]:
-                                # FIXME for all fields it prints that one column is corrupted
-                                print "corrupted: " + field_key + " in file: " +  files[0] 
+                            for field_key, files in loc['fields'].iteritems():
+                                if field_key == "hash":
+                                    field_hash = fields_key
+                                    continue
+                                if files[1] != case_data_base[folder][time_key][loc_key]['fields'][field_key][1]:
+                                    # FIXME for all fields it prints that one column is corrupted
+                                    print "corrupted: " + field_key + " in file: " +  files[0] 
                 print "overwriting" 
                 # TODO think what to do
                 # raise an error, flag as dirty, backup old
