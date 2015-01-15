@@ -136,6 +136,47 @@ def dataframe_to_foam(fullname, ftype, dataframe, boundaries):
         f.write("}")
         f.write("\n// ************************************************************************* //")
 
+class Origins():
+    """ Class to manage fields to file relation and store hashes 
+
+        dct = {'hash':34jd
+               0.0:{'hash':234s                     #time
+                    'centreline':{'hash':94143e     #loc
+                                  'U':filename,3424}
+                    }
+              }  
+    """
+    from collections import defaultdict
+    dct = defaultdict(dict)
+
+    @classmethod
+    def from_dict(cls, dct):
+        pass
+    
+    def to_dict(self):
+        pass
+
+    def insert(self, time, loc, field, filename, fieldhash):
+        try:
+            self.dct[time][loc][field] = filename, fieldhash
+        except:
+            self.dct[time].update({loc:{field: (filename, fieldhash)}})
+
+    def update_hashes(self):
+        for time_key, time in self.dct.iteritems():
+            if time_key == "hash":
+                continue
+            for loc_key, loc in time.iteritems():
+                if loc_key == "hash":
+                    continue
+                loc["hash"] = sum([field[1] for key,field in loc.iteritems() if key != "hash"])
+            time["hash"] = sum([field["hash"] for key,field in time.iteritems()])
+        self.dct["hash"] = sum([field["hash"] for key,field in self.dct.iteritems()])
+
+    def hashes(self):
+        """ generator """
+        pass
+
 class ProgressBar():
     """ A class providing progress bars """
 
@@ -202,7 +243,7 @@ def import_foam_folder(
             for i, field in enumerate(field_names):
                 origin_field[field] = fn, hashes[field]
             origins[time][loc] = {"hash": sum([_[1] for _ in origin_field.values()]),
-                         "fields":origin_field}
+                         "fields": origin_field}
         origins[time].update({"hash": sum(
                 [_["hash"] for _ in origins[time].values()])}
         )
