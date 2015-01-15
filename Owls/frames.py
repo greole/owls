@@ -365,13 +365,13 @@ class FoamFrame(DataFrame):
             if (case_data_base[folder]["hash"] == origins["hash"]):
                 print " [consistent]"
             else:
-                print " [inconsistent]",
                 for time_key, time in origins.iteritems():
                     if time_key == "hash":
                         continue
                     if not case_data_base[folder].get(time_key, False):
-                        print " new timestep "  + str(time_key)
+                        print " [new timestep] " + str(time_key)
                     else:
+                        print " [inconsistent]",
                         for loc_key, loc in time.iteritems():
                             if loc_key == "hash":
                                 loc_hash = loc_key
