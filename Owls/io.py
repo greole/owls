@@ -147,7 +147,8 @@ class Origins():
               }  
     """
     from collections import defaultdict
-    dct = defaultdict(dict)
+    def __init__(self):
+       self.dct = defaultdict(dict)
 
     @classmethod
     def from_dict(cls, dct):
@@ -169,13 +170,34 @@ class Origins():
             for loc_key, loc in time.iteritems():
                 if loc_key == "hash":
                     continue
-                loc["hash"] = sum([field[1] for key,field in loc.iteritems() if key != "hash"])
-            time["hash"] = sum([field["hash"] for key,field in time.iteritems()])
-        self.dct["hash"] = sum([field["hash"] for key,field in self.dct.iteritems()])
+                self.dct[time_key][loc_key]["hash"] = sum(
+                    [field[1] for key,field in loc.iteritems() if key != "hash"]
+                )
+            self.dct[time_key]["hash"] = sum(
+                    [field["hash"] for key,field in time.iteritems() if key != "hash"]
+            )
+        self.dct["hash"] = sum([field["hash"] for key,field in self.dct.iteritems()
+                                    if key != "hash"]
+        )
 
     def hashes(self):
         """ generator """
-        pass
+        # self.update_hashes()
+        for time_key, time in self.dct.iteritems():
+            if time_key == "hash":
+                continue
+            for loc_key, loc in time.iteritems():
+                if loc_key == "hash":
+                    continue
+                for field, item in loc.iteritems():
+                    if field == "hash":
+                        continue
+                    fn, field_hash = item
+                    yield ((time_key, self.dct["hash"]),
+                           (loc_key,  time["hash"]),
+                           (field, loc["hash"]),
+                           (fn, field_hash)
+                          )
 
 class ProgressBar():
     """ A class providing progress bars """
@@ -213,10 +235,9 @@ def import_foam_folder(
     df = DataFrame()
     #df.index = MultiIndex.from_tuples(zip([],[]),names=['Loc',0])
     from collections import defaultdict
-    origins = defaultdict(dict) #  
+    origins = Origins()
     for time, files in fileList.iteritems(): #FIXME dont iterate twice
         df_tmp = DataFrame()
-        origin_field = dict()
         for fn in files:
             #ret = read_table(StringIO.StringIO(foam_to_csv(fn)))
             ret = read_data_file(fn, skiplines, maxlines)
@@ -240,21 +261,13 @@ def import_foam_folder(
                 except Exception as e:
                     print x
                     print e
-            for i, field in enumerate(field_names):
-                origin_field[field] = fn, hashes[field]
-            origins[time][loc] = {"hash": sum([_[1] for _ in origin_field.values()]),
-                         "fields": origin_field}
-        origins[time].update({"hash": sum(
-                [_["hash"] for _ in origins[time].values()])}
-        )
+            for field in field_names:
+                origins.insert(time,loc,field,fn,hashes[field])
         df_tmp['Time'] = float(time)
         if df.empty:
             df = df_tmp
         else:
             df = df.append(df_tmp)
-    origins.update({"hash": sum(
-                [_["hash"] for _ in origins.values()])}
-    )
     df.set_index('Time', append=True, inplace=True)
     df = df.reorder_levels(['Time','Loc','Id'])
     p_bar.done()
