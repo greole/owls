@@ -229,6 +229,7 @@ class PlotProperties():
 
     def insert(self, field, properties):
         self.properties[field].update(properties)
+        return self
 
     def select(self, field, prop, default=None):
         field = self.properties[field]
@@ -502,9 +503,9 @@ class FoamFrame(DataFrame):
         def _label(axis, field):
            label = kwargs.get(axis + '_label', False)
            if label:
-               self.properties.plot_properties.insert(field, {'label':label})
+               self.properties.plot_properties.insert(field, {axis + '_label':label})
            else:
-               label = self.properties.plot_properties.select(field, 'label', "None")
+               label = self.properties.plot_properties.select(field, axis + '_label', "None")
            return label
 
         bk.xaxis().axis_label = _label('x', x)
