@@ -9,11 +9,11 @@ from pandas import Series
 from pandas import DataFrame
 from pandas import concat
 
-# Series.__repr__ = (lambda x: ("Hash: {}\nTimes: {}\nLoc: {}\nValues: {}".format(
-#                     io.hash_series(x),
-#                     list(set(x.keys().get_level_values('Time'))), # avoid back and forth conversion
-#                     list(set(x.keys().get_level_values('Loc'))),
-#                     x.values))) #TODO monkey patch to use hashes
+Series.__repr__ = (lambda x: ("Hash: {}\nTimes: {}\nLoc: {}\nValues: {}".format(
+                    io.hash_series(x),
+                    list(set(x.keys().get_level_values('Time'))), # avoid back and forth conversion
+                    list(set(x.keys().get_level_values('Loc'))),
+                    x.values))) #TODO monkey patch to use hashes
 
 case_data_base = shelve.open(os.path.expanduser('~') + "/.owls/db")
 
