@@ -199,6 +199,17 @@ class Origins():
                            (fn, field_hash)
                           )
 
+    def find(self, search_hash):
+        for time, loc, field, item in self.hashes():
+            time_name, time_hash   = time
+            loc_name, loc_hash     = loc
+            field_name, field_hash = field
+            filename, item_hash    = item
+            if (search_hash == item_hash):
+                return field_name, filename
+        else:
+            return None,None
+
 class ProgressBar():
     """ A class providing progress bars """
 
@@ -344,13 +355,11 @@ def read_data_file(fn, skiplines=1, maxlines=False):
                 df.set_index('Loc', append=True, inplace=True)
                 df.index.names=['Id','Loc']
                 df = df.reorder_levels(['Loc','Id'])
+                df.astype(float)
                 hashes = {}
                 for row in df.columns:
-                    d = df[row].values
-                    d.flags.writeable = False
-                    hash_ = int(hashlib.md5(str(d)).hexdigest(),16)
-                    hashes.update({row:hash_})
-                return names, df.astype(float), hashes
+                    hashes.update({row: hash_series(df[row])})
+                return names, df, hashes
             else:
                 data = [np.float32(x) for x in content[start:end:skiplines]]
                 entries = 1
@@ -366,6 +375,13 @@ def read_data_file(fn, skiplines=1, maxlines=False):
             print "Error processing datafile " + fn
             print e
         return None
+
+def hash_series(series):
+    d = series.values
+    d.flags.writeable = False #TODO needed?
+    s = str(list(d))
+    return int(hashlib.md5(s).hexdigest(),16) #NOT
+
 
 def evaluate_names(fullfilename, num_entries):
     """ Infere field names and Loc from given filename 
