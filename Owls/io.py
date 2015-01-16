@@ -355,7 +355,7 @@ def read_data_file(fn, skiplines=1, maxlines=False):
                 df.set_index('Loc', append=True, inplace=True)
                 df.index.names=['Id','Loc']
                 df = df.reorder_levels(['Loc','Id'])
-                df.astype(float)
+                df = df.astype(float)
                 hashes = {}
                 for row in df.columns:
                     hashes.update({row: hash_series(df[row])})
