@@ -9,6 +9,12 @@ from pandas import Series
 from pandas import DataFrame
 from pandas import concat
 
+# Series.__repr__ = (lambda x: ("Hash: {}\nTimes: {}\nLoc: {}\nValues: {}".format(
+#                     io.hash_series(x),
+#                     list(set(x.keys().get_level_values('Time'))), # avoid back and forth conversion
+#                     list(set(x.keys().get_level_values('Loc'))),
+#                     x.values))) #TODO monkey patch to use hashes
+
 case_data_base = shelve.open(os.path.expanduser('~') + "/.owls/db")
 
 def items_from_dict(dict, func, **kwargs):
@@ -438,6 +444,14 @@ class FoamFrame(DataFrame):
         ret = self.loc[[self.properties.latest_time]]
         ret.properties = self.properties
         return ret
+
+    # def _iter_names(self)
+    #     pass
+    #
+    # def get_hashes(self):
+    #     """ returns hashes of current selection based 
+    #         on the data read from disk """
+    #     pass
 
     def at(self, idx_name, idx_val):
         """ select from foamframe based on index name and value"""
