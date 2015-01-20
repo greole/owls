@@ -1,0 +1,12 @@
+sudo: false
+language: python
+python:
+    - 2.7
+env:
+global:
+    - MINICONDA_VERSION="3.5.5"
+    - BOKEH_DEFAULT_TIMEOUT=30
+before_install:
+    - export PATH="$HOME/miniconda/bin:$PATH"
+install:
+    - scripts/travis_install
