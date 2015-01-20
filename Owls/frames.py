@@ -9,6 +9,12 @@ from pandas import Series
 from pandas import DataFrame
 from pandas import concat
 
+Series.__repr__ = (lambda x: ("Hash: {}\nTimes: {}\nLoc: {}\nValues: {}".format(
+                    io.hash_series(x),
+                    list(set(x.keys().get_level_values('Time'))), # avoid back and forth conversion
+                    list(set(x.keys().get_level_values('Loc'))),
+                    x.values))) #TODO monkey patch to use hashes
+
 case_data_base = shelve.open(os.path.expanduser('~') + "/.owls/db")
 
 def items_from_dict(dict, func, **kwargs):
@@ -229,6 +235,7 @@ class PlotProperties():
 
     def insert(self, field, properties):
         self.properties[field].update(properties)
+        return self
 
     def select(self, field, prop, default=None):
         field = self.properties[field]
@@ -336,9 +343,9 @@ class FoamFrame(DataFrame):
       else:
            os.chdir(folder) #FIXME necessary for read in?
            if case_data_base.has_key(folder):
-                print "re-importing ",
+                print "re-importing",
            else:
-                print "importing ",
+                print "importing",
            print name + ": ",
            origins, data = io.import_foam_folder(
                        search_format=search,
@@ -361,36 +368,38 @@ class FoamFrame(DataFrame):
            case_data_base.sync()
 
     def validate_origins(self, folder, origins):
+        origins.update_hashes()
         if case_data_base.has_key(folder):
-            if (case_data_base[folder]["hash"] == origins["hash"]):
+            if (case_data_base[folder]["hash"] == origins.dct["hash"]):
                 print " [consistent]"
             else:
-                print " [inconsistent]",
-                for time_key, time in origins.iteritems():
-                    if time_key == "hash":
-                        continue
-                    if not case_data_base[folder].get(time_key, False):
-                        print " new timestep "  + str(time_key)
-                    else:
-                        for loc_key, loc in time.iteritems():
-                            if loc_key == "hash":
-                                loc_hash = loc_key
-                                continue
-                            for field_key, files in loc['fields'].iteritems():
-                                if field_key == "hash":
-                                    field_hash = fields_key
-                                    continue
-                                if files[1] != case_data_base[folder][time_key][loc_key]['fields'][field_key][1]:
-                                    # FIXME for all fields it prints that one column is corrupted
-                                    print "corrupted: " + field_key + " in file: " +  files[0] 
-                print "overwriting" 
-                # TODO think what to do
-                # raise an error, flag as dirty, backup old
-                case_data_base[folder] = origins
+                entries_new = len(origins.dct.keys())
+                entries_old = len(case_data_base[folder].keys())
+                if entries_new > entries_old:
+                    print "[new timestep] "
+                    # print origins.dct.keys()
+                    case_data_base[folder] = origins.dct
+                elif entries_new < entries_old:
+                    # print folder
+                    # print origins.dct.keys()
+                    # print case_data_base[folder].keys()
+                    print "[missing timestep]"
+                    case_data_base[folder] = origins.dct
+                elif entries_new == entries_old:
+                    print "[corrupted]",
+                    for time, loc, field, item in origins.hashes():
+                        time_name, time_hash   = time
+                        loc_name, loc_hash     = loc
+                        field_name, field_hash = field
+                        filename, item_hash    = item
+                        orig_hash = case_data_base[folder][time_name][loc_name][field_name][1]
+                        if (item_hash != orig_hash):
+                            print ""
+                            print "corrupted fields:"
+                            print "\t" + field_name + " in " +  filename
+                    case_data_base[folder] = origins.dct
         else:
-             print "[stored]"
-             case_data_base[folder] = origins
-
+            case_data_base[folder] = origins.dct
     def add(self, data, label):
         """
         Add a given Series
@@ -435,6 +444,14 @@ class FoamFrame(DataFrame):
         ret = self.loc[[self.properties.latest_time]]
         ret.properties = self.properties
         return ret
+
+    # def _iter_names(self)
+    #     pass
+    #
+    # def get_hashes(self):
+    #     """ returns hashes of current selection based 
+    #         on the data read from disk """
+    #     pass
 
     def at(self, idx_name, idx_val):
         """ select from foamframe based on index name and value"""
@@ -500,9 +517,9 @@ class FoamFrame(DataFrame):
         def _label(axis, field):
            label = kwargs.get(axis + '_label', False)
            if label:
-               self.properties.plot_properties.insert(field, {'label':label})
+               self.properties.plot_properties.insert(field, {axis + '_label':label})
            else:
-               label = self.properties.plot_properties.select(field, 'label', "None")
+               label = self.properties.plot_properties.select(field, axis + '_label', "None")
            return label
 
         bk.xaxis().axis_label = _label('x', x)

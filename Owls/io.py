@@ -136,6 +136,80 @@ def dataframe_to_foam(fullname, ftype, dataframe, boundaries):
         f.write("}")
         f.write("\n// ************************************************************************* //")
 
+class Origins():
+    """ Class to manage fields to file relation and store hashes 
+
+        dct = {'hash':34jd
+               0.0:{'hash':234s                     #time
+                    'centreline':{'hash':94143e     #loc
+                                  'U':filename,3424}
+                    }
+              }  
+    """
+    from collections import defaultdict
+    def __init__(self):
+       self.dct = defaultdict(dict)
+
+    @classmethod
+    def from_dict(cls, dct):
+        pass
+    
+    def to_dict(self):
+        pass
+
+    def insert(self, time, loc, field, filename, fieldhash):
+        try:
+            self.dct[time][loc][field] = filename, fieldhash
+        except:
+            self.dct[time].update({loc:{field: (filename, fieldhash)}})
+
+    def update_hashes(self):
+        for time_key, time in self.dct.iteritems():
+            if time_key == "hash":
+                continue
+            for loc_key, loc in time.iteritems():
+                if loc_key == "hash":
+                    continue
+                self.dct[time_key][loc_key]["hash"] = sum(
+                    [field[1] for key,field in loc.iteritems() if key != "hash"]
+                )
+            self.dct[time_key]["hash"] = sum(
+                    [field["hash"] for key,field in time.iteritems() if key != "hash"]
+            )
+        self.dct["hash"] = sum([field["hash"] for key,field in self.dct.iteritems()
+                                    if key != "hash"]
+        )
+
+    def hashes(self):
+        """ generator """
+        # self.update_hashes()
+        for time_key, time in self.dct.iteritems():
+            if time_key == "hash":
+                continue
+            for loc_key, loc in time.iteritems():
+                if loc_key == "hash":
+                    continue
+                for field, item in loc.iteritems():
+                    if field == "hash":
+                        continue
+                    fn, field_hash = item
+                    yield ((time_key, self.dct["hash"]),
+                           (loc_key,  time["hash"]),
+                           (field, loc["hash"]),
+                           (fn, field_hash)
+                          )
+
+    def find(self, search_hash):
+        for time, loc, field, item in self.hashes():
+            time_name, time_hash   = time
+            loc_name, loc_hash     = loc
+            field_name, field_hash = field
+            filename, item_hash    = item
+            if (search_hash == item_hash):
+                return field_name, filename
+        else:
+            return None,None
+
 class ProgressBar():
     """ A class providing progress bars """
 
@@ -172,10 +246,9 @@ def import_foam_folder(
     df = DataFrame()
     #df.index = MultiIndex.from_tuples(zip([],[]),names=['Loc',0])
     from collections import defaultdict
-    origins = defaultdict(dict) #  
+    origins = Origins()
     for time, files in fileList.iteritems(): #FIXME dont iterate twice
         df_tmp = DataFrame()
-        origin_field = dict()
         for fn in files:
             #ret = read_table(StringIO.StringIO(foam_to_csv(fn)))
             ret = read_data_file(fn, skiplines, maxlines)
@@ -199,21 +272,13 @@ def import_foam_folder(
                 except Exception as e:
                     print x
                     print e
-            for i, field in enumerate(field_names):
-                origin_field[field] = fn, hashes[field]
-            origins[time][loc] = {"hash": sum([_[1] for _ in origin_field.values()]),
-                         "fields":origin_field}
-        origins[time].update({"hash": sum(
-                [_["hash"] for _ in origins[time].values()])}
-        )
+            for field in field_names:
+                origins.insert(time,loc,field,fn,hashes[field])
         df_tmp['Time'] = float(time)
         if df.empty:
             df = df_tmp
         else:
             df = df.append(df_tmp)
-    origins.update({"hash": sum(
-                [_["hash"] for _ in origins.values()])}
-    )
     df.set_index('Time', append=True, inplace=True)
     df = df.reorder_levels(['Time','Loc','Id'])
     p_bar.done()
@@ -290,13 +355,11 @@ def read_data_file(fn, skiplines=1, maxlines=False):
                 df.set_index('Loc', append=True, inplace=True)
                 df.index.names=['Id','Loc']
                 df = df.reorder_levels(['Loc','Id'])
+                df = df.astype(float)
                 hashes = {}
                 for row in df.columns:
-                    d = df[row].values
-                    d.flags.writeable = False
-                    hash_ = int(hashlib.md5(str(d)).hexdigest(),16)
-                    hashes.update({row:hash_})
-                return names, df.astype(float), hashes
+                    hashes.update({row: hash_series(df[row])})
+                return names, df, hashes
             else:
                 data = [np.float32(x) for x in content[start:end:skiplines]]
                 entries = 1
@@ -312,6 +375,13 @@ def read_data_file(fn, skiplines=1, maxlines=False):
             print "Error processing datafile " + fn
             print e
         return None
+
+def hash_series(series):
+    d = series.values
+    d.flags.writeable = False #TODO needed?
+    s = str(list(d))
+    return int(hashlib.md5(s).hexdigest(),16) #NOT
+
 
 def evaluate_names(fullfilename, num_entries):
     """ Infere field names and Loc from given filename 

@@ -3,4 +3,7 @@ language: python
 python:
     - 2.7
 install:
-    - python setup.py install --user
+    - pip install .
+
+script:
+    py.test
