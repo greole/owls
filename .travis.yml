@@ -9,4 +9,4 @@ global:
 before_install:
     - export PATH="$HOME/miniconda/bin:$PATH"
 install:
-    - scripts/travis_install
+    - scripts/travis-install
