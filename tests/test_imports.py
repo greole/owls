@@ -17,16 +17,6 @@ def test_imports():
 #     import Owls as ow
 #     ow.read_sets(folder=basepath)
     
-def test_findtimes():
-    """ are all times and times in sets found """
-    from Owls import io
-    def contains_all(res):
-        times = [str(_*50) for _ in range(21)]
-        return all([time in res for time in times])
-
-    assert contains_all(io.find_times(fold=basepath))
-    assert contains_all(io.find_times(fold=setspath))
-
 def test_findDataFiles():
     """ are all files in the the sets and times folder are found """
     from Owls import io
