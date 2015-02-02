@@ -59,12 +59,20 @@ def find_datafiles(
         subfolder="{}",
     ):
     """ Find all datafiles in each time folder,
-        
-        Returns a dictionary of lists containing data 
+
+        Returns a dictionary of lists containing data
         files for every found time step
-        
-        Subfolders: specify wheter to search in cwd or in a specific subfolder
+
+        fold: list of time folders to look for data files
+              if False time folders in cwd will be taken
+        filelist: A list of file names which are accepted,
+                 if false all files will be returned
+
+        subfolders: specify wheter to search in cwd or in a specific subfolder
                     accepting a search pattern
+        Returns:
+            Ordered dict with times as key and
+            list of found files
     """
     search_folder = (subfolder if not subfolder.startswith('./{}') else "./{}/")
     try:
@@ -78,9 +86,9 @@ def find_datafiles(
         return dict()
 
 def _get_datafiles_from_dir(path=False, fn_filter=False):
-    """ Return file names of Foam files from cwd if no path 
-        is specified explicitly. 
-        If no filter list is given the complete list of files will be returned 
+    """ Return file names of Foam files from cwd if no path
+        is specified explicitly.
+        If no filter list is given the complete list of files will be returned
         else only files matching that list
     """
     search_dir = (path if path else os.getcwd() + "/")
@@ -137,14 +145,14 @@ def dataframe_to_foam(fullname, ftype, dataframe, boundaries):
         f.write("\n// ************************************************************************* //")
 
 class Origins():
-    """ Class to manage fields to file relation and store hashes 
+    """ Class to manage fields to file relation and store hashes
 
         dct = {'hash':34jd
                0.0:{'hash':234s                     #time
                     'centreline':{'hash':94143e     #loc
                                   'U':filename,3424}
                     }
-              }  
+              }
     """
     from collections import defaultdict
     def __init__(self):
@@ -153,7 +161,7 @@ class Origins():
     @classmethod
     def from_dict(cls, dct):
         pass
-    
+
     def to_dict(self):
         pass
 
@@ -214,13 +222,13 @@ class ProgressBar():
     """ A class providing progress bars """
 
     def __init__(self, n_tot, bins=10):
-        #FEATURE: Add timings 
+        #FEATURE: Add timings
         self.tot = float(n_tot)
         self.count = 0.0
         self.cur = 0.0
 
     def next(self):
-        self.count += 1.0 
+        self.count += 1.0
         if self.count/self.tot > self.cur:
             print "#",
             self.cur += 0.1
@@ -237,11 +245,11 @@ def import_foam_folder(
     """ returns a Dataframe for every file in fileList """
     #import StringIO
     from pandas import concat
-           
+
     fileList = find_datafiles(subfolder=search_format, filelist=file_names)
     if not fileList:
         print "no files found"
-        return 
+        return
     p_bar = ProgressBar(n_tot=sum([len(l) for l in fileList.itervalues()]))
     df = DataFrame()
     #df.index = MultiIndex.from_tuples(zip([],[]),names=['Loc',0])
@@ -259,7 +267,7 @@ def import_foam_folder(
             loc = x.index.values[-1][0]
             if df_tmp.empty:
                 df_tmp = x
-            else: 
+            else:
                 try:
                     # use combine first for all df at existing Loc or
                     # if not Loc is specified (Eul or Lag fields)
@@ -286,7 +294,7 @@ def import_foam_folder(
 
 """
 Time Loc        Pos U V
-1000 radVel+10  0.1 
+1000 radVel+10  0.1
               2
      radVel+20  0.1
                 0.2
@@ -294,11 +302,11 @@ Time Loc        Pos U V
 
 
 def foam_to_csv(fn, ):
-    """ helper function for d3.js data conversion 
+    """ helper function for d3.js data conversion
         prints data directly to std:out
     """
     import re
-    try: 
+    try:
         with open(fn) as f:
             content = f.readlines()
             start, num_entries = if_header_skip(content)
@@ -326,7 +334,7 @@ def read_boundary_names(fn):
                 pass
 
 def read_data_file(fn, skiplines=1, maxlines=False):
-    """  A function to read any foam data files returning data and 
+    """  A function to read any foam data files returning data and
          index after header
     """
 
@@ -350,7 +358,7 @@ def read_data_file(fn, skiplines=1, maxlines=False):
                 df = DataFrame(data=data, columns=names)
                 if loc:
                     df['Loc'] = loc
-                else: 
+                else:
                     df['Loc'] = range(len(df))
                 df.set_index('Loc', append=True, inplace=True)
                 df.index.names=['Id','Loc']
@@ -366,7 +374,7 @@ def read_data_file(fn, skiplines=1, maxlines=False):
                 df = DataFrame(data=data, columns=[field])
                 df['Loc'] = "Field"
                 df.set_index('Loc', append=True, inplace=True)
-                df.index.names=['Id','Loc'] 
+                df.index.names=['Id','Loc']
                 df = df.reorder_levels(['Loc','Id'])
                 hashes={field: int(hashlib.md5(str(data)).hexdigest(),16)}
                 return field, df, hashes
@@ -384,9 +392,9 @@ def hash_series(series):
 
 
 def evaluate_names(fullfilename, num_entries):
-    """ Infere field names and Loc from given filename 
+    """ Infere field names and Loc from given filename
 
-        Example: 
+        Example:
             U -> Field, [u,v,w]
             centreLine_U.xy -> centreLine, [Pos,u,v,w]
     """
@@ -420,16 +428,16 @@ def req_file(file_name, requested):
 def import_logs(folder, keys):
     """
         keys = {"ExectionTime": ["ExecTime", "ClockTime"]}
-        
-        return a DataFrame 
-    
+
+        return a DataFrame
+
               Loc, Time KeyName1 Keyname2
-                1   0.1  
-                    
+                1   0.1
+
                     0.2
                 2
 
-    
+
     """
     def find_start(log):
         """ Fast forward through file till 'Starting time loop' """
@@ -439,14 +447,14 @@ def import_logs(folder, keys):
 
 
     def extract(line, keys):
-        """ 
+        """
             returns key and values as list
                 "ExecutionTime":[0,1]
         """
         import re
         for key, col_names in keys.iteritems():
-            if re.search(key, line): 
-                return col_names, map(float,filter(lambda x: 
+            if re.search(key, line):
+                return col_names, map(float,filter(lambda x:
                         x, re.findall("[0-9]+[.]?[0-9]*[e]?[\-]?[0-9]*", line)))
         return None, None
 
@@ -454,7 +462,7 @@ def import_logs(folder, keys):
     logs = [fold + "/" + log for log in files if 'log' in log]
     p_bar = ProgressBar(n_tot = len(logs))
     # Lets make sure that we find Timesteps in the log
-    keys.update({"^Time = ": ['Time']}) 
+    keys.update({"^Time = ": ['Time']})
 
     for log_number, log_name in enumerate(logs):
         with open(log_name) as log:
@@ -470,7 +478,7 @@ def import_logs(folder, keys):
                     # a new time step has begun
                     # flush datadict and concat to df
                     # Very slow but, so far the solution
-                    # to keep subiterations attached to correct time 
+                    # to keep subiterations attached to correct time
                     # FIXME: still needs handling of different length dictionaries
                     df = concat([df,DataFrame(dataDict)])
                     dataDict = defaultdict(list)
