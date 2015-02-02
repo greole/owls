@@ -79,7 +79,7 @@ def find_datafiles(
         times = (fold if fold else find_times(search_folder.format("")))
         od = OrderedDict()
         return  OrderedDict(
-            [(time, _get_datafiles_from_dir(subfolder.format(time), filelist)) #FIXME use ordered dict here
+            [(time, _get_datafiles_from_dir(subfolder.format(time), filelist))
                 for time in times]
             )
     except:
