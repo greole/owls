@@ -21,27 +21,27 @@ def items_from_dict(dict, func, **kwargs):
     return Cases([func(folder=folder,name=name, symb=symb, **kwargs)
                for name, (folder,symb) in dict.iteritems()])
 
-def read_sets(folder, name="None", search="./sets/{}/", **kwargs):
+def read_sets(folder, name="None", search="(postProcessing)*sets/" + io.FPNUMBER, **kwargs):
     return FoamFrame(folder=folder, search_files=False,
             search_pattern=search, name=name, show_func="plot", **kwargs)
 
 def read_lag(folder, files, skiplines=1,
-        name="None", cloud="coalCloud1", **kwargs
+        name="None", cloud="[A-Za-z]*Cloud1", **kwargs
     ):
     return FoamFrame(folder=folder, search_files=files,
-            search_pattern= "./{}/" + "lagrangian/{}/".format(cloud),
+            search_pattern=io.FPNUMBER + "/lagrangian/{}".format(cloud),
             name=name, skiplines=skiplines, show_func="scatter", **kwargs)
 
 def read_eul(folder, files, skiplines=1, name="None", **kwargs):
     return FoamFrame(folder=folder, search_files=files,
-            search_pattern="./{}/", name=name,
+            search_pattern=io.FPNUMBER, name=name,
             skiplines=skiplines, show_func="scatter",
              **kwargs)
 
 def read_exp(folder, name="None", **kwargs):
     #FIXME make it read exp/*dat directly without 0 folder
     return FoamFrame(folder=folder, search_files=False,
-             search_pattern="./{}/", name=name, show_func="scatter", **kwargs)
+             search_pattern=io.FPNUMBER, name=name, show_func="scatter", **kwargs)
 
 
 def read_log(folder, keys, log_name='*log*', plot_properties=False):
@@ -106,7 +106,7 @@ def multi_merge(*args, **kwargs):
                     # select by regex
                     # now see if we have a match
                     selector = kwargs.get('by', "[A-Za-z0-9_\-]")
-                    # skip if search is empty 
+                    # skip if search is empty
                     if (not re.search(selector, name) or
                         not re.search(selector, name_)):
                         continue
@@ -151,10 +151,10 @@ class MultiItem():
     def filter(self, selector):
         """ select a specific item """
         if type(selector) == list:
-            return MultiItem({name:case for name,case in self.cases if 
+            return MultiItem({name:case for name,case in self.cases if
                             name in selector})
         else:
-            return MultiItem({name:case for name,case in self.cases if 
+            return MultiItem({name:case for name,case in self.cases if
                             func(name)})
 
     def iteritems(self):
@@ -164,21 +164,21 @@ class MultiItem():
     def by(self, overlay=True):
         """
             recursiv grouping function
-            
+
             Examples:
-            
+
                 mi.by(overlay=True) -> { cat1_1:{cat2_1:FoamFrame1,
                                                  cat2_2:FoamFrame2,
                                                     ...            }
                                          cat1_2:{cat2_1:FoamFrame3,
                                                     ...            }
                                         }
-                
+
                 m1.by(overlay=False) -> { (cat1_1,cat2_1): FoamFrame1,
                                           (cat1_1,cat2_2): FoamFrame2,
                                             ...
                                         }
-        
+
                needs .show() to check if self.data is recursive
         """
         pass
@@ -290,8 +290,8 @@ class FoamFrame(DataFrame):
 
         { "rad_pos": lambda field -> position
           "centreLine": [] lambda field -> i of []
-        
-        } 
+
+        }
 
         example:
             lambda field: re.search('[0-9]*\.[0-9]*').group()[0]
@@ -313,10 +313,11 @@ class FoamFrame(DataFrame):
       files = kwargs.get('search_files', None)
       properties = kwargs.get('properties', None)
       lines = kwargs.get('maxlines', 0)
-      search = kwargs.get('search_pattern', "{}")
+      search = kwargs.get('search_pattern', io.FPNUMBER)
       folder = kwargs.get('folder', None)
       plot_properties = kwargs.get('plot_properties', None)
       show_func = kwargs.get('show_func', None)
+      validate = kwargs.get('validate', True)
 
       keys = [
           'skiplines',
@@ -336,20 +337,20 @@ class FoamFrame(DataFrame):
         except:
             pass
 
-      #TODO explain what happens here 
+      #TODO explain what happens here
       if folder == None:
            #super(FoamFrame, self).__init__(*args, **kwargs)
            DataFrame.__init__(self, *args, **kwargs)
       else:
-           os.chdir(folder) #FIXME necessary for read in?
            if case_data_base.has_key(folder):
                 print "re-importing",
            else:
                 print "importing",
            print name + ": ",
            origins, data = io.import_foam_folder(
-                       search_format=search,
-                       file_names=files,
+                       path=folder,
+                       search=search,
+                       files=files,
                        skiplines=skip,
                        maxlines=lines,
                   )
@@ -363,7 +364,8 @@ class FoamFrame(DataFrame):
                 data.index.levels[0],
                 symb,
                 show_func)
-           self.validate_origins(folder, origins)
+           if validate:
+                self.validate_origins(folder, origins)
            # register to database
            case_data_base.sync()
 
@@ -449,7 +451,7 @@ class FoamFrame(DataFrame):
     #     pass
     #
     # def get_hashes(self):
-    #     """ returns hashes of current selection based 
+    #     """ returns hashes of current selection based
     #         on the data read from disk """
     #     pass
 
@@ -613,15 +615,15 @@ class FoamFrame(DataFrame):
     #         print "%s Warning: requested field %s not in data base" %(self.name, field)
     #         print e
     #         return Series()
-    
+
   #   def __str__(self):
   #       return """Foam case object
   # Data Fields: {}
-  # Total number of items {} 
+  # Total number of items {}
   # Data root: {}""".format(
   #   str([_ for _ in self.vars]), "unknown", self.folder)
-                    
+
     # def reread(self):
-    #     """ re-read foam data """ 
+    #     """ re-read foam data """
     #     self.origins, self.data = self._read_data()
 
