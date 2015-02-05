@@ -18,8 +18,8 @@ from pandas import *
 from collections import defaultdict
 from collections import OrderedDict
 from IPython.display import display, clear_output
-from frames import *
-from plot import *
+
+FPNUMBER = "[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?"
 
 FOAM_HEADER = """
 /*--------------------------------*- C++ -*----------------------------------*\\
@@ -54,9 +54,9 @@ def match(d, event):
             return d[reg_exp_key]
 
 def find_datafiles(
-        fold=False,
-        filelist=False,
-        subfolder="{}",
+        path=False,
+        files=False,
+        search=FPNUMBER,
     ):
     """ Find all datafiles in each time folder,
 
@@ -66,24 +66,29 @@ def find_datafiles(
         fold: list of time folders to look for data files
               if False time folders in cwd will be taken
         filelist: A list of file names which are accepted,
-                 if false all files will be returned
-
-        subfolders: specify wheter to search in cwd or in a specific subfolder
-                    accepting a search pattern
+                  if false all files will be returned
+        subfolder: specify wheter to search in cwd or in a specific subfolder
+                   accepting a search pattern
         Returns:
             Ordered dict with times as key and
             list of found files
     """
-    search_folder = (subfolder if not subfolder.startswith('./{}') else "./{}/")
-    try:
-        times = (fold if fold else find_times(search_folder.format("")))
-        od = OrderedDict()
-        return  OrderedDict(
-            [(time, _get_datafiles_from_dir(subfolder.format(time), filelist))
-                for time in times]
-            )
-    except:
-        return dict()
+    data_folders = find_datafolders(search, path)
+    return OrderedDict(
+        [(time, _get_datafiles_from_dir(time, files))
+            for time in data_folders]
+        )
+
+def find_datafolders(regex, path=False):
+    """ Find data folders according to regex
+        replaces old find_times function
+        Returns sorted list of times as strings """
+    search_folder = (path if path else os.getcwd())
+    complete_regex = search_folder + regex + "$"
+    folders = [fold for fold,_,_ in os.walk(search_folder)
+                    if re.match(complete_regex,fold)]
+    folders.sort()
+    return folders
 
 def _get_datafiles_from_dir(path=False, fn_filter=False):
     """ Return file names of Foam files from cwd if no path
@@ -91,13 +96,14 @@ def _get_datafiles_from_dir(path=False, fn_filter=False):
         If no filter list is given the complete list of files will be returned
         else only files matching that list
     """
-    search_dir = (path if path else os.getcwd() + "/")
-    cur_dir = os.walk(search_dir)
+    path = (path if path else os.getcwd() + "/")
+    path = (path + "/" if not path.endswith("/") else path)
+    cur_dir = os.walk(path)
     root, dirs, files = next(cur_dir)
     if fn_filter:
-        l = [search_dir + f for f in files if f in fn_filter]
+        l = [path + f for f in files if f in fn_filter]
     else:
-        l = [search_dir + f for f in files if not f.startswith('.')]
+        l = [path + f for f in files if not f.startswith('.')]
     l.sort()
     return l
 
@@ -236,9 +242,19 @@ class ProgressBar():
     def done(self):
         print "[done]",
 
+def strip_time(path, base):
+    """ try to extract time from path """
+    wo_base = path.replace(base,'')
+    match = re.match(wo_base, FPNUMBER)
+    if match:
+        return float(match.group()[0])
+    else:
+        return 0.0
+
 def import_foam_folder(
-            search_format,
-            file_names,
+            path,
+            search,
+            files,
             skiplines=1,
             maxlines=0,
         ):
@@ -246,7 +262,9 @@ def import_foam_folder(
     #import StringIO
     from pandas import concat
 
-    fileList = find_datafiles(subfolder=search_format, filelist=file_names)
+    if not path.endswith('/'):
+        path = path + '/'
+    fileList = find_datafiles(path, search=search, files=files)
     if not fileList:
         print "no files found"
         return
@@ -256,6 +274,7 @@ def import_foam_folder(
     from collections import defaultdict
     origins = Origins()
     for time, files in fileList.iteritems(): #FIXME dont iterate twice
+        time = strip_time(time, path)
         df_tmp = DataFrame()
         for fn in files:
             #ret = read_table(StringIO.StringIO(foam_to_csv(fn)))
@@ -280,6 +299,7 @@ def import_foam_folder(
                 except Exception as e:
                     print x
                     print e
+            field_names = ([field_names] if not type(field_names) == list else field_names)
             for field in field_names:
                 origins.insert(time,loc,field,fn,hashes[field])
         df_tmp['Time'] = float(time)
@@ -305,7 +325,6 @@ def foam_to_csv(fn, ):
     """ helper function for d3.js data conversion
         prints data directly to std:out
     """
-    import re
     try:
         with open(fn) as f:
             content = f.readlines()
