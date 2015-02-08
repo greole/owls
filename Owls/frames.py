@@ -392,7 +392,10 @@ class FoamFrame(DataFrame):
                         loc_name, loc_hash     = loc
                         field_name, field_hash = field
                         filename, item_hash    = item
-                        orig_hash = case_data_base[folder][time_name][loc_name][field_name][1]
+                        try:
+                            orig_hash = case_data_base[folder][time_name][loc_name][field_name][1]
+                        except:
+                            orig_hash = item_hash
                         if (item_hash != orig_hash):
                             print ""
                             print "corrupted fields:"
