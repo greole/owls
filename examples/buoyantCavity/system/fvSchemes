@@ -1,7 +1,7 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  2.3.0                                 |
+|  \\    /   O peration     | Version:  2.0.0                                 |
 |   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
@@ -27,19 +27,23 @@ gradSchemes
 divSchemes
 {
     default         none;
-
-    div(phi,U)      bounded Gauss limitedLinear 0.2;
-    div(phi,K)      bounded Gauss limitedLinear 0.2;
-    div(phi,h)      bounded Gauss limitedLinear 0.2;
-    div(phi,k)      bounded Gauss limitedLinear 0.2;
-    div(phi,epsilon) bounded Gauss limitedLinear 0.2;
-    div(phi,omega) bounded Gauss limitedLinear 0.2;
+    div(phi,U)      Gauss limitedLinear 0.2;
+    div(phi,h)      Gauss limitedLinear 0.2;
+    div(phi,k)      Gauss limitedLinear 0.2;
+    div(phi,epsilon) Gauss limitedLinear 0.2;
+    div(phi,omega) Gauss limitedLinear 0.2;
     div((muEff*dev2(T(grad(U))))) Gauss linear;
 }
 
 laplacianSchemes
 {
-    default         Gauss linear orthogonal;
+    default         none;
+    laplacian(muEff,U) Gauss linear uncorrected;
+    laplacian((rho*(1|A(U))),p_rgh) Gauss linear uncorrected;
+    laplacian(alphaEff,h) Gauss linear uncorrected;
+    laplacian(DkEff,k) Gauss linear uncorrected;
+    laplacian(DepsilonEff,epsilon) Gauss linear uncorrected;
+    laplacian(DomegaEff,omega) Gauss linear uncorrected;
 }
 
 interpolationSchemes
@@ -49,7 +53,7 @@ interpolationSchemes
 
 snGradSchemes
 {
-    default         orthogonal;
+    default         uncorrected;
 }
 
 fluxRequired

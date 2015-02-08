@@ -2,6 +2,7 @@
 
 ![](https://badge.fury.io/py/owls.svg)
 ![](https://badge.fury.io/gh/greole%2Fowls.svg)
+![](https://travis-ci.org/greole/owls.svg?branch=master)
 
 The Owls package is a collection of python tools for data analysis and 
 plotting of OpenFOAM cases. It provides the following basic functionality: 
