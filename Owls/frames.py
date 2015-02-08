@@ -32,10 +32,10 @@ def read_lag(folder, files, skiplines=1,
             search_pattern=io.FPNUMBER + "/lagrangian/{}".format(cloud),
             name=name, skiplines=skiplines, show_func="scatter", **kwargs)
 
-def read_eul(folder, files, skiplines=1, name="None", **kwargs):
+def read_eul(folder, files, skiplines=1, name="None", preHooks=None, **kwargs):
     return FoamFrame(folder=folder, search_files=files,
             search_pattern=io.FPNUMBER, name=name,
-            skiplines=skiplines, show_func="scatter",
+            skiplines=skiplines, show_func="scatter", preHooks=preHooks,
              **kwargs)
 
 def read_exp(folder, name="None", **kwargs):
@@ -318,6 +318,7 @@ class FoamFrame(DataFrame):
       plot_properties = kwargs.get('plot_properties', None)
       show_func = kwargs.get('show_func', None)
       validate = kwargs.get('validate', True)
+      preHooks = kwargs.get('preHooks', None)
 
       keys = [
           'skiplines',
@@ -342,6 +343,9 @@ class FoamFrame(DataFrame):
            #super(FoamFrame, self).__init__(*args, **kwargs)
            DataFrame.__init__(self, *args, **kwargs)
       else:
+           if preHooks:
+                for hook in preHooks:
+                    hook.execute()
            if case_data_base.has_key(folder):
                 print "re-importing",
            else:

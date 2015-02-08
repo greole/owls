@@ -245,9 +245,10 @@ class ProgressBar():
 def strip_time(path, base):
     """ try to extract time from path """
     wo_base = path.replace(base,'')
-    match = re.match(wo_base, FPNUMBER)
+    match = re.search(FPNUMBER, wo_base)
     if match:
-        return float(match.group()[0])
+        time = float(match.group())
+        return time
     else:
         return 0.0
 
@@ -302,7 +303,7 @@ def import_foam_folder(
             field_names = ([field_names] if not type(field_names) == list else field_names)
             for field in field_names:
                 origins.insert(time,loc,field,fn,hashes[field])
-        df_tmp['Time'] = float(time)
+        df_tmp['Time'] = time
         if df.empty:
             df = df_tmp
         else:
