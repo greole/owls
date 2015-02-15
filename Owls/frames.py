@@ -1,6 +1,5 @@
 import os
 import re
-import io
 import shelve
 import plot as plt
 from collections import OrderedDict
@@ -8,6 +7,10 @@ from collections import OrderedDict
 from pandas import Series
 from pandas import DataFrame
 from pandas import concat
+
+from MultiFrame import MultiFrame
+import io
+
 
 Series.__repr__ = (lambda x: ("Hash: {}\nTimes: {}\nLoc: {}\nValues: {}".format(
                     io.hash_series(x),
@@ -121,111 +124,6 @@ def multi_merge(*args, **kwargs):
         plots.append(merge(*sub_plots, x=x, y=y, title=name, colors=colors))
     return plots
 
-class MultiItem():
-    """ Class for storage of multiple case items
-        or faceted data from FoamFrame
-    """
-    #TODO:  implememt multi-facetting
-    #       e.g. (cases.by_index('Loc')    <- returns a MultiItem
-    #               .by_case(overlay=True) <- MultiItem method
-    #               .show('T')
-    #TODO: implement __repr__ method
-    def __init__(self, cases=None):
-        if type(cases) == list:
-            self.cases = OrderedDict([(case.name,case) for case in cases])
-        elif type(cases) == OrderedDict:
-            self.cases=cases
-        else:
-            self.cases={}
-
-    def __getitem__(self, field):
-        return [serie[field] for serie in self.cases.itervalues()]
-
-    def names(self):
-        return [name for name in self.cases]
-
-    def select(self, case):
-        """ select a specific item """
-        return self.cases[case]
-
-    def filter(self, selector):
-        """ select a specific item """
-        if type(selector) == list:
-            return MultiItem({name:case for name,case in self.cases if
-                            name in selector})
-        else:
-            return MultiItem({name:case for name,case in self.cases if
-                            func(name)})
-
-    def iteritems(self):
-        for name,case in self.cases.iteritems():
-            yield name,case
-
-    def by(self, overlay=True):
-        """
-            recursiv grouping function
-
-            Examples:
-
-                mi.by(overlay=True) -> { cat1_1:{cat2_1:FoamFrame1,
-                                                 cat2_2:FoamFrame2,
-                                                    ...            }
-                                         cat1_2:{cat2_1:FoamFrame3,
-                                                    ...            }
-                                        }
-
-                m1.by(overlay=False) -> { (cat1_1,cat2_1): FoamFrame1,
-                                          (cat1_1,cat2_2): FoamFrame2,
-                                            ...
-                                        }
-
-               needs .show() to check if self.data is recursive
-        """
-        pass
-
-    def scatter(self, y, x='Pos', z=False, overlay=False, **kwargs):
-        import bokeh.plotting as bk
-        return self._draw(x, y, z=z, overlay=overlay,
-                    inst_func="scatter", **kwargs)
-
-    def plot(self, y, x='Pos', z=False, overlay=False, **kwargs):
-        return self._draw(x, y, z=z, overlay=overlay,
-                    inst_func="plot", **kwargs)
-
-    def show(self, y, x='Pos', z=False, overlay=False, **kwargs):
-        return self._draw(x, y, z=z, overlay=overlay,
-                    inst_func="show", **kwargs)
-
-    def _draw(self, x, y, z, overlay, inst_func, **kwargs):
-        import bokeh.plotting as bk
-        import numpy as np
-        def greatest_divisor(number):
-            if number == 1:
-                return 1
-            for i in reversed(range(number)):
-                if number % i == 0:
-                    return i
-            else:
-                return 1
-
-        if not overlay:
-            rows=[]
-            for name, instance in self.cases.iteritems():
-                bk.figure()
-                rows.append(
-                        getattr(instance, inst_func)
-                            (x=x, y=y, title=name, **kwargs) #FIXME num cars
-                    )
-            rows = np.array(rows).reshape(greatest_divisor(len(rows)),-1).tolist()
-            return bk.GridPlot(children=rows, title="Scatter")
-        else:
-           bk.hold()
-           colors = plt.next_color()
-           for name, instance in self.cases.iteritems():
-                color = next(colors)
-                getattr(instance, inst_func)(x=x, y=y, title="", color=color, legend=name, **kwargs)
-           bk.hold(False)
-           return bk.curplot()
 
 class PlotProperties():
 
@@ -557,7 +455,7 @@ class FoamFrame(DataFrame):
                 .filter(name='Loc', index=lambda x: 0.2<field_to_float(x)<0.8)
         """
         if index:
-            ret = self[map(index,self.get_level_values(name))]
+            ret = self[map(index, self.index.get_level_values(name))]
             ret.properties = self.properties
             return ret
         elif field:
@@ -591,7 +489,7 @@ class FoamFrame(DataFrame):
                   )
             for _ in ret.itervalues():
                 _.properties = self.properties
-            return MultiItem(ret)
+            return MultiFrame(ret)
         else:
             self['cat'] = map(field, self[name])
             cats = self.groupby('cat').groups.keys()
@@ -600,7 +498,7 @@ class FoamFrame(DataFrame):
                 )
             for _ in ret.itervalues():
                 _.properties = self.properties
-            return MultiItem(ret)
+            return MultiFrame(ret)
 
     ############################################################################
     @property
