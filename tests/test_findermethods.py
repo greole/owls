@@ -7,26 +7,32 @@ from Owls import io
 @pytest.fixture
 def create_directory_tree(tmpdir):
     def create_files(fold, files):
+       mock_data = "\n".join(["1 2", "3 4", "5 6"])
        for f in files:
            handle = fold.join(f)
-           handle.write("foo")
+           handle.write(mock_data)
 
     def create_times(basedir, times):
         for time in times:
             time_fold = basedir.mkdir(str(time))
             yield time_fold
 
-    files = ["U", "UMean", "U_0", "foo.xy"]
+    files = ["U", "UMean", "U_0", "foo.xy", "T"]
     folders = range(10)
     folders.extend([str(float(_)) for _ in folders])
     folders.extend(["1.23e-09"])
     ignored = ["system", "constant", "0-bck", "0.old"]
+    for prc_nr in range(4):
+        proc_dir = tmpdir.mkdir("processor" + str(prc_nr))
+        for folder in create_times(proc_dir, folders):
+            create_files(folder, files)
+
     for folder in create_times(tmpdir, folders):
-       particle_fold = folder.mkdir("lagrangian").mkdir("particleCloud1")
-       create_files(folder, files)
-       create_files(particle_fold, files)
+        particle_fold = folder.mkdir("lagrangian").mkdir("particleCloud1")
+        create_files(folder, files)
+        create_files(particle_fold, files)
     for folder in ignored:
-       tmpdir.mkdir(folder)
+        tmpdir.mkdir(folder)
     for sets_folder in create_times(tmpdir.mkdir("sets"), folders):
         create_files(sets_folder, files)
     folders_str = [str(f) for f in folders]
@@ -79,6 +85,11 @@ def test_finddatafolders(create_directory_tree):
     assert _all(base+test_dir + "sets/", sets, folders)
     assert _all(base+test_dir + "sets/", sets, ignored, negate=not_)
 
+    eulerian_decomp = io.find_datafolders(
+        regex="processor[0-9]\/" + io.FPNUMBER,
+        path=base + test_dir
+    )
+
 def test_findDataFiles(create_directory_tree):
     """ test if all files in the times folder are found """
     base, folders, ignored, files = create_directory_tree
@@ -91,6 +102,7 @@ def test_findDataFiles(create_directory_tree):
                 assert target in result[testdir + search_fold + extra]
 
     eulerian = io.find_datafiles(path=test_dir)
+    els_eulerian = len(eulerian)
     _test(test_dir, folders, files, eulerian)
 
     sets = io.find_datafiles(path=test_dir, search="sets/" + io.FPNUMBER)
@@ -98,3 +110,15 @@ def test_findDataFiles(create_directory_tree):
 
     lagrangian = io.find_datafiles(path=test_dir, search=io.FPNUMBER + "/lagrangian/[\w]*Cloud[0-9]?")
     _test(test_dir, folders, files, lagrangian, extra="/lagrangian/particleCloud1")
+
+    eulerian_decomp = io.find_datafiles(path=test_dir, search="processor[0-9]\/" + io.FPNUMBER)
+    els_eulerian_decomp = len(eulerian_decomp)
+
+    assert els_eulerian * 4 == els_eulerian_decomp
+
+    eulerian_decomp = io.import_foam_folder(
+        path=test_dir,
+        search="processor[0-9]\/" + io.FPNUMBER,
+        files=['T'])
+    print eulerian_decomp
+
