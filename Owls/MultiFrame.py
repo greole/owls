@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 class MultiFrame():
     """ Class for storage of multiple case items
         or faceted data from FoamFrame
