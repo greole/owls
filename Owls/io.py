@@ -244,8 +244,9 @@ class ProgressBar():
 
 def strip_time(path, base):
     """ try to extract time from path """
-    wo_base = path.replace(base,'')
-    match = re.search(FPNUMBER, wo_base)
+    wo_base = path.replace(base, '')
+    wo_proc = re.sub('processor[0-9]?', '', wo_base)
+    match = re.search(FPNUMBER, wo_proc)
     if match:
         time = float(match.group())
         return time
