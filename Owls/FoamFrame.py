@@ -156,7 +156,6 @@ class Props():
         self.show_func=show_func
 
 
-
 class FoamFrame(DataFrame):
     """ Data reprensentation of OpenFOAM field (eulerian and lagrangian)
     and set files. Instantiated through read methods, e.g:
@@ -206,6 +205,7 @@ class FoamFrame(DataFrame):
     def __init__(self, *args, **kwargs):
 
       skip = kwargs.get('skiplines', 1)
+      times = kwargs.get('skiptimes', 1)
       name = kwargs.get('name', 'None')
       symb = kwargs.get('symb', 'o')
       files = kwargs.get('search_files', None)
@@ -213,7 +213,7 @@ class FoamFrame(DataFrame):
       lines = kwargs.get('maxlines', 0)
       search = kwargs.get('search_pattern', io.FPNUMBER)
       folder = kwargs.get('folder', None)
-      plot_properties = kwargs.get('plot_properties', None)
+      plot_properties = kwargs.get('plot_properties', PlotProperties())
       show_func = kwargs.get('show_func', None)
       validate = kwargs.get('validate', True)
       preHooks = kwargs.get('preHooks', None)
@@ -255,6 +255,7 @@ class FoamFrame(DataFrame):
                        files=files,
                        skiplines=skip,
                        maxlines=lines,
+                       skiptimes=times,
                   )
            DataFrame.__init__(self, data)
            self.properties = Props(
