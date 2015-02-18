@@ -9,6 +9,7 @@ from .version import __version__
 from io import *
 from plot import *
 from foam import *
-from frames import *
+from FoamFrame import *
+from MultiFrame import *
 
 print "Owls Version: " + __version__
