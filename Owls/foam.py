@@ -25,7 +25,7 @@ class genericHook(object):
         self.path = path
         self.cmd = cmd
     
-    def execute(self)reconstructPa
+    def execute(self):
         return execute_in_path(self.path, self.cmd)
 
 class cellCentres(genericHook):
