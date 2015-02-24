@@ -48,10 +48,9 @@ def read_eul(folder, files, skiplines=1, name="None", decomposed=False,
             skiplines=skiplines, show_func="scatter", preHooks=preHooks,
              **kwargs)
 
-def read_exp(folder, name="None", **kwargs):
-    #FIXME make it read exp/*dat directly without 0 folder
+def read_exp(folder, name="None", search="", **kwargs):
     return FoamFrame(folder=folder, search_files=False,
-             search_pattern=io.FPNUMBER, name=name, show_func="scatter", **kwargs)
+             search_pattern=search, name=name, show_func="scatter", **kwargs)
 
 
 def read_log(folder, keys, log_name='*log*', plot_properties=False):
