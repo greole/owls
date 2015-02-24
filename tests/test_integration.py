@@ -18,7 +18,7 @@ def readSets():
 @pytest.fixture(scope="session")
 def readExp():
     path = exec_path + "/examples/buoyantCavity/sets/100"
-    return ow.read_sets(folder=path, validate=False, search="")
+    return ow.read_exp(folder=path, validate=False, search="")
 
 def test_eul(readEul):
     ff = readEul
@@ -33,5 +33,7 @@ def test_sets(readSets):
     assert type(ff.filter('T', field=lambda x: x>293.0))
     assert ff.by_index('Loc')
 
-def test_sets(readExp):
-    ff = readSets
+def test_exp(readExp):
+    ff = readExp
+    assert ff
+    assert ff.times
