@@ -244,8 +244,9 @@ class ProgressBar():
 
 def strip_time(path, base):
     """ try to extract time from path """
-    wo_base = path.replace(base,'')
-    match = re.search(FPNUMBER, wo_base)
+    wo_base = path.replace(base, '')
+    wo_proc = re.sub('processor[0-9]?', '', wo_base)
+    match = re.search(FPNUMBER, wo_proc)
     if match:
         time = float(match.group())
         return time
@@ -258,6 +259,7 @@ def import_foam_folder(
             files,
             skiplines=1,
             maxlines=0,
+            skiptimes=1,
         ):
     """ returns a Dataframe for every file in fileList """
     #import StringIO
@@ -274,7 +276,8 @@ def import_foam_folder(
     #df.index = MultiIndex.from_tuples(zip([],[]),names=['Loc',0])
     from collections import defaultdict
     origins = Origins()
-    for time, files in fileList.iteritems(): #FIXME dont iterate twice
+    els = list(fileList.iteritems())[::skiptimes]
+    for time, files in els:
         time = strip_time(time, path)
         df_tmp = DataFrame()
         for fn in files:

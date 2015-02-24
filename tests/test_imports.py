@@ -5,7 +5,11 @@ exec_path = "/home/go/documents/code/Owls"
 def test_imports():
     """ are the main modules importable """
     from Owls import io
-    from Owls import frames
+    from Owls import FoamFrame
+    from Owls import MultiFrame
+    from Owls import foam
+    from Owls import plot
+
 
 def test_importFoamFolder():
     from Owls import io
