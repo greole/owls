@@ -35,5 +35,4 @@ def test_sets(readSets):
 
 def test_exp(readExp):
     ff = readExp
-    assert ff
     assert ff.times
