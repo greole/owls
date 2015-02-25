@@ -36,3 +36,7 @@ def test_sets(readSets):
 def test_exp(readExp):
     ff = readExp
     assert ff.times
+    ow.multi_merge(
+        ff.latest.by_index('Loc'),
+        ff.latest.by_index('Loc'),
+        x='Pos', y='T')
