@@ -374,8 +374,25 @@ class FoamFrame(DataFrame):
                label = self.properties.plot_properties.select(field, axis + '_label', "None")
            return label
 
+        def _range(axis, field):
+           from bokeh.objects import Range1d
+           p_range_args = kwargs.get(axis + '_label', False)
+           if p_range_args:
+               self.properties.plot_properties.insert(field, {axis + '_range': p_range})
+           else:
+               p_range = self.properties.plot_properties.select(field, axis + '_range')
+           if not p_range:
+                return False
+           else:
+                return Range1d(start=p_range[0], end=p_range[1])
+
+
         bk.xaxis().axis_label = _label('x', x)
+        if _range('x', x):
+            ret.x_range = _range('x', x)
         bk.yaxis().axis_label = _label('y', y[0]) #TODO can this make sense for multiplots?
+        if _range('y', y[0]):
+            ret.y_range = _range('y', y[0])
         return ret
 
     def scatter(self, y, x='Pos', z=False, title="", **kwargs):
