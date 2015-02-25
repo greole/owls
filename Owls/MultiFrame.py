@@ -1,4 +1,5 @@
 from collections import OrderedDict
+import plot
 
 class MultiFrame():
     """ Class for storage of multiple case items
@@ -99,7 +100,7 @@ class MultiFrame():
             return bk.GridPlot(children=rows, title="Scatter")
         else:
            bk.hold()
-           colors = plt.next_color()
+           colors = plot.next_color()
            for name, instance in self.cases.iteritems():
                 color = next(colors)
                 getattr(instance, inst_func)(x=x, y=y, title="", color=color, legend=name, **kwargs)
