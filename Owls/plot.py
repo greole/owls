@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy
+import re
 import os
 import shutil
 import hashlib
@@ -55,7 +56,7 @@ def multi_merge(*args, **kwargs):
     )
     for name, data in items:
         sub_plots=[data]
-        colors = plt.next_color()
+        colors = next_color()
         for c_ in args[1:]:
             # and through all sets to be plotted
             for name_, plot_ in c_.iteritems():
