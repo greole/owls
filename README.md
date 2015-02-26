@@ -22,46 +22,29 @@ pip install Owls # for non development version
 # Introduction
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.python .numberLines}
-import Owls # or
 import Owls as ow
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Basic documentation is provided through Pythons docstrings and can be called by:
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.python .numberLines}
-help(Owls)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 ## Reading Foam Data
+Owls provides convenient methods to import OpenFOAM data and experimental data i.e. 
 
 ~~~~.python
 s1 = read_sets(
     folder='/some/path/', 
     name='foo', # name of the case 
-    plot_properties=PlotProperties() # an object to store plotting info
     )
 ~~~~
-
-also available read_eul, read_lag, and read_exp, read_log
-### Import Data from OpenFOAM Version > 2.0.x
-Newer versions of OpenFOAM write sets in a folder called postprocessing/sets
-to use Owls you can import sets as
-~~~~.python
-s1 = read_sets(
-    folder='/some/path/', 
-    name='foo', # name of the case 
-    search='./postProcessing/sets/{}/',
-    plot_properties=PlotProperties() # an object to store plotting info
-    )
-~~~~
+where folder is the root folder of your OpenFOAM case. Additionally available read_eul, read_lag, and read_exp, read_log
 
 ## Accessing Data
+Since Owls is build on Pandas you can use the standard features of Pandas like bracket notation to access the data
+
 ~~~~.python
 s1['T'] # access full Temperature row
 s1.latest['T'] # access latest temperature row
 # access latest temperature data
 # at 'y0.1' location
-# corresponds to sets/1000/y0.1_T.xy
+# corresponds to sets/TIME/y0.1_T.xy
 s1.latest.location('y0.1') 
 ~~~~
 
@@ -71,8 +54,9 @@ Data can be filtered using user defined function
 s1.latest.filter(name="T", field=lambda x: 291<x<291.5)
 s1.latest.filter(name="Pos", field=lambda x: 0.1<x<0.2)
 ~~~~
-## Grouping Data
 
+
+## Grouping Data
 Data can be grouped/facetted to generated plot matrizes or overlayed plots
 
 ~~~~.python
