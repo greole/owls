@@ -80,7 +80,8 @@ def multi_merge(*args, **kwargs):
     return plots
 
 def next_color():
-    for col in config['color_cycle']:
+    from itertools import cycle
+    for col in cycle(config['color_cycle']):
         yield col
 
 def rolling_mean(x,y,z):
