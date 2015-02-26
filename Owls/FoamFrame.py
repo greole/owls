@@ -1,6 +1,5 @@
 import os
 import re
-import io
 import shelve
 import plot as plt
 from collections import OrderedDict
@@ -9,39 +8,53 @@ from pandas import Series
 from pandas import DataFrame
 from pandas import concat
 
+from MultiFrame import MultiFrame
+import io
+
+
 Series.__repr__ = (lambda x: ("Hash: {}\nTimes: {}\nLoc: {}\nValues: {}".format(
                     io.hash_series(x),
                     list(set(x.keys().get_level_values('Time'))), # avoid back and forth conversion
                     list(set(x.keys().get_level_values('Loc'))),
                     x.values))) #TODO monkey patch to use hashes
+Database = False
 
-case_data_base = shelve.open(os.path.expanduser('~') + "/.owls/db")
+if Database:
+    case_data_base = shelve.open(os.path.expanduser('~') + "/.owls/db")
+else:
+    case_data_base = dict() 
 
 def items_from_dict(dict, func, **kwargs):
     return Cases([func(folder=folder,name=name, symb=symb, **kwargs)
                for name, (folder,symb) in dict.iteritems()])
 
-def read_sets(folder, name="None", search="./sets/{}/", **kwargs):
+def read_sets(folder, name="None", search="(postProcessing)*sets/" + io.FPNUMBER, **kwargs):
     return FoamFrame(folder=folder, search_files=False,
-            search_pattern=search, name=name, show_func="plot", **kwargs)
+            search_pattern=search, name=name,
+            show_func="plot", preHooks=None, **kwargs)
 
 def read_lag(folder, files, skiplines=1,
-        name="None", cloud="coalCloud1", **kwargs
+        name="None", cloud="[A-Za-z]*Cloud1",
+        preHooks=None, decomposed=False, **kwargs
     ):
+    search = io.FPNUMBER + "/lagrangian/" + cloud,
+    search = (search if not decomposed else "processor[0-9]?/" + search)
     return FoamFrame(folder=folder, search_files=files,
-            search_pattern= "./{}/" + "lagrangian/{}/".format(cloud),
-            name=name, skiplines=skiplines, show_func="scatter", **kwargs)
+                search_pattern=search, name=name, skiplines=skiplines,
+                show_func="scatter", **kwargs)
 
-def read_eul(folder, files, skiplines=1, name="None", **kwargs):
+def read_eul(folder, files, skiplines=1, name="None", decomposed=False,
+            preHooks=None, **kwargs):
+    search = io.FPNUMBER
+    search = (search if not decomposed else "processor[0-9]?/" + search)
     return FoamFrame(folder=folder, search_files=files,
-            search_pattern="./{}/", name=name,
-            skiplines=skiplines, show_func="scatter",
+            search_pattern=search, name=name,
+            skiplines=skiplines, show_func="scatter", preHooks=preHooks,
              **kwargs)
 
-def read_exp(folder, name="None", **kwargs):
-    #FIXME make it read exp/*dat directly without 0 folder
+def read_exp(folder, name="None", search="", **kwargs):
     return FoamFrame(folder=folder, search_files=False,
-             search_pattern="./{}/", name=name, show_func="scatter", **kwargs)
+             search_pattern=search, name=name, show_func="scatter", **kwargs)
 
 
 def read_log(folder, keys, log_name='*log*', plot_properties=False):
@@ -57,175 +70,6 @@ def read_log(folder, keys, log_name='*log*', plot_properties=False):
             show_func="plot",
             )
     return ff
-
-def merge(*args, **kwargs):
-    import bokeh.plotting as bk
-    bk.figure()
-    bk.hold()
-    y = kwargs.get('y',None)
-    x = kwargs.get('x','Pos')
-    try:
-        kwargs.pop('y')
-        kwargs.pop('x')
-    except:
-        pass
-    y = (y if type(y) == list else [y]*len(args)) #FIXME do the same for x
-    for yi,p in zip(y,args):
-        p.show(x=x, y=yi, color=next(kwargs["colors"]), **kwargs)
-    return bk.curplot()
-
-def multi_merge(*args, **kwargs):
-    """ call merge for all args
-
-        Examples:   mm=multi_merge(
-                        sets1.latest.by_index('Loc'),
-                        sets2.latest.by_index('Loc'),
-                        by='[0-9]+',
-                        x='Pos',
-                        y='vMean'
-                        order=[x-10,x+25])
-
-    """
-    import bokeh.plotting as bk
-    y = kwargs.get('y',None)
-    x = kwargs.get('x','Pos')
-    plots=[]
-    c = args[0]
-    # go through all items to be plotted
-    items = (
-        ((name,data) for name, data in c.iteritems() if name in kwargs['order'])
-        if kwargs.get('order',False) else c.iteritems()
-    )
-    for name, data in items:
-        sub_plots=[data]
-        colors = plt.next_color()
-        for c_ in args[1:]:
-            # and through all sets to be plotted
-            for name_, plot_ in c_.iteritems():
-                if not kwargs.get('order', False):
-                    # select by regex
-                    # now see if we have a match
-                    selector = kwargs.get('by', "[A-Za-z0-9_\-]")
-                    # skip if search is empty 
-                    if (not re.search(selector, name) or
-                        not re.search(selector, name_)):
-                        continue
-                    # append to subplot if same schema
-                    if (re.search(selector, name).group()
-                        == re.search(selector, name_).group()):
-                        sub_plots.append(plot_)
-                else:
-                    #select by name in order list
-                    if name_ == name:
-                        sub_plots.append(plot_)
-        plots.append(merge(*sub_plots, x=x, y=y, title=name, colors=colors))
-    return plots
-
-class MultiItem():
-    """ Class for storage of multiple case items
-        or faceted data from FoamFrame
-    """
-    #TODO:  implememt multi-facetting
-    #       e.g. (cases.by_index('Loc')    <- returns a MultiItem
-    #               .by_case(overlay=True) <- MultiItem method
-    #               .show('T')
-    #TODO: implement __repr__ method
-    def __init__(self, cases=None):
-        if type(cases) == list:
-            self.cases = OrderedDict([(case.name,case) for case in cases])
-        elif type(cases) == OrderedDict:
-            self.cases=cases
-        else:
-            self.cases={}
-
-    def __getitem__(self, field):
-        return [serie[field] for serie in self.cases.itervalues()]
-
-    def names(self):
-        return [name for name in self.cases]
-
-    def select(self, case):
-        """ select a specific item """
-        return self.cases[case]
-
-    def filter(self, selector):
-        """ select a specific item """
-        if type(selector) == list:
-            return MultiItem({name:case for name,case in self.cases if 
-                            name in selector})
-        else:
-            return MultiItem({name:case for name,case in self.cases if 
-                            func(name)})
-
-    def iteritems(self):
-        for name,case in self.cases.iteritems():
-            yield name,case
-
-    def by(self, overlay=True):
-        """
-            recursiv grouping function
-            
-            Examples:
-            
-                mi.by(overlay=True) -> { cat1_1:{cat2_1:FoamFrame1,
-                                                 cat2_2:FoamFrame2,
-                                                    ...            }
-                                         cat1_2:{cat2_1:FoamFrame3,
-                                                    ...            }
-                                        }
-                
-                m1.by(overlay=False) -> { (cat1_1,cat2_1): FoamFrame1,
-                                          (cat1_1,cat2_2): FoamFrame2,
-                                            ...
-                                        }
-        
-               needs .show() to check if self.data is recursive
-        """
-        pass
-
-    def scatter(self, y, x='Pos', z=False, overlay=False, **kwargs):
-        import bokeh.plotting as bk
-        return self._draw(x, y, z=z, overlay=overlay,
-                    inst_func="scatter", **kwargs)
-
-    def plot(self, y, x='Pos', z=False, overlay=False, **kwargs):
-        return self._draw(x, y, z=z, overlay=overlay,
-                    inst_func="plot", **kwargs)
-
-    def show(self, y, x='Pos', z=False, overlay=False, **kwargs):
-        return self._draw(x, y, z=z, overlay=overlay,
-                    inst_func="show", **kwargs)
-
-    def _draw(self, x, y, z, overlay, inst_func, **kwargs):
-        import bokeh.plotting as bk
-        import numpy as np
-        def greatest_divisor(number):
-            if number == 1:
-                return 1
-            for i in reversed(range(number)):
-                if number % i == 0:
-                    return i
-            else:
-                return 1
-
-        if not overlay:
-            rows=[]
-            for name, instance in self.cases.iteritems():
-                bk.figure()
-                rows.append(
-                        getattr(instance, inst_func)
-                            (x=x, y=y, title=name, **kwargs) #FIXME num cars
-                    )
-            rows = np.array(rows).reshape(greatest_divisor(len(rows)),-1).tolist()
-            return bk.GridPlot(children=rows, title="Scatter")
-        else:
-           bk.hold()
-           colors = plt.next_color()
-           for name, instance in self.cases.iteritems():
-                color = next(colors)
-                getattr(instance, inst_func)(x=x, y=y, title="", color=color, legend=name, **kwargs)
-           bk.hold(False)
-           return bk.curplot()
 
 class PlotProperties():
 
@@ -256,7 +100,6 @@ class Props():
         self.latest_time = max(times)
         self.symb=symb
         self.show_func=show_func
-
 
 
 class FoamFrame(DataFrame):
@@ -290,8 +133,8 @@ class FoamFrame(DataFrame):
 
         { "rad_pos": lambda field -> position
           "centreLine": [] lambda field -> i of []
-        
-        } 
+
+        }
 
         example:
             lambda field: re.search('[0-9]*\.[0-9]*').group()[0]
@@ -308,18 +151,23 @@ class FoamFrame(DataFrame):
     def __init__(self, *args, **kwargs):
 
       skip = kwargs.get('skiplines', 1)
+      times = kwargs.get('skiptimes', 1)
       name = kwargs.get('name', 'None')
       symb = kwargs.get('symb', 'o')
       files = kwargs.get('search_files', None)
       properties = kwargs.get('properties', None)
       lines = kwargs.get('maxlines', 0)
-      search = kwargs.get('search_pattern', "{}")
+      search = kwargs.get('search_pattern', io.FPNUMBER)
       folder = kwargs.get('folder', None)
-      plot_properties = kwargs.get('plot_properties', None)
+      plot_properties = kwargs.get('plot_properties', PlotProperties())
       show_func = kwargs.get('show_func', None)
+      validate = kwargs.get('validate', True)
+      preHooks = kwargs.get('preHooks', None)
 
       keys = [
           'skiplines',
+          'skiptimes',
+          'preHooks',
           'name',
           'symb',
           'search_files',
@@ -336,22 +184,26 @@ class FoamFrame(DataFrame):
         except:
             pass
 
-      #TODO explain what happens here 
+      #TODO explain what happens here
       if folder == None:
            #super(FoamFrame, self).__init__(*args, **kwargs)
            DataFrame.__init__(self, *args, **kwargs)
       else:
-           os.chdir(folder) #FIXME necessary for read in?
-           if case_data_base.has_key(folder):
+           if preHooks:
+                for hook in preHooks:
+                    hook.execute()
+           if case_data_base.has_key(folder) and Database:
                 print "re-importing",
            else:
                 print "importing",
            print name + ": ",
            origins, data = io.import_foam_folder(
-                       search_format=search,
-                       file_names=files,
+                       path=folder,
+                       search=search,
+                       files=files,
                        skiplines=skip,
                        maxlines=lines,
+                       skiptimes=times,
                   )
            DataFrame.__init__(self, data)
            self.properties = Props(
@@ -363,9 +215,11 @@ class FoamFrame(DataFrame):
                 data.index.levels[0],
                 symb,
                 show_func)
-           self.validate_origins(folder, origins)
+           if validate and Database:
+                self.validate_origins(folder, origins)
            # register to database
-           case_data_base.sync()
+           if Database:
+                case_data_base.sync()
 
     def validate_origins(self, folder, origins):
         origins.update_hashes()
@@ -392,7 +246,10 @@ class FoamFrame(DataFrame):
                         loc_name, loc_hash     = loc
                         field_name, field_hash = field
                         filename, item_hash    = item
-                        orig_hash = case_data_base[folder][time_name][loc_name][field_name][1]
+                        try:
+                            orig_hash = case_data_base[folder][time_name][loc_name][field_name][1]
+                        except:
+                            orig_hash = item_hash
                         if (item_hash != orig_hash):
                             print ""
                             print "corrupted fields:"
@@ -400,6 +257,7 @@ class FoamFrame(DataFrame):
                     case_data_base[folder] = origins.dct
         else:
             case_data_base[folder] = origins.dct
+
     def add(self, data, label):
         """
         Add a given Series
@@ -449,7 +307,7 @@ class FoamFrame(DataFrame):
     #     pass
     #
     # def get_hashes(self):
-    #     """ returns hashes of current selection based 
+    #     """ returns hashes of current selection based
     #         on the data read from disk """
     #     pass
 
@@ -522,8 +380,25 @@ class FoamFrame(DataFrame):
                label = self.properties.plot_properties.select(field, axis + '_label', "None")
            return label
 
+        def _range(axis, field):
+           from bokeh.objects import Range1d
+           p_range_args = kwargs.get(axis + '_label', False)
+           if p_range_args:
+               self.properties.plot_properties.insert(field, {axis + '_range': p_range})
+           else:
+               p_range = self.properties.plot_properties.select(field, axis + '_range')
+           if not p_range:
+                return False
+           else:
+                return Range1d(start=p_range[0], end=p_range[1])
+
+
         bk.xaxis().axis_label = _label('x', x)
+        if _range('x', x):
+            ret.x_range = _range('x', x)
         bk.yaxis().axis_label = _label('y', y[0]) #TODO can this make sense for multiplots?
+        if _range('y', y[0]):
+            ret.y_range = _range('y', y[0])
         return ret
 
     def scatter(self, y, x='Pos', z=False, title="", **kwargs):
@@ -551,7 +426,7 @@ class FoamFrame(DataFrame):
                 .filter(name='Loc', index=lambda x: 0.2<field_to_float(x)<0.8)
         """
         if index:
-            ret = self[map(index,self.get_level_values(name))]
+            ret = self[map(index, self.index.get_level_values(name))]
             ret.properties = self.properties
             return ret
         elif field:
@@ -585,7 +460,7 @@ class FoamFrame(DataFrame):
                   )
             for _ in ret.itervalues():
                 _.properties = self.properties
-            return MultiItem(ret)
+            return MultiFrame(ret)
         else:
             self['cat'] = map(field, self[name])
             cats = self.groupby('cat').groups.keys()
@@ -594,7 +469,7 @@ class FoamFrame(DataFrame):
                 )
             for _ in ret.itervalues():
                 _.properties = self.properties
-            return MultiItem(ret)
+            return MultiFrame(ret)
 
     ############################################################################
     @property
@@ -613,15 +488,15 @@ class FoamFrame(DataFrame):
     #         print "%s Warning: requested field %s not in data base" %(self.name, field)
     #         print e
     #         return Series()
-    
+
   #   def __str__(self):
   #       return """Foam case object
   # Data Fields: {}
-  # Total number of items {} 
+  # Total number of items {}
   # Data root: {}""".format(
   #   str([_ for _ in self.vars]), "unknown", self.folder)
-                    
+
     # def reread(self):
-    #     """ re-read foam data """ 
+    #     """ re-read foam data """
     #     self.origins, self.data = self._read_data()
 

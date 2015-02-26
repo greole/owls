@@ -8,6 +8,8 @@ if not os.path.exists(owls_path):
 from .version import __version__
 from io import *
 from plot import *
-from frames import *
+from foam import *
+from FoamFrame import *
+from MultiFrame import *
 
 print "Owls Version: " + __version__
