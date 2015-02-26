@@ -21,6 +21,8 @@ Database = False
 
 if Database:
     case_data_base = shelve.open(os.path.expanduser('~') + "/.owls/db")
+else:
+    case_data_base = dict() 
 
 def items_from_dict(dict, func, **kwargs):
     return Cases([func(folder=folder,name=name, symb=symb, **kwargs)
