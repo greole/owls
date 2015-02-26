@@ -17,8 +17,10 @@ Series.__repr__ = (lambda x: ("Hash: {}\nTimes: {}\nLoc: {}\nValues: {}".format(
                     list(set(x.keys().get_level_values('Time'))), # avoid back and forth conversion
                     list(set(x.keys().get_level_values('Loc'))),
                     x.values))) #TODO monkey patch to use hashes
+Database = False
 
-case_data_base = shelve.open(os.path.expanduser('~') + "/.owls/db")
+if Database:
+    case_data_base = shelve.open(os.path.expanduser('~') + "/.owls/db")
 
 def items_from_dict(dict, func, **kwargs):
     return Cases([func(folder=folder,name=name, symb=symb, **kwargs)
@@ -188,7 +190,7 @@ class FoamFrame(DataFrame):
            if preHooks:
                 for hook in preHooks:
                     hook.execute()
-           if case_data_base.has_key(folder):
+           if case_data_base.has_key(folder) and Database:
                 print "re-importing",
            else:
                 print "importing",
@@ -211,10 +213,11 @@ class FoamFrame(DataFrame):
                 data.index.levels[0],
                 symb,
                 show_func)
-           if validate:
+           if validate and Database:
                 self.validate_origins(folder, origins)
            # register to database
-           case_data_base.sync()
+           if Database:
+                case_data_base.sync()
 
     def validate_origins(self, folder, origins):
         origins.update_hashes()
@@ -252,6 +255,7 @@ class FoamFrame(DataFrame):
                     case_data_base[folder] = origins.dct
         else:
             case_data_base[folder] = origins.dct
+
     def add(self, data, label):
         """
         Add a given Series
