@@ -19,7 +19,7 @@ config = {
                          'pyzmq',
                          'tornado',
                          'jinja2',
-                         'bokeh',
+                         'bokeh=0.7.1',
                         ],
    'name': 'Owls' 
 }
