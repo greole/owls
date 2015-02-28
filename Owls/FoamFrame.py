@@ -382,7 +382,7 @@ class FoamFrame(DataFrame):
 
         def _range(axis, field):
            from bokeh.objects import Range1d
-           p_range_args = kwargs.get(axis + '_label', False)
+           p_range_args = kwargs.get(axis + '_range', False)
            if p_range_args:
                self.properties.plot_properties.insert(field, {axis + '_range': p_range})
            else:
