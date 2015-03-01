@@ -109,7 +109,7 @@ class MultiFrame():
            colors = plot.next_color()
            for name, instance in self.cases.iteritems():
                 color = next(colors)
-                exp_legend = kwargs.get(legend, "No")
+                exp_legend = kwargs.get("legend", "No")
                 legend = (exp_legend if exp_legend != "No" else name)
                 getattr(instance, inst_func)(x=x, y=y, title="", color=color, legend=name, **kwargs)
            bk.hold(False)
