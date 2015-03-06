@@ -12,7 +12,7 @@ PINNED_PKGS=$(cat <<EOF
 scipy <0.15.0
 EOF
 )
-echo -e "$PINNED_PKGS" > /home/travis/miniconda/conda-meta/pinned
+echo -e "$PINNED_PKGS" > $HOME/miniconda/conda-meta/pinned
 DEPS_TRAVIS="python=$TRAVIS_PYTHON_VERSION conda-build jinja2"
 conda install --yes $DEPS_TRAVIS
 conda config --add channels greole
