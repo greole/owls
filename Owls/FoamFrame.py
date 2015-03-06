@@ -28,7 +28,7 @@ def items_from_dict(dict, func, **kwargs):
     return Cases([func(folder=folder,name=name, symb=symb, **kwargs)
                for name, (folder,symb) in dict.iteritems()])
 
-def read_sets(folder, name="None", search="(postProcessing)*sets/" + io.FPNUMBER, **kwargs):
+def read_sets(folder, name="None", search="(postProcessing/)*sets/" + io.FPNUMBER, **kwargs):
     return FoamFrame(folder=folder, search_files=False,
             search_pattern=search, name=name,
             show_func="plot", preHooks=None, **kwargs)
