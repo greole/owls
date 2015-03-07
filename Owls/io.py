@@ -240,7 +240,7 @@ class ProgressBar():
             self.cur += 0.1
 
     def done(self):
-        print "[done]",
+        print "[done]"#,
 
 def strip_time(path, base):
     """ try to extract time from path """
