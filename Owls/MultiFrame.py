@@ -107,10 +107,16 @@ class MultiFrame():
         else:
            bk.hold()
            colors = plot.next_color()
+           exp_legend = kwargs.get("legend", None)
+           if exp_legend != None:
+                kwargs.pop("legend")
+           exp_title = kwargs.get("title", None)
+           if exp_title != None:
+                kwargs.pop("title")
            for name, instance in self.cases.iteritems():
                 color = next(colors)
-                exp_legend = kwargs.get("legend", "No")
-                legend = (exp_legend if exp_legend != "No" else name)
-                getattr(instance, inst_func)(x=x, y=y, title="", color=color, legend=name, **kwargs)
+                legend = (exp_legend if exp_legend != None else name)
+                title = (exp_title if exp_title != None else "")
+                getattr(instance, inst_func)(x=x, y=y, title=title, color=color, legend=legend, **kwargs)
            bk.hold(False)
            return bk.curplot()
