@@ -13,3 +13,8 @@ from FoamFrame import *
 from MultiFrame import *
 
 print "Owls Version: " + __version__
+
+try:
+  from mplinterface import *
+except:
+  print "Warning no matplotlib support"
