@@ -520,7 +520,7 @@ def import_logs(folder, keys):
             print log_name
             print "failed to process"
             print e
-            return None
+            return {},None
     return {},df
 
 

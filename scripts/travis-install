@@ -2,6 +2,7 @@
 set -e # exit on error
 set -x # echo commands
 git fetch origin master
+MINICONDA_VERSION="latest"
 MINICONDA="Miniconda-$MINICONDA_VERSION-Linux-x86_64"
 MINICONDA_URL="http://repo.continuum.io/miniconda/$MINICONDA.sh"
 wget $MINICONDA_URL
@@ -12,12 +13,19 @@ PINNED_PKGS=$(cat <<EOF
 scipy <0.15.0
 EOF
 )
-echo -e "$PINNED_PKGS" > /home/travis/miniconda/conda-meta/pinned
-DEPS_TRAVIS="python=$TRAVIS_PYTHON_VERSION conda-build jinja2"
-conda install --yes $DEPS_TRAVIS
-conda config --add channels greole
-CONDA_PY="${TRAVIS_PYTHON_VERSION/./}" conda build conda.recipe
-conda install --use-local --yes owls
+echo -e "$PINNED_PKGS" > $HOME/miniconda/conda-meta/pinned
+if [ -z "$TRAVIS_PYTHON_VERSION" ]; then
+    export PYTHON_VERSION=$(python -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')
+else
+    export PYTHON_VERSION=$TRAVIS_PYTHON_VERSION
+fi
+
+DEPS_TRAVIS="python=$PYTHON_VERSION conda-build jinja2"
+$HOME/miniconda/bin/conda install --yes $DEPS_TRAVIS
+$HOME/miniconda/bin/conda config --add channels greole
+CONDA_PY="${PYTHON_VERSION/./}"
+$HOME/miniconda/bin/conda build conda.recipe
+$HOME/miniconda/bin/conda install --use-local --yes owls
 DEPS_TEST=$(cat <<EOF | python -
 from conda_build.metadata import MetaData
 print(" ".join([s.replace(" ", "") for s in MetaData("conda.recipe").get_value("test/requires")]))

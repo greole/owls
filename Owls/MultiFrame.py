@@ -10,6 +10,12 @@ class MultiFrame():
     #               .by_case(overlay=True) <- MultiFrame method
     #               .show('T')
     #TODO: implement __repr__ method
+    def __repr__(self):
+        s = "MultiFrame with {} entries:\n".format(len(self.cases))
+        s += "\n".join(["{}\n{}:\n{}".format(80*"=",name,c.describe())
+            for name,c in self.cases.iteritems()])
+        return s
+
     def __init__(self, cases=None):
         if type(cases) == list:
             self.cases = OrderedDict([(case.name,case) for case in cases])
@@ -103,6 +109,8 @@ class MultiFrame():
            colors = plot.next_color()
            for name, instance in self.cases.iteritems():
                 color = next(colors)
+                exp_legend = kwargs.get("legend", "No")
+                legend = (exp_legend if exp_legend != "No" else name)
                 getattr(instance, inst_func)(x=x, y=y, title="", color=color, legend=name, **kwargs)
            bk.hold(False)
            return bk.curplot()

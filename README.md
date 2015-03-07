@@ -14,13 +14,18 @@ This tutorial aims to illustrate the basic workflow of the Owls package.
 After installing, make sure that the module following imports are available
 
 # Installation
+
 ~~~~.bash
-python setup.py install # or
-pip install Owls # for non development version
+python setup.py install --user
+pip install Owls # or for non development version
+                 # but probably out of date   
 ~~~~
 
-# Introduction
+# Dependencies
+It is recommended to have matplotlib installed, which itself depends on libpng and freetype.
+The simplest way is to just use your distros package manager to install matplotlib.
 
+# Introduction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.python .numberLines}
 import Owls as ow
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

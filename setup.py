@@ -1,5 +1,6 @@
 import os
 import subprocess
+import sys
 
 from setuptools import setup
 
@@ -22,6 +23,20 @@ with open(version_py, 'w') as fh:
 # exec(compile(open(package_name + '/version.py').read(),
 #              package_name + '/version.py', 'exec'))
 
+
+packages = [
+         'numpy', 
+         'pandas',
+         'ipython',
+         'pyzmq',
+         'tornado',
+         'jinja2',
+         'bokeh==0.6.1',
+        ]
+
+if '--with-matplotlib' in sys.argv:
+    packages.extend('matplotlib')  
+
 config = {
     'author': 'Gregor Olenik',
     'author_email': 'itvgo@itv.uni-stuttgart.de',
@@ -29,15 +44,7 @@ config = {
     'license': 'BSD',
     'version': version_git,
     'packages': [package_name],
-    'install_requires': ['numpy',
-                         'pandas',
-                         'matplotlib',
-                         'ipython',
-                         'pyzmq',
-                         'tornado',
-                         'jinja2',
-                         'bokeh==0.6.1',
-                        ],
+    'install_requires': packages,
    'name': package_name
 }
 
