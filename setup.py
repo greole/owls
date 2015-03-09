@@ -27,7 +27,7 @@ with open(version_py, 'w') as fh:
 packages = [
          'numpy', 
          'pandas',
-         'ipython',
+         'ipython[notebook]',
          'pyzmq',
          'tornado',
          'jinja2',
