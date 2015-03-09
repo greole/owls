@@ -10,10 +10,11 @@ do
 done
 
 inst () {
-    cd .. &&  python setup.py install --user
+  cd .. 
+  python setup.py install --user
 }
 
-cur_dir=$( basename "$1" )
-if [ cur_dir == "scripts" ]; then
+cur_dir=$( basename $PWD )
+if [ $cur_dir = scripts ]; then
     inst
 fi
