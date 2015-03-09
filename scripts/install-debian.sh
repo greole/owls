@@ -1,6 +1,7 @@
 packages=( 
     python-matplotlib,
     python-numpy 
+    ipython-notebook
 )
 
 for package in "${packages[@]}"
@@ -8,9 +9,11 @@ do
 	sudo apt-get install -y $package
 done
 
-cur_dir=$( basename "$1" )
-if [ cur_dir == scripts]; then
-    cd ..
-fi
+inst () {
+    cd .. &&  python setup.py install --user
+}
 
-python setup.py install --user
+cur_dir=$( basename "$1" )
+if [ cur_dir == "scripts" ]; then
+    inst
+fi
