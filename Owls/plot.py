@@ -1,9 +1,18 @@
 import re
 
+colored = ["aqua", "black", "blue", "fuchsia", "gray", "green",
+            "lime", "maroon", "navy", "olive", "orange", "purple",
+            "red", "silver", "teal", "yellow"]
+
+white2black = [
+     '#000000', '#0D0D0D', '#1A1A1A', '#262626', '#333333',
+     '#404040', '#4C4C4C', '#595959', '#666666', '#737373',
+     '#808080', '#8C8C8C', '#999999', '#A6A6A6', '#B2B2B2',
+     '#BFBFBF', '#CCCCCC', '#D9D9D9', '#E6E6E6', '#F2F2F2',
+     '#FFFFFF'][::-1]
+
 config = {
-    "color_cycle": ["aqua", "black", "blue", "fuchsia", "gray", "green", 
-                     "lime", "maroon", "navy", "olive", "orange", "purple", 
-                     "red", "silver", "teal", "yellow"]
+    "color_cycle": colored,
     }
 
 def merge(*args, **kwargs):
