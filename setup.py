@@ -31,7 +31,7 @@ packages = [
          'pyzmq',
          'tornado',
          'jinja2',
-         'bokeh==0.6.1',
+         'bokeh==0.8.1',
         ]
 
 if '--with-matplotlib' in sys.argv:
