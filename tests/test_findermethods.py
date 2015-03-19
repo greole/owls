@@ -59,7 +59,7 @@ def test_finddatafolders(create_directory_tree):
             if negate(contains(files, abs_e)):
                 continue
             else:
-                print "Failed on ", e
+                print(("Failed on ", e))
                 return False
         return True
 
@@ -120,5 +120,5 @@ def test_findDataFiles(create_directory_tree):
         path=test_dir,
         search="processor[0-9]\/" + io.FPNUMBER,
         files=['T'])
-    print eulerian_decomp
+    print(eulerian_decomp)
 
