@@ -2,7 +2,7 @@ from future.builtins import *
 import os
 import re
 import shelve
-import plot as plt
+import .plot as plt
 from collections import OrderedDict
 
 from pandas import Series
@@ -10,7 +10,7 @@ from pandas import DataFrame
 from pandas import concat
 
 from MultiFrame import MultiFrame
-import io
+import .io
 
 
 Series.__repr__ = (lambda x: ("Hash: {}\nTimes: {}\nLoc: {}\nValues: {}".format(
