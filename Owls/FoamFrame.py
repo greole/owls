@@ -2,7 +2,7 @@ from future.builtins import *
 import os
 import re
 import shelve
-import .plot as plt
+from . import plot as plt
 from collections import OrderedDict
 
 from pandas import Series
