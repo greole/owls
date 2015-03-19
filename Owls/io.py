@@ -129,7 +129,7 @@ def dataframe_to_foam(fullname, ftype, dataframe, boundaries):
     with open(fullname, 'w') as f:
         fname = fullname.split('/')[-1]
         time = fullname.split('/')[-2]
-        print "writing %s : %s" % (time, fname)
+        print("writing %s : %s" % (time, fname))
         f.write(FOAM_HEADER.format(ftype.capitalize(), time, fname, ftype))
         f.write(str(len(dataframe)))
         f.write("\n(\n")
@@ -236,11 +236,11 @@ class ProgressBar():
     def next(self):
         self.count += 1.0
         if self.count/self.tot > self.cur:
-            print "#",
+            print("#", end="")
             self.cur += 0.1
 
     def done(self):
-        print "[done]"#,
+        print("[done]")
 
 def strip_time(path, base):
     """ try to extract time from path """
@@ -269,7 +269,7 @@ def import_foam_folder(
         path = path + '/'
     fileList = find_datafiles(path, search=search, files=files)
     if not fileList:
-        print "no files found"
+        print("no files found")
         return
     p_bar = ProgressBar(n_tot=sum([len(l) for l in fileList.itervalues()]))
     df = DataFrame()
@@ -301,8 +301,8 @@ def import_foam_folder(
                     else:
                         df_tmp = concat([df_tmp, x])
                 except Exception as e:
-                    print x
-                    print e
+                    print(x)
+                    print(e)
             field_names = ([field_names] if not type(field_names) == list else field_names)
             for field in field_names:
                 origins.insert(time,loc,field,fn,hashes[field])
@@ -337,7 +337,7 @@ def foam_to_csv(fn, ):
             for l in content:
                 print re.sub("\t",",",re.sub("[\(\)\\n]","",l))
     except Exception as e:
-        print e
+        print(e)
 
 def read_boundary_names(fn):
     """ Todo use iterator method to avoid reading complete file """
@@ -403,8 +403,8 @@ def read_data_file(fn, skiplines=1, maxlines=False):
                 return field, df, hashes
     except Exception as e:
         if DEBUG:
-            print "Error processing datafile " + fn
-            print e
+            print("Error processing datafile " + fn)
+            print(e)
         return None
 
 def hash_series(series):
@@ -517,9 +517,9 @@ def import_logs(folder, keys):
             df = df.reorder_levels(['Loc','Time','Id'])
             p_bar.done()
         except Exception as e:
-            print log_name
-            print "failed to process"
-            print e
+            print(log_name)
+            print("failed to process")
+            print(e)
             return {},None
     return {},df
 
