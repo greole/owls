@@ -1,3 +1,4 @@
+from future.builtins import *
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
@@ -125,7 +126,7 @@ class Plot():
                                                         kwargs['y']))
                 self.plots.append(kwargs)
         except Exception as e:
-            print e
+            print(e)
             pass
 
     def create_plot_array(self):
@@ -365,7 +366,7 @@ def get_data(data, time, log, x):
             d = data[data_type][base_file]
             return d
         except:
-            print "trying to acess {} {}".format(base_file, data_loc)
+            print("trying to acess {} {}".format(base_file, data_loc))
             return 0
     else:
         d = data[data_type][time]['{}_{}'.format(base_file, data_loc)]

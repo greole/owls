@@ -12,7 +12,8 @@ from foam import *
 from FoamFrame import *
 from MultiFrame import *
 
-print "Owls Version: " + __version__
+from future.builtins import *
+print("Owls Version: " + __version__)
 
 try:
   from mplinterface import *
