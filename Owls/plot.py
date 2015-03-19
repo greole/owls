@@ -15,10 +15,15 @@ config = {
     "color_cycle": colored,
     }
 
+def figure():
+    import bokeh.plotting as bk
+    return bk.figure()
+    
+
 def merge(*args, **kwargs):
     import bokeh.plotting as bk
-    bk.figure()
-    bk.hold()
+    figure=(bk.figure() if not kwargs.get('figure', False) else
+            kwargs.get('figure'))
     y = kwargs.get('y',None)
     x = kwargs.get('x','Pos')
     try:
@@ -27,9 +32,10 @@ def merge(*args, **kwargs):
     except:
         pass
     y = (y if type(y) == list else [y]*len(args)) #FIXME do the same for x
+    kwargs.pop('figure')
     for yi,p in zip(y,args):
-        p.show(x=x, y=yi, color=next(kwargs["colors"]), **kwargs)
-    return bk.curplot()
+        p.show(x=x, y=yi, color=next(kwargs["colors"]), figure=figure, **kwargs)
+    return figure
 
 def multi_merge(*args, **kwargs):
     """ call merge for all args
@@ -56,6 +62,7 @@ def multi_merge(*args, **kwargs):
     for name, data in items:
         sub_plots=[data]
         colors = next_color()
+        figure=bk.figure()
         for c_ in args[1:]:
             # and through all sets to be plotted
             for name_, plot_ in c_.iteritems():
@@ -75,7 +82,7 @@ def multi_merge(*args, **kwargs):
                     #select by name in order list
                     if name_ == name:
                         sub_plots.append(plot_)
-        plots.append(merge(*sub_plots, x=x, y=y, title=name, colors=colors))
+        plots.append(merge(*sub_plots, x=x, y=y, title=name, colors=colors,figure=figure))
     return plots
 
 def next_color():

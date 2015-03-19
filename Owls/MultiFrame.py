@@ -97,15 +97,15 @@ class MultiFrame():
         if not overlay:
             rows=[]
             for name, instance in self.cases.iteritems():
-                bk.figure()
+                figure=bk.figure()
                 rows.append(
                         getattr(instance, inst_func)
-                            (x=x, y=y, title=str(name), **kwargs) #FIXME num cars
+                            (x=x, y=y, title=str(name),figure=figure, **kwargs) #FIXME num cars
                     )
             rows = np.array(rows).reshape(greatest_divisor(len(rows)),-1).tolist()
             return bk.GridPlot(children=rows, title="Scatter")
         else:
-           bk.hold()
+           figure=bk.figure()
            colors = plot.next_color()
            exp_legend = kwargs.get("legend", None)
            if exp_legend != None:
@@ -117,6 +117,7 @@ class MultiFrame():
                 color = next(colors)
                 legend = (exp_legend if exp_legend != None else name)
                 title = (exp_title if exp_title != None else "")
-                getattr(instance, inst_func)(x=x, y=y, title=title, color=color, legend=legend, **kwargs)
-           bk.hold(False)
-           return bk.curplot()
+                getattr(instance, inst_func)(
+                    x=x, y=y, title=title, color=color,
+                    legend=legend, figure=figure, **kwargs)
+           return figure

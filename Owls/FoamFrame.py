@@ -353,25 +353,8 @@ class FoamFrame(DataFrame):
         else:
            return super(FoamFrame, self).__getitem__(item)
 
-    def draw(self, x, y, z, title, func, **kwargs):
+    def draw(self, x, y, z, title, func, figure, **kwargs):
         import bokeh.plotting as bk
-        #TODO: change colors if y is of list type
-        y = (y if type(y) == list else [y]) # wrap y to a list so that we can iterate
-
-        kwargs.update({ "outline_line_color":"black", #FIXME refactor
-                        "plot_width":300,
-                        "plot_height":300,
-                      })
-        bk.hold(True)
-        for yi in y:
-            x_data, y_data = self[x], self[yi]
-            func(x=x_data,
-                 y=y_data,
-                 title=title,
-                 **kwargs)
-        bk.hold(False)
-        ret = bk.curplot()
-
         def _label(axis, field):
            label = kwargs.get(axis + '_label', False)
            if label:
@@ -381,7 +364,7 @@ class FoamFrame(DataFrame):
            return label
 
         def _range(axis, field):
-           from bokeh.objects import Range1d
+           from bokeh.models import Range1d
            p_range_args = kwargs.get(axis + '_range', False)
            if p_range_args:
                self.properties.plot_properties.insert(field, {axis + '_range': p_range})
@@ -391,30 +374,45 @@ class FoamFrame(DataFrame):
                 return False
            else:
                 return Range1d(start=p_range[0], end=p_range[1])
+        #TODO: change colors if y is of list type
+        y = (y if type(y) == list else [y]) # wrap y to a list so that we can iterate
+
+        figure_properties = {
+                "outline_line_color":"black", #FIXME refactor
+                "plot_width":300, "plot_height":300,
+            }
+        figure_properties.update({"title": title})
+
+        if kwargs.get('x_range', False):
+            figure_properties.update({"x_range": kwargs.get('x_range')})
+        figure.set(**figure_properties)
+        for yi in y:
+            x_data, y_data = self[x], self[yi]
+            getattr(figure, func)(x=x_data,
+                 y=y_data,
+                 **kwargs)
+
+        for ax, data in {'x':x, 'y':y[0]}.iteritems():
+            getattr(figure, ax+'axis').axis_label = _label(ax, data)
+            if _range(ax, data):
+                r = setattr(figure, ax+'_range', _range(ax, data))
+        return figure
+
+    def scatter(self, y, x='Pos', z=False, title="", figure=False, **kwargs):
+        figure = (figure if figure else plt.figure())
+        return self.draw(x, y, z, title, func="scatter", figure=figure, **kwargs)
+
+    def plot(self, y, x='Pos', z=False, title="", figure=False, **kwargs):
+        figure = (figure if figure else plt.figure())
+        return self.draw(x, y, z, title, func="line", figure=figure, **kwargs)
 
 
-        bk.xaxis().axis_label = _label('x', x)
-        if _range('x', x):
-            ret.x_range = _range('x', x)
-        bk.yaxis().axis_label = _label('y', y[0]) #TODO can this make sense for multiplots?
-        if _range('y', y[0]):
-            ret.y_range = _range('y', y[0])
-        return ret
-
-    def scatter(self, y, x='Pos', z=False, title="", **kwargs):
-        import bokeh.plotting as bk
-        return self.draw(x, y, z, title, func=bk.scatter, **kwargs)
-
-    def plot(self, y, x='Pos', z=False, title="", **kwargs):
-        import bokeh.plotting as bk
-        return self.draw(x, y, z, title, func=bk.line, **kwargs)
-
-
-    def show(self, y, x=None, **kwargs):
+    def show(self, y, x=None, figure=False, **kwargs):
+        figure = (figure if figure else plt.figure())
         if x:
-            return getattr(self,self.properties.show_func)(y=y, x=x, **kwargs)
+            return getattr(self, self.properties.show_func)(y=y, x=x, figure=figure, **kwargs)
         else:
-            return getattr(self,self.properties.show_func)(y=y, **kwargs)
+            return getattr(self, self.properties.show_func)(y=y, figure=figure, **kwargs)
 
 
     def filter(self, name, index=None, field=None):
