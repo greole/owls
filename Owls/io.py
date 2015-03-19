@@ -335,7 +335,7 @@ def foam_to_csv(fn, ):
             start, num_entries = if_header_skip(content)
             entries = len(content[start].split())
             for l in content:
-                print re.sub("\t",",",re.sub("[\(\)\\n]","",l))
+                print(re.sub("\t",",",re.sub("[\(\)\\n]","",l)))
     except Exception as e:
         print(e)
 
@@ -363,7 +363,7 @@ def read_data_file(fn, skiplines=1, maxlines=False):
 
     # print "opening file {}".format(fn)
     if not os.path.exists(fn):
-        print "Can not open file " + fn
+        print("Can not open file " + fn)
         return None
     try:
         with open(fn) as f:
