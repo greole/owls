@@ -4,13 +4,16 @@ import sys
 
 from setuptools import setup
 
+from io import open
+
+
 package_name = 'Owls'
 # Fetch version from git tags, and write to version.py.
 # Also, when git is not available (PyPi package), use stored version.py.
 version_py = os.path.join(os.path.dirname(__file__), 'Owls/version.py')
 
 try:
-    version_git = subprocess.check_output(["git", "describe"]).rstrip()
+    version_git = str(subprocess.check_output(["git", "describe"]).rstrip())
 except:
     with open(version_py, 'r') as fh:
         version_git = open(version_py).read().strip().split('=')[-1].replace('"','')
@@ -25,6 +28,7 @@ with open(version_py, 'w') as fh:
 
 
 packages = [
+         'future',
          'numpy', 
          'pandas',
          'ipython',
@@ -45,7 +49,7 @@ config = {
     'version': version_git,
     'packages': [package_name],
     'install_requires': packages,
-   'name': package_name
+    'name': package_name
 }
 
 
