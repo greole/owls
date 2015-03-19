@@ -1,3 +1,4 @@
+from future.builtins import *
 import os
 import re
 import shelve
@@ -193,10 +194,10 @@ class FoamFrame(DataFrame):
                 for hook in preHooks:
                     hook.execute()
            if case_data_base.has_key(folder) and Database:
-                print "re-importing",
+                print("re-importing", end="")
            else:
-                print "importing",
-           print name + ": ",
+                print("importing", end="")
+           print(name + ": ", end="")
            origins, data = io.import_foam_folder(
                        path=folder,
                        search=search,
@@ -225,22 +226,22 @@ class FoamFrame(DataFrame):
         origins.update_hashes()
         if case_data_base.has_key(folder):
             if (case_data_base[folder]["hash"] == origins.dct["hash"]):
-                print " [consistent]"
+                print(" [consistent]")
             else:
                 entries_new = len(origins.dct.keys())
                 entries_old = len(case_data_base[folder].keys())
                 if entries_new > entries_old:
-                    print "[new timestep] "
+                    print("[new timestep] ")
                     # print origins.dct.keys()
                     case_data_base[folder] = origins.dct
                 elif entries_new < entries_old:
                     # print folder
                     # print origins.dct.keys()
                     # print case_data_base[folder].keys()
-                    print "[missing timestep]"
+                    print("[missing timestep]")
                     case_data_base[folder] = origins.dct
                 elif entries_new == entries_old:
-                    print "[corrupted]",
+                    print("[corrupted]", end="")
                     for time, loc, field, item in origins.hashes():
                         time_name, time_hash   = time
                         loc_name, loc_hash     = loc
@@ -251,9 +252,9 @@ class FoamFrame(DataFrame):
                         except:
                             orig_hash = item_hash
                         if (item_hash != orig_hash):
-                            print ""
-                            print "corrupted fields:"
-                            print "\t" + field_name + " in " +  filename
+                            print("")
+                            print("corrupted fields:")
+                            print("\t" + field_name + " in " +  filename)
                     case_data_base[folder] = origins.dct
         else:
             case_data_base[folder] = origins.dct
@@ -468,33 +469,3 @@ class FoamFrame(DataFrame):
             for _ in ret.itervalues():
                 _.properties = self.properties
             return MultiFrame(ret)
-
-    ############################################################################
-    @property
-    def vars(self):
-        # if self.data.empty:
-        #     return
-        """ delete this methode and replace by columns ??"""
-        print "This Method is obsolete and will be replaced by .columns"
-        return self.columns
-
-    # def __getitem__(self, field):
-    #     try:
-    #         print field
-    #         return self.loc[self.latest_time][field]
-    #     except Exception as e:
-    #         print "%s Warning: requested field %s not in data base" %(self.name, field)
-    #         print e
-    #         return Series()
-
-  #   def __str__(self):
-  #       return """Foam case object
-  # Data Fields: {}
-  # Total number of items {}
-  # Data root: {}""".format(
-  #   str([_ for _ in self.vars]), "unknown", self.folder)
-
-    # def reread(self):
-    #     """ re-read foam data """
-    #     self.origins, self.data = self._read_data()
-
