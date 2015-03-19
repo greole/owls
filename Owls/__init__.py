@@ -18,4 +18,4 @@ print("Owls Version: " + __version__)
 try:
   from mplinterface import *
 except:
-  print "Warning no matplotlib support"
+  print("Warning no matplotlib support")
