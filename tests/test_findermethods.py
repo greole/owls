@@ -18,7 +18,7 @@ def create_directory_tree(tmpdir):
             yield time_fold
 
     files = ["U", "UMean", "U_0", "foo.xy", "T"]
-    folders = range(10)
+    folders = list(range(10))
     folders.extend([str(float(_)) for _ in folders])
     folders.extend(["1.23e-09"])
     ignored = ["system", "constant", "0-bck", "0.old"]
@@ -116,9 +116,9 @@ def test_findDataFiles(create_directory_tree):
 
     assert els_eulerian * 4 == els_eulerian_decomp
 
-    eulerian_decomp = io.import_foam_folder(
-        path=test_dir,
-        search="processor[0-9]\/" + io.FPNUMBER,
-        files=['T'])
-    print(eulerian_decomp)
+    # eulerian_decomp = io.import_foam_folder(
+    #     path=test_dir,
+    #     search="processor[0-9]\/" + io.FPNUMBER,
+    #     files=['T'])
+    # print(eulerian_decomp)
 

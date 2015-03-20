@@ -56,8 +56,8 @@ def multi_merge(*args, **kwargs):
     c = args[0]
     # go through all items to be plotted
     items = (
-        ((name,data) for name, data in c.iteritems() if name in kwargs['order'])
-        if kwargs.get('order',False) else c.iteritems()
+        ((name,data) for name, data in c.items() if name in kwargs['order'])
+        if kwargs.get('order',False) else c.items()
     )
     for name, data in items:
         sub_plots=[data]
@@ -65,7 +65,7 @@ def multi_merge(*args, **kwargs):
         figure=bk.figure()
         for c_ in args[1:]:
             # and through all sets to be plotted
-            for name_, plot_ in c_.iteritems():
+            for name_, plot_ in c_.items():
                 if not kwargs.get('order', False):
                     # select by regex
                     # now see if we have a match

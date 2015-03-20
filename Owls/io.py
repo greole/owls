@@ -14,7 +14,7 @@ import numpy as np
 import re
 import os
 import hashlib
-from pandas import *
+from pandas import DataFrame
 from collections import defaultdict
 from collections import OrderedDict
 from IPython.display import display, clear_output
@@ -126,7 +126,7 @@ def find_times(fold=None):
 
 def dataframe_to_foam(fullname, ftype, dataframe, boundaries):
     """ writes an OpenFOAM field file from given dataframe """
-    with open(fullname, 'w') as f:
+    with open(fullname, 'w', encoding='utf-8') as f:
         fname = fullname.split('/')[-1]
         time = fullname.split('/')[-2]
         print("writing %s : %s" % (time, fname))
@@ -271,12 +271,12 @@ def import_foam_folder(
     if not fileList:
         print("no files found")
         return
-    p_bar = ProgressBar(n_tot=sum([len(l) for l in fileList.itervalues()]))
+    p_bar = ProgressBar(n_tot=sum([len(l) for l in fileList.values()]))
     df = DataFrame()
     #df.index = MultiIndex.from_tuples(zip([],[]),names=['Loc',0])
     from collections import defaultdict
     origins = Origins()
-    els = list(fileList.iteritems())[::skiptimes]
+    els = list(fileList.items())[::skiptimes]
     for time, files in els:
         time = strip_time(time, path)
         df_tmp = DataFrame()
@@ -305,7 +305,7 @@ def import_foam_folder(
                     print(e)
             field_names = ([field_names] if not type(field_names) == list else field_names)
             for field in field_names:
-                origins.insert(time,loc,field,fn,hashes[field])
+                origins.insert(time, loc, field, fn, hashes[field])
         df_tmp['Time'] = time
         if df.empty:
             df = df_tmp
@@ -330,7 +330,7 @@ def foam_to_csv(fn, ):
         prints data directly to std:out
     """
     try:
-        with open(fn) as f:
+        with open(fn, encoding="utf-8") as f:
             content = f.readlines()
             start, num_entries = if_header_skip(content)
             entries = len(content[start].split())
@@ -341,7 +341,7 @@ def foam_to_csv(fn, ):
 
 def read_boundary_names(fn):
     """ Todo use iterator method to avoid reading complete file """
-    with open(fn) as f:
+    with open(fn, encoding="utf-8") as f:
         boundary_names = []
         lines  = reversed(f.readlines())
         for line in lines:
@@ -366,7 +366,7 @@ def read_data_file(fn, skiplines=1, maxlines=False):
         print("Can not open file " + fn)
         return None
     try:
-        with open(fn) as f:
+        with open(fn, encoding="utf-8") as f:
             field = fn.split('/')[-1]
             content = f.readlines()
             content.append('bla')
@@ -375,8 +375,8 @@ def read_data_file(fn, skiplines=1, maxlines=False):
             is_a_vector = (True if entries > 1 else False)
             end = start + num_entries
             if is_a_vector:
-                data = map(lambda x: re.sub(r'[()]', '', x).split(),
-                            content[start:end:skiplines])
+                data = list(map(lambda x: re.sub(r'[()]', '', x).split(),
+                            content[start:end:skiplines]))
                 loc, names = evaluate_names(fn, entries)
                 df = DataFrame(data=data, columns=names)
                 if loc:
@@ -399,7 +399,7 @@ def read_data_file(fn, skiplines=1, maxlines=False):
                 df.set_index('Loc', append=True, inplace=True)
                 df.index.names=['Id','Loc']
                 df = df.reorder_levels(['Loc','Id'])
-                hashes={field: int(hashlib.md5(str(data)).hexdigest(),16)}
+                hashes = {field: int(hashlib.md5(str(data).encode('utf-8')).hexdigest(),16)}
                 return field, df, hashes
     except Exception as e:
         if DEBUG:
@@ -410,7 +410,7 @@ def read_data_file(fn, skiplines=1, maxlines=False):
 def hash_series(series):
     d = series.values
     d.flags.writeable = False #TODO needed?
-    s = str(list(d))
+    s = str(list(d)).encode('utf-8')
     return int(hashlib.md5(s).hexdigest(),16) #NOT
 
 
@@ -488,7 +488,7 @@ def import_logs(folder, keys):
     keys.update({"^Time = ": ['Time']})
 
     for log_number, log_name in enumerate(logs):
-        with open(log_name) as log:
+        with open(log_name, encoding="utf-8") as log:
             f = log.readlines()
             start = find_start(f)
             dataDict = defaultdict(list)

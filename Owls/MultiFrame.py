@@ -1,3 +1,4 @@
+from future.builtins import *
 from collections import OrderedDict
 from . import  plot
 
@@ -13,7 +14,7 @@ class MultiFrame():
     def __repr__(self):
         s = "MultiFrame with {} entries:\n".format(len(self.cases))
         s += "\n".join(["{}\n{}:\n{}".format(80*"=",name,c.describe())
-            for name,c in self.cases.iteritems()])
+            for name,c in self.cases.items()])
         return s
 
     def __init__(self, cases=None):
@@ -25,7 +26,7 @@ class MultiFrame():
             self.cases={}
 
     def __getitem__(self, field):
-        return [serie[field] for serie in self.cases.itervalues()]
+        return [serie[field] for serie in self.cases.values()]
 
     def names(self):
         return [name for name in self.cases]
@@ -43,9 +44,9 @@ class MultiFrame():
             return MultiFrame({name:case for name,case in self.cases if
                             func(name)})
 
-    def iteritems(self):
-        for name,case in self.cases.iteritems():
-            yield name,case
+    def items(self):
+        for name, case in self.cases.items():
+            yield name, case
 
     def by(self, overlay=True):
         """
@@ -96,7 +97,7 @@ class MultiFrame():
 
         if not overlay:
             rows=[]
-            for name, instance in self.cases.iteritems():
+            for name, instance in self.cases.items():
                 figure=bk.figure()
                 rows.append(
                         getattr(instance, inst_func)
@@ -113,7 +114,7 @@ class MultiFrame():
            exp_title = kwargs.get("title", None)
            if exp_title != None:
                 kwargs.pop("title")
-           for name, instance in self.cases.iteritems():
+           for name, instance in self.cases.items():
                 color = next(colors)
                 legend = (exp_legend if exp_legend != None else name)
                 title = (exp_title if exp_title != None else "")

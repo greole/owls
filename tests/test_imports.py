@@ -8,7 +8,7 @@ def test_imports():
     from Owls import FoamFrame
     from Owls import MultiFrame
     from Owls import foam
-    from Owls import plot
+    from Owls import plotinterface
 
 
 def test_importFoamFolder():

@@ -6,11 +6,11 @@ if not os.path.exists(owls_path):
     os.makedirs(owls_path)
 
 from .version import __version__
-from .io import *
+# from . import io
 from .plot import *
-from .foam import *
+# from .foam import *
 from .FoamFrame import *
-from .MultiFrame import *
+# from .MultiFrame import *
 
 from future.builtins import *
 print("Owls Version: " + __version__)

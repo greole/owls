@@ -2,14 +2,13 @@ from future.builtins import *
 import os
 import re
 import shelve
-from . import plot as plt
 from collections import OrderedDict
 
 from pandas import Series
 from pandas import DataFrame
 from pandas import concat
 
-from . import MultiFrame
+from . import MultiFrame as mf
 from . import io
 
 
@@ -27,7 +26,7 @@ else:
 
 def items_from_dict(dict, func, **kwargs):
     return Cases([func(folder=folder,name=name, symb=symb, **kwargs)
-               for name, (folder,symb) in dict.iteritems()])
+               for name, (folder,symb) in dict.items()])
 
 def read_sets(folder, name="None", search="(postProcessing/)*sets/" + io.FPNUMBER, **kwargs):
     return FoamFrame(folder=folder, search_files=False,
@@ -180,10 +179,8 @@ class FoamFrame(DataFrame):
           'show_func']
 
       for k in keys:
-        try:
-            kwargs.pop(k)
-        except:
-            pass
+          if k in kwargs:
+              kwargs.pop(k)
 
       #TODO explain what happens here
       if folder == None:
@@ -193,7 +190,7 @@ class FoamFrame(DataFrame):
            if preHooks:
                 for hook in preHooks:
                     hook.execute()
-           if case_data_base.has_key(folder) and Database:
+           if (folder in case_data_base) and Database:
                 print("re-importing", end="")
            else:
                 print("importing", end="")
@@ -206,7 +203,10 @@ class FoamFrame(DataFrame):
                        maxlines=lines,
                        skiptimes=times,
                   )
-           DataFrame.__init__(self, data)
+           try:
+                DataFrame.__init__(self, data)
+           except:
+                pass
            self.properties = Props(
                 origins,
                 name,
@@ -393,7 +393,7 @@ class FoamFrame(DataFrame):
                  y=y_data,
                  **kwargs)
 
-        for ax, data in {'x':x, 'y':y[0]}.iteritems():
+        for ax, data in {'x':x, 'y':y[0]}.items():
             getattr(figure, ax+'axis').axis_label = _label(ax, data)
             if _range(ax, data):
                 r = setattr(figure, ax+'_range', _range(ax, data))
@@ -425,11 +425,11 @@ class FoamFrame(DataFrame):
                 .filter(name='Loc', index=lambda x: 0.2<field_to_float(x)<0.8)
         """
         if index:
-            ret = self[map(index, self.index.get_level_values(name))]
+            ret = self[list(map(index, self.index.get_level_values(name)))]
             ret.properties = self.properties
             return ret
         elif field:
-            ret = self[map(field,self[name])]
+            ret = self[list(map(field,self[name]))]
             ret.properties = self.properties
             return ret
         else:
@@ -457,15 +457,15 @@ class FoamFrame(DataFrame):
                    [(index(val),self[self.index.get_level_values(name) == val])
                         for val in self.index.get_level_values(name)]
                   )
-            for _ in ret.itervalues():
+            for _ in ret.values():
                 _.properties = self.properties
-            return MultiFrame(ret)
+            return mf.MultiFrame(ret)
         else:
-            self['cat'] = map(field, self[name])
+            self['cat'] = list(map(field, self[name]))
             cats = self.groupby('cat').groups.keys()
             ret =  OrderedDict(
                     [(cat,self[self['cat'] == cat]) for cat in cats]
                 )
-            for _ in ret.itervalues():
+            for _ in ret.values():
                 _.properties = self.properties
-            return MultiFrame(ret)
+            return mf.MultiFrame(ret)
