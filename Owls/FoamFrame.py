@@ -10,7 +10,7 @@ from pandas import DataFrame
 from pandas import concat
 
 from MultiFrame import MultiFrame
-import .io
+from . import io
 
 
 Series.__repr__ = (lambda x: ("Hash: {}\nTimes: {}\nLoc: {}\nValues: {}".format(
