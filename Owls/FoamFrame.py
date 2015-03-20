@@ -9,7 +9,7 @@ from pandas import Series
 from pandas import DataFrame
 from pandas import concat
 
-from MultiFrame import MultiFrame
+from . import MultiFrame
 from . import io
 
 
