@@ -1,5 +1,5 @@
-from future.builtins import *
 from __future__  import print_function
+from future.builtins import *
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl

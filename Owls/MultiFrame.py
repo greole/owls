@@ -1,5 +1,5 @@
-from future.builtins import *
 from __future__  import print_function
+from future.builtins import *
 
 from collections import OrderedDict
 from . import  plot
