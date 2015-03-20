@@ -1,5 +1,5 @@
 from collections import OrderedDict
-import plot
+from . import  plot
 
 class MultiFrame():
     """ Class for storage of multiple case items
