@@ -10,6 +10,7 @@ Bad Karma:
 
 '''
 
+from __future__  import print_function
 import numpy as np
 import re
 import os

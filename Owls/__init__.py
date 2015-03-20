@@ -1,4 +1,5 @@
 #__all__ = ["case", "plot", "analysis"]
+from __future__  import print_function
 import os
 
 owls_path = os.path.expanduser('~') + "/.owls"
