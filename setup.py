@@ -6,8 +6,6 @@ from setuptools import setup
 
 #from io import open
 
-from future.builtins import str
-
 package_name = 'Owls'
 # Fetch version from git tags, and write to version.py.
 # Also, when git is not available (PyPi package), use stored version.py.
