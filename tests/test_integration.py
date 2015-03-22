@@ -33,6 +33,14 @@ def test_sets(readSets):
     assert type(ff.filter('T', field=lambda x: x>293.0))
     assert ff.by_index('Loc')
 
+def test_sets_pandas(readSets):
+    ff = readSets
+    assert ff.describe()
+
+def test_sets_plots(readSets):
+    ff = readSets
+    assert ff.scatter('T')
+
 def test_exp(readExp):
     ff = readExp
     assert ff.times
