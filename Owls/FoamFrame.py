@@ -194,9 +194,9 @@ class FoamFrame(DataFrame):
                 for hook in preHooks:
                     hook.execute()
            if (folder in case_data_base) and Database:
-                print("re-importing", end="")
+                print("re-importing", end=" ")
            else:
-                print("importing", end="")
+                print("importing", end=" ")
            print(name + ": ", end="")
            origins, data = io.import_foam_folder(
                        path=folder,
