@@ -35,10 +35,11 @@ def test_sets(readSets):
 
 def test_sets_pandas(readSets):
     ff = readSets
-    assert ff.describe()
+    ff.describe()
 
 def test_sets_plots(readSets):
     ff = readSets
+    assert ff.scatter('Time','T')
     assert ff.scatter('T')
 
 def test_exp(readExp):
