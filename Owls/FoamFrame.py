@@ -11,6 +11,7 @@ from pandas import DataFrame
 from pandas import concat
 
 from . import MultiFrame as mf
+from . import plot as plt
 from . import io
 
 
@@ -352,7 +353,7 @@ class FoamFrame(DataFrame):
         """
         if self._is_idx(item):
             level = self.index.names.index(item)
-            return zip(*self.index.values)[level]
+            return list(zip(*self.index.values))[level]
         else:
            return super(FoamFrame, self).__getitem__(item)
 
