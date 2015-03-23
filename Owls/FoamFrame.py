@@ -25,7 +25,7 @@ Database = False
 if Database:
     case_data_base = shelve.open(os.path.expanduser('~') + "/.owls/db")
 else:
-    case_data_base = dict() 
+    case_data_base = dict()
 
 def items_from_dict(dict, func, **kwargs):
     return Cases([func(folder=folder,name=name, symb=symb, **kwargs)
@@ -342,10 +342,15 @@ class FoamFrame(DataFrame):
         import re
         self.columns = [re.sub(search, replace, name) for name in self.columns]
 
-
     def _is_idx(self, item):
         """ test if item is column or idx """
-        return item in self.index.names
+        itemt = type(item)
+        # if item is Series of booleans
+        # it cant be an index
+        if itemt not in [int, str, float]:
+            return False
+        else:
+            return item in self.index.names
 
     def __getitem__(self, item):
         """ call pandas DataFrame __getitem__ if item is not
@@ -455,20 +460,15 @@ class FoamFrame(DataFrame):
             .by(index=lambda x: x)
             .by(field=lambda x: ('T_high' if x['T'] > 1000 else 'T_low'))
         """
+        ret = OrderedDict()
         if index:
-            ret = OrderedDict(
-                   [(index(val),self[self.index.get_level_values(name) == val])
-                        for val in self.index.get_level_values(name)]
-                  )
-            for _ in ret.values():
-                _.properties = self.properties
-            return mf.MultiFrame(ret)
+            index_values = self.index.get_level_values(name)
+            for val in set(index_values):
+                ret.update([(index(val), self[index_values == val])])
         else:
-            self['cat'] = list(map(field, self[name]))
-            cats = self.groupby('cat').groups.keys()
-            ret =  OrderedDict(
-                    [(cat,self[self['cat'] == cat]) for cat in cats]
-                )
-            for _ in ret.values():
-                _.properties = self.properties
-            return mf.MultiFrame(ret)
+            selection = self[name].apply(field)
+            for cat in set(selection):
+                ret.update([(cat, self[selection == cat])])
+        for _ in ret.values():
+            _.properties = self.properties
+        return mf.MultiFrame(ret)
