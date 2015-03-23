@@ -115,10 +115,3 @@ def test_findDataFiles(create_directory_tree):
     els_eulerian_decomp = len(eulerian_decomp)
 
     assert els_eulerian * 4 == els_eulerian_decomp
-
-    # eulerian_decomp = io.import_foam_folder(
-    #     path=test_dir,
-    #     search="processor[0-9]\/" + io.FPNUMBER,
-    #     files=['T'])
-    # print(eulerian_decomp)
-
