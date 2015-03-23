@@ -463,7 +463,8 @@ class FoamFrame(DataFrame):
         ret = OrderedDict()
         if index:
             index_values = self.index.get_level_values(name)
-            for val in set(index_values):
+            idx_values = sorted(set(index_values))
+            for val in idx_values:
                 ret.update([(index(val), self[index_values == val])])
         else:
             selection = self[name].apply(field)
