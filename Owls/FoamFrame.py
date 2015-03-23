@@ -348,7 +348,8 @@ class FoamFrame(DataFrame):
         # if item is Series of booleans
         # it cant be an index
         from past.builtins import unicode
-        if itemt not in [int, str, float, unicode]:
+        from past.builtins import str as text
+        if itemt not in [int, str, float, unicode, text]:
             return False
         else:
             return item in self.index.names
