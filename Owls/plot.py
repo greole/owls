@@ -15,6 +15,15 @@ config = {
     "color_cycle": colored,
     }
 
+def CleanLabelRow(row):
+    """ remove dublicate labels along a row """
+    for figure in row[1:]:
+        try:
+            figure.y_axis.axis_label = False
+        except:
+            pass
+    return row
+
 def figure():
     import bokeh.plotting as bk
     return bk.figure()
