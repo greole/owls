@@ -27,9 +27,9 @@ if Database:
 else:
     case_data_base = dict()
 
-def items_from_dict(dict, func, **kwargs):
-    return Cases([func(folder=folder,name=name, symb=symb, **kwargs)
-               for name, (folder,symb) in dict.items()])
+def from_dict(input_dict, func, **kwargs):
+    return {name: func(folder=folder, name=name, **kwargs)
+                 for name, folder in input_dict.items()}
 
 def read_sets(folder, name="None", search="(postProcessing/)*sets/" + io.FPNUMBER, **kwargs):
     return FoamFrame(folder=folder, search_files=False,
