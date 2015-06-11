@@ -10,7 +10,7 @@ Bad Karma:
 
 '''
 from __future__  import print_function
-from future.builtins import *
+from future.builtins import map, filter, open, next, range, zip, dict, str
 
 import numpy as np
 import re

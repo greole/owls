@@ -347,7 +347,9 @@ class FoamFrame(DataFrame):
         itemt = type(item)
         # if item is Series of booleans
         # it cant be an index
-        if itemt not in [int, str, float]:
+        from past.builtins import unicode
+        from past.builtins import str as text
+        if itemt not in [int, str, float, unicode, text]:
             return False
         else:
             return item in self.index.names
@@ -463,7 +465,8 @@ class FoamFrame(DataFrame):
         ret = OrderedDict()
         if index:
             index_values = self.index.get_level_values(name)
-            for val in set(index_values):
+            idx_values = sorted(set(index_values))
+            for val in idx_values:
                 ret.update([(index(val), self[index_values == val])])
         else:
             selection = self[name].apply(field)
