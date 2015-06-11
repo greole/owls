@@ -50,6 +50,9 @@ class MultiFrame():
         for name, case in self.cases.items():
             yield name, case
 
+    def insert(self, key, value):
+        self.cases[key] = value
+
     def by(self, overlay=True):
         """
             recursiv grouping function
