@@ -30,10 +30,6 @@ packages = [
          'future',
          'numpy', 
          'pandas',
-         'ipython',
-         'pyzmq',
-         'tornado',
-         'jinja2',
          'bokeh==0.8.1',
         ]
 
