@@ -27,14 +27,14 @@ if Database:
 else:
     case_data_base = dict()
 
-def items_from_dict(dict, func, **kwargs):
-    return Cases([func(folder=folder,name=name, symb=symb, **kwargs)
-               for name, (folder,symb) in dict.items()])
+def from_dict(input_dict, func, **kwargs):
+    return {name: func(folder=folder, name=name, **kwargs)
+                 for name, folder in input_dict.items()}
 
 def read_sets(folder, name="None", search="(postProcessing/)*sets/" + io.FPNUMBER, **kwargs):
     return FoamFrame(folder=folder, search_files=False,
             search_pattern=search, name=name,
-            show_func="plot", preHooks=None, **kwargs)
+            show_func="plot", preHooks=None, exclude=['processor'], **kwargs)
 
 def read_lag(folder, files, skiplines=1,
         name="None", cloud="[A-Za-z]*Cloud1",
@@ -166,6 +166,7 @@ class FoamFrame(DataFrame):
       show_func = kwargs.get('show_func', None)
       validate = kwargs.get('validate', True)
       preHooks = kwargs.get('preHooks', None)
+      exclude = kwargs.get('exclude', None)
 
       keys = [
           'skiplines',
@@ -179,7 +180,9 @@ class FoamFrame(DataFrame):
           'search_pattern',
           'folder',
           'plot_properties',
-          'show_func']
+          'show_func',
+          'exclude',
+        ]
 
       for k in keys:
           if k in kwargs:
@@ -205,6 +208,7 @@ class FoamFrame(DataFrame):
                        skiplines=skip,
                        maxlines=lines,
                        skiptimes=times,
+                       exclude=exclude,
                   )
            try:
                 DataFrame.__init__(self, data)
@@ -415,6 +419,8 @@ class FoamFrame(DataFrame):
 
     def plot(self, y, x='Pos', z=False, title="", figure=False, **kwargs):
         figure = (figure if figure else plt.figure())
+        if kwargs.get('symbol', None):
+            kwargs.pop('symbol')
         return self.draw(x, y, z, title, func="line", figure=figure, **kwargs)
 
 

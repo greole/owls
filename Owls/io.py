@@ -59,6 +59,7 @@ def find_datafiles(
         path=False,
         files=False,
         search=FPNUMBER,
+        exclude=None,
     ):
     """ Find all datafiles in each time folder,
 
@@ -75,20 +76,23 @@ def find_datafiles(
             Ordered dict with times as key and
             list of found files
     """
-    data_folders = find_datafolders(search, path)
+    data_folders = find_datafolders(search, path, exclude)
     return OrderedDict(
         [(time, _get_datafiles_from_dir(time, files))
             for time in data_folders]
         )
 
-def find_datafolders(regex, path=False):
+def find_datafolders(regex, path=False, exclude=None):
     """ Find data folders according to regex
         replaces old find_times function
         Returns sorted list of times as strings """
     search_folder = (path if path else os.getcwd())
     complete_regex = search_folder + regex + "$"
-    folders = [fold for fold,_,_ in os.walk(search_folder)
-                    if re.match(complete_regex,fold)]
+    folders = []
+    for fold,dirs,_ in os.walk(search_folder):
+        dirs[:] = [d for d in dirs for ex in exclude if not re.match(ex,d)]
+        if re.match(complete_regex,fold):
+            folders.append(fold)
     folders.sort()
     return folders
 
@@ -255,6 +259,35 @@ def strip_time(path, base):
     else:
         return 0.0
 
+def import_foam_mesh(path, exclude=None):
+    """ returns a Dataframe containing the raw mesh data """
+    from pandas import concat
+    if not path.endswith('/'):
+        path = path + '/'
+    fileList = find_datafiles(
+            path,
+            search="constant\/polyMesh",
+            files=['faces', 'points', 'owner', 'neighbour'],
+            exclude = exclude,
+        )
+    if not fileList:
+        print("no mesh files found")
+        return
+    p_bar = ProgressBar(n_tot=sum([len(l) for l in fileList.values()]))
+    df = DataFrame()
+    from collections import defaultdict
+    origins = Origins()
+    els = list(fileList.items())
+    time, files = els[0]
+    df_tmp = dict()
+    for fn in files:
+        ret = read_data_file(fn, skiplines=1, maxlines=False)
+        p_bar.next()
+        field_names, x, hashes = ret
+        df_tmp[fn] = x
+    return df_tmp
+
+
 def import_foam_folder(
             path,
             search,
@@ -262,6 +295,7 @@ def import_foam_folder(
             skiplines=1,
             maxlines=0,
             skiptimes=1,
+            exclude=None
         ):
     """ returns a Dataframe for every file in fileList """
     #import StringIO
@@ -269,7 +303,7 @@ def import_foam_folder(
 
     if not path.endswith('/'):
         path = path + '/'
-    fileList = find_datafiles(path, search=search, files=files)
+    fileList = find_datafiles(path, search=search, files=files, exclude=exclude)
     if not fileList:
         print("no files found")
         return
@@ -279,8 +313,8 @@ def import_foam_folder(
     from collections import defaultdict
     origins = Origins()
     els = list(fileList.items())[::skiptimes]
-    for time, files in els:
-        time = strip_time(time, path)
+    for fullpath, files in els:
+        time = strip_time(fullpath, path)
         df_tmp = DataFrame()
         for fn in files:
             #ret = read_table(StringIO.StringIO(foam_to_csv(fn)))
