@@ -363,6 +363,7 @@ def read_data_file(fn, skiplines=1, maxlines=False):
          index after header
     """
 
+    # TODO check if sorting the index gives any performance benefits
     # print "opening file {}".format(fn)
     if not os.path.exists(fn):
         print("Can not open file " + fn)
