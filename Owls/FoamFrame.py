@@ -15,11 +15,11 @@ from . import plot as plt
 from . import io
 
 
-Series.__repr__ = (lambda x: ("Hash: {}\nTimes: {}\nLoc: {}\nValues: {}".format(
-                    io.hash_series(x),
-                    list(set(x.keys().get_level_values('Time'))), # avoid back and forth conversion
-                    list(set(x.keys().get_level_values('Loc'))),
-                    x.values))) #TODO monkey patch to use hashes
+# Series.__repr__ = (lambda x: ("Hash: {}\nTimes: {}\nLoc: {}\nValues: {}".format(
+#                     io.hash_series(x),
+#                     list(set(x.keys().get_level_values('Time'))), # avoid back and forth conversion
+#                     list(set(x.keys().get_level_values('Loc'))),
+#                     x.values))) #TODO monkey patch to use hashes
 Database = False
 
 if Database:
@@ -321,7 +321,10 @@ class FoamFrame(DataFrame):
 
     def at(self, idx_name, idx_val):
         """ select from foamframe based on index name and value"""
+        #TODO FIX This
         ret = self[self.index.get_level_values(idx_name) == idx_val]
+        # match = [(val in idx_val) for val in self.index.get_level_values(idx_name)]
+        # ret = self[match]
         ret.properties = self.properties
         return ret
 
@@ -366,7 +369,10 @@ class FoamFrame(DataFrame):
             level = self.index.names.index(item)
             return list(zip(*self.index.values))[level]
         else:
-           return super(FoamFrame, self).__getitem__(item)
+            if (type(item) is str) and item not in self.columns:
+                return Series()
+            else:
+                return super(FoamFrame, self).__getitem__(item)
 
     def draw(self, x, y, z, title, func, figure, **kwargs):
         import bokeh.plotting as bk
@@ -392,11 +398,7 @@ class FoamFrame(DataFrame):
         #TODO: change colors if y is of list type
         y = (y if type(y) == list else [y]) # wrap y to a list so that we can iterate
 
-        figure_properties = {
-                "outline_line_color":"black", #FIXME refactor
-                "plot_width":300, "plot_height":300,
-            }
-        figure_properties.update({"title": title})
+        figure_properties = {"title": title}
 
         if kwargs.get('x_range', False):
             figure_properties.update({"x_range": kwargs.get('x_range')})
@@ -455,6 +457,14 @@ class FoamFrame(DataFrame):
         func = (func if func else lambda x: x)
         return self.by(field, index=func)
 
+    # def map_level(self, dct, level=0):
+    #     index = self.index
+    #     index.set_levels([[dct.get(item, item)
+    #         for item in names] if i==level else names
+    #         #for i, names in enumerate(index.levels)], inplace=True)
+    #         for i, names in enumerate(index.levels)], inplace=False)
+    #     self.index = index
+    #     return self
 
     def by_field(self, field, func=None):
         func = (func if func else lambda x: x)
