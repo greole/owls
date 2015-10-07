@@ -1,10 +1,10 @@
 #!/usr/bin/python
 """
-    Usage: 
+    Usage:
         animSnapshots.py [options]
-       
+
     Options:
-        -h --help           Show this screen 
+        -h --help           Show this screen
         -d --decomposed     Case is decomposed
         -a --all            Process all times, otherwise last time step only
         -i --interpolate    Write images with interpolated fields
@@ -106,7 +106,7 @@ def convert_to_gif(slices, fields):
 class animator():
     """  wrapper class to handle python-paraview """
 
-    def __init__(self, 
+    def __init__(self,
              animate=False,
              decomposed=False,
              config=False,
@@ -155,7 +155,7 @@ class animator():
 
         caseType = ('Decomposed Case' if self.decomp else 'Reconstructed Case')
         self.reader.CaseType = caseType
-        self.has_changed() 
+        self.has_changed()
         print "\t[done]"
 
     def has_changed(self):
@@ -165,7 +165,7 @@ class animator():
         "read all or latest ts from reader"
         times = self.reader.TimestepValues
         self.total_times = len(times)
-        
+
         self.times = (times[::-1][:self.ntimes] if not self.anim else times[::-1])
 
     def setup_view(self, image_size=[780, 780]):
@@ -264,7 +264,7 @@ class animator():
         if name not in self.reader.CellData.keys():
             return
         self.set_field(name)
-        if lim == 'auto': 
+        if lim == 'auto':
            idx = self.reader.CellData.keys().index(name)
            arr = self.reader.CellData[idx]
            lim = arr.GetRange()
@@ -294,7 +294,7 @@ class animator():
             print 'STOP'
             self.stop = True
             return 0
-            
+
         WriteImage(image_name)
         print "written : " + image_name.split('/')[-1]
 
@@ -337,7 +337,7 @@ def main(arguments):
         )
 
     anim.write_all_fields()
-    
+
     if arguments['--gif']:
         convert_to_gif(anim.conf['slices'].keys(), anim.scalars)
         convert_to_gif(anim.conf['slices'].keys(), anim.vectors)
