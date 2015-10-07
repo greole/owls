@@ -1,14 +1,13 @@
-from __future__  import print_function
+from __future__ import print_function
 from future.builtins import *
 
 import os
-import re
+# import re
 import shelve
 from collections import OrderedDict
 
-from pandas import Series
-from pandas import DataFrame
-from pandas import concat
+from pandas import Series, DataFrame, Index
+# from pandas import concat
 
 from . import MultiFrame as mf
 from . import plot as plt
@@ -27,52 +26,63 @@ if Database:
 else:
     case_data_base = dict()
 
+
 def from_dict(input_dict, func, **kwargs):
     return {name: func(folder=folder, name=name, **kwargs)
-                 for name, folder in input_dict.items()}
+            for name, folder in input_dict.items()}
 
-def read_sets(folder, name="None", search="(postProcessing/)*sets/" + io.FPNUMBER, **kwargs):
+
+def read_sets(folder, name="None",
+              search="(postProcessing/)*sets/" + io.FPNUMBER,
+              **kwargs):
     return FoamFrame(folder=folder, search_files=False,
-            search_pattern=search, name=name,
-            show_func="plot", preHooks=None, exclude=['processor'], **kwargs)
+                     search_pattern=search, name=name,
+                     show_func="plot", preHooks=None,
+                     exclude=['processor'], **kwargs)
+
 
 def read_lag(folder, files, skiplines=1,
-        name="None", cloud="[A-Za-z]*Cloud1",
-        preHooks=None, decomposed=False, **kwargs
-    ):
+             name="None", cloud="[A-Za-z]*Cloud1",
+             preHooks=None, decomposed=False, **kwargs):
     search = io.FPNUMBER + "/lagrangian/" + cloud,
     search = (search if not decomposed else "processor[0-9]?/" + search)
     return FoamFrame(folder=folder, search_files=files,
-                search_pattern=search, name=name, skiplines=skiplines,
-                show_func="scatter", **kwargs)
+                     search_pattern=search, name=name,
+                     skiplines=skiplines, show_func="scatter",
+                     **kwargs)
 
-def read_eul(folder, files, skiplines=1, name="None", decomposed=False,
-            preHooks=None, **kwargs):
+
+def read_eul(folder, files, skiplines=1, name="None",
+             decomposed=False, preHooks=None, **kwargs):
     search = io.FPNUMBER
     search = (search if not decomposed else "processor[0-9]?/" + search)
     return FoamFrame(folder=folder, search_files=files,
-            search_pattern=search, name=name,
-            skiplines=skiplines, show_func="scatter", preHooks=preHooks,
-             **kwargs)
+                     search_pattern=search, name=name,
+                     skiplines=skiplines, show_func="scatter",
+                     preHooks=preHooks, **kwargs)
+
 
 def read_exp(folder, name="None", search="", **kwargs):
     return FoamFrame(folder=folder, search_files=False,
-             search_pattern=search, name=name, show_func="scatter", **kwargs)
+                     search_pattern=search, name=name,
+                     show_func="scatter", **kwargs)
 
 
 def read_log(folder, keys, log_name='*log*', plot_properties=False):
-    origins,df = io.import_logs(folder,keys)
+    origins, df = io.import_logs(folder, keys)
     ff = FoamFrame(df)
-    ff.properties=Props(
-            origins=origins,
-            name='LogFiles',
-            plot_properties=plot_properties,
-            folder=folder,
-            times=[0],
-            symb="-",
-            show_func="plot",
-            )
+    ff.properties = Props(
+        origins=origins, name='LogFiles',
+        plot_properties=plot_properties,
+        folder=folder, times=[0], symb="-",
+        show_func="plot")
     return ff
+
+""" Filter Helper Functions """
+
+isIn = lambda x: lambda y: x in y
+isNotIn = lambda x: lambda y: x not in y
+
 
 class PlotProperties():
 
@@ -84,6 +94,10 @@ class PlotProperties():
         self.properties[field].update(properties)
         return self
 
+    def set(self, inserts):
+        for k, d in inserts.items():
+            self.insert(k, d)
+
     def select(self, field, prop, default=None):
         field = self.properties[field]
         if not field:
@@ -91,18 +105,20 @@ class PlotProperties():
         else:
             return field.get(prop, default)
 
+
 class Props():
 
     def __init__(self, origins, name,
-            plot_properties, folder, times, symb,show_func,):
-        self.origins=origins
-        self.name=name
-        self.plot_properties=plot_properties
-        self.folder=folder
-        self.times=times
+                 plot_properties, folder,
+                 times, symb, show_func):
+        self.origins = origins
+        self.name = name
+        self.plot_properties = plot_properties
+        self.folder = folder
+        self.times = times
         self.latest_time = max(times)
-        self.symb=symb
-        self.show_func=show_func
+        self.symb = symb
+        self.show_func = show_func
 
 
 class FoamFrame(DataFrame):
@@ -153,46 +169,45 @@ class FoamFrame(DataFrame):
     """
     def __init__(self, *args, **kwargs):
 
-      skip = kwargs.get('skiplines', 1)
-      times = kwargs.get('skiptimes', 1)
-      name = kwargs.get('name', 'None')
-      symb = kwargs.get('symb', 'o')
-      files = kwargs.get('search_files', None)
-      properties = kwargs.get('properties', None)
-      lines = kwargs.get('maxlines', 0)
-      search = kwargs.get('search_pattern', io.FPNUMBER)
-      folder = kwargs.get('folder', None)
-      plot_properties = kwargs.get('plot_properties', PlotProperties())
-      show_func = kwargs.get('show_func', None)
-      validate = kwargs.get('validate', True)
-      preHooks = kwargs.get('preHooks', None)
-      exclude = kwargs.get('exclude', None)
+        skip = kwargs.get('skiplines', 1)
+        times = kwargs.get('skiptimes', 1)
+        name = kwargs.get('name', 'None')
+        symb = kwargs.get('symb', 'o')
+        files = kwargs.get('search_files', None)
+        properties = kwargs.get('properties', None)
+        lines = kwargs.get('maxlines', 0)
+        search = kwargs.get('search_pattern', io.FPNUMBER)
+        folder = kwargs.get('folder', None)
+        plot_properties = kwargs.get('plot_properties', PlotProperties())
+        show_func = kwargs.get('show_func', None)
+        validate = kwargs.get('validate', True)
+        preHooks = kwargs.get('preHooks', None)
+        exclude = kwargs.get('exclude', None)
 
-      keys = [
-          'skiplines',
-          'skiptimes',
-          'preHooks',
-          'name',
-          'symb',
-          'search_files',
-          'properties',
-          'maxlines',
-          'search_pattern',
-          'folder',
-          'plot_properties',
-          'show_func',
-          'exclude',
-        ]
+        keys = ['skiplines',
+                'skiptimes',
+                'preHooks',
+                'name',
+                'symb',
+                'search_files',
+                'properties',
+                'maxlines',
+                'search_pattern',
+                'folder',
+                'plot_properties',
+                'show_func',
+                'exclude',
+                ]
 
-      for k in keys:
-          if k in kwargs:
-              kwargs.pop(k)
+        for k in keys:
+            if k in kwargs:
+                kwargs.pop(k)
 
-      #TODO explain what happens here
-      if folder == None:
+        # TODO explain what happens here
+        if folder == None:
            #super(FoamFrame, self).__init__(*args, **kwargs)
            DataFrame.__init__(self, *args, **kwargs)
-      else:
+        else:
            if preHooks:
                 for hook in preHooks:
                     hook.execute()
@@ -284,8 +299,7 @@ class FoamFrame(DataFrame):
         return
 
     def __str__(self):
-        ret =  "FoamFrame: \n" + super(FoamFrame,self).__str__()
-        return ret
+        return "FoamFrame: \n" + super(FoamFrame, self).__str__()
 
     @property
     def _constructor(self):
@@ -302,7 +316,6 @@ class FoamFrame(DataFrame):
     def locations(self):
         """ return times for case """
         return set([_[1] for _ in self.index.values])
-
 
     @property
     def latest(self):
@@ -321,9 +334,10 @@ class FoamFrame(DataFrame):
 
     def at(self, idx_name, idx_val):
         """ select from foamframe based on index name and value"""
-        #TODO FIX This
+        # TODO FIX This
         ret = self[self.index.get_level_values(idx_name) == idx_val]
-        # match = [(val in idx_val) for val in self.index.get_level_values(idx_name)]
+        # match = [(val in idx_val)
+        #      for val in self.index.get_level_values(idx_name)]
         # ret = self[match]
         ret.properties = self.properties
         return ret
@@ -332,7 +346,7 @@ class FoamFrame(DataFrame):
         """ Return FoamFrame based on location """
         return self.at(idx_name='Id', idx_val=loc)
 
-    def location(self, loc):#
+    def location(self, loc):
         """ Return FoamFrame based on location """
         return self.at(idx_name='Loc', idx_val=loc)
 
@@ -342,12 +356,25 @@ class FoamFrame(DataFrame):
 
     def field_names(self, key):
         """ search for all field names matching keyword"""
-        return [_ for _ in  self.columns if key in _]
+        return [_ for _ in self.columns if key in _]
 
     def rename(self, search, replace):
         """ rename field names based on regex """
         import re
         self.columns = [re.sub(search, replace, name) for name in self.columns]
+
+    def rename_idx(self, search, replace):
+        """ rename field names based on regex """
+        self.index = Index(
+            [(t, replace if x == search else x, i) for t, x, i in list(self.index)],
+            names=self.index.names)
+
+    def rename_idxs(self, rename_map):
+        """ rename multiple field names based dictionary
+            of {search: replace} """
+        for s, r in rename_map.items():
+            self.rename_idx(s, r)
+
 
     def _is_idx(self, item):
         """ test if item is column or idx """
@@ -375,28 +402,34 @@ class FoamFrame(DataFrame):
                 return super(FoamFrame, self).__getitem__(item)
 
     def draw(self, x, y, z, title, func, figure, **kwargs):
-        import bokeh.plotting as bk
+
         def _label(axis, field):
-           label = kwargs.get(axis + '_label', False)
-           if label:
-               self.properties.plot_properties.insert(field, {axis + '_label':label})
-           else:
-               label = self.properties.plot_properties.select(field, axis + '_label', "None")
-           return label
+            label = kwargs.get(axis + '_label', False)
+            if label:
+                self.properties.plot_properties.insert(
+                    field, {axis + '_label': label})
+            else:
+                label = self.properties.plot_properties.select(
+                    field, axis + '_label', "None")
+            return label
 
         def _range(axis, field):
-           from bokeh.models import Range1d
-           p_range_args = kwargs.get(axis + '_range', False)
-           if p_range_args:
-               self.properties.plot_properties.insert(field, {axis + '_range': p_range})
-           else:
-               p_range = self.properties.plot_properties.select(field, axis + '_range')
-           if not p_range:
+            from bokeh.models import Range1d
+            p_range_args = kwargs.get(axis + '_range', False)
+            if p_range_args:
+                self.properties.plot_properties.insert(
+                    field, {axis + '_range': p_range})
+            else:
+                p_range = self.properties.plot_properties.select(
+                    field, axis + '_range')
+            if not p_range:
                 return False
-           else:
+            else:
                 return Range1d(start=p_range[0], end=p_range[1])
-        #TODO: change colors if y is of list type
-        y = (y if type(y) == list else [y]) # wrap y to a list so that we can iterate
+
+        # TODO: change colors if y is of list type
+        # wrap y to a list so that we can iterate
+        y = (y if type(y) == list else [y])
 
         figure_properties = {"title": title}
 
@@ -405,12 +438,19 @@ class FoamFrame(DataFrame):
         figure.set(**figure_properties)
         for yi in y:
             x_data, y_data = self[x], self[yi]
+            # TODO FIXME
+            for k in ['symbols', 'order', 'colors', 'symbol']:
+                if k in kwargs.keys():
+                    kwargs.pop(k)
             getattr(figure, func)(x=x_data,
-                 y=y_data,
-                 **kwargs)
+                                  y=y_data,
+                                  **kwargs)
 
-        for ax, data in {'x':x, 'y':y[0]}.items():
-            getattr(figure, ax+'axis').axis_label = _label(ax, data)
+        for ax, data in {'x': x, 'y': y[0]}.items():
+            if _label(ax, data):
+                getattr(figure, ax+'axis')[0].axis_label = _label(ax, data)
+            # setattr(getattr(figure, ax + 'axis'),
+            #         'axis_label', _label(ax, data))
             if _range(ax, data):
                 r = setattr(figure, ax+'_range', _range(ax, data))
         return figure
@@ -433,6 +473,10 @@ class FoamFrame(DataFrame):
         else:
             return getattr(self, self.properties.show_func)(y=y, figure=figure, **kwargs)
 
+
+    def filterLocs(self, index):
+        """ filter based on locations """
+        return self.filter(name='Loc', index=index)
 
     def filter(self, name, index=None, field=None):
         """ filter on index or field values by given functioni
