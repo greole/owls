@@ -27,14 +27,15 @@ with open(version_py, 'w') as fh:
 
 
 packages = [
-         'future',
-         'numpy', 
-         'pandas',
-         'bokeh==0.8.1',
-        ]
+    'future',
+    'numpy',
+    'pandas',
+    'functional',
+    'bokeh==0.10.0',
+    ]
 
 if '--with-matplotlib' in sys.argv:
-    packages.extend('matplotlib')  
+    packages.extend('matplotlib')
 
 config = {
     'author': 'Gregor Olenik',
