@@ -25,7 +25,6 @@ with open(version_py, 'w') as fh:
 # exec(compile(open(package_name + '/version.py').read(),
 #              package_name + '/version.py', 'exec'))
 
-
 packages = [
     'future',
     'numpy',
@@ -45,7 +44,9 @@ config = {
     'version': version_git,
     'packages': [package_name],
     'install_requires': packages,
-    'name': package_name
+    'data_files': [('scripts', ['scripts/snap.py'])],
+    'name': package_name,
+    'zip_safe': False
 }
 
 
