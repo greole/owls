@@ -50,6 +50,9 @@ def adjustRow(style, whereRow, whereFigs=None, rows=None):
             setattr(f, key, value)
     return figs
 
+def figure():
+    import bokeh.plotting as bk
+    return bk.figure()
 
 def adjustColumn(style, whereRow, whereFigs=None, rows=None):
     for row in whereRow(rows):
@@ -161,7 +164,7 @@ def plot_cases(cases, y, order, x='Pos', legend=True, **kwargs):
     from .FoamFrame import FoamFrame
     """ plot all cases in cases dict at specified locations
         and latest time step """
-    elems = [x.latest.by_index('Loc') for x in cases.values() if type(x) is FoamFrame]
+    elems = [x.by_index('Loc') for x in cases.values() if type(x) is FoamFrame]
     return multi_merge(*elems, x=x, y=y, order=order, legend=legend, **kwargs)
 
 
@@ -216,3 +219,38 @@ default_style = [size, font, color]
 compose_styles = lambda x, y: multi_compose(x + y)
 
 style = multi_compose(default_style)
+
+
+# snapshots
+
+def snapshot(path, json_config, notebook_dir, size):
+    import subprocess, os, json
+    from IPython.display import HTML, display
+    from glob import glob
+    import shutil
+    snappy_path = os.path.dirname(__file__) + "/../scripts/snap.py"
+    old_dir = os.getcwd()
+    os.chdir(path)
+    cmd = "python " + snappy_path + " -d --json_config=\'" + json_config + "\'"
+    subprocess.check_call(cmd, shell=True)
+    vals = json.loads(json_config)
+    images=[]
+
+    dest_dir = notebook_dir
+    if not os.path.exists(dest_dir): os.makedirs(dest_dir)
+
+    for s in vals["slices"].keys():
+        for v in vals["vectors"].keys():
+            for i in range(3):
+                iname = "last_" + s + v + "_" + str(i) + ".png"
+                images.append(iname)
+        for v in vals["scalars"].keys():
+            iname = "last_" + s + v + "_0.png"
+            images.append(iname)
+    imagesList=''.join(["<img style='width:" + str(size) + "px; margin: 0px; float: left; border: 1px solid black;' src='%s' />" % str(s)
+                         for s in images])
+
+    for filename in glob(os.path.join(path + "/postProcessing/anim", '*.png')):
+            shutil.copy(filename, dest_dir)
+    os.chdir(old_dir)
+    return display(HTML(imagesList))
