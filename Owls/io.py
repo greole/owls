@@ -82,6 +82,7 @@ def find_datafiles(
             for time in data_folders]
         )
 
+
 def find_datafolders(regex, path=False, exclude=None):
     """ Find data folders according to regex
         replaces old find_times function
@@ -89,12 +90,13 @@ def find_datafolders(regex, path=False, exclude=None):
     search_folder = (path if path else os.getcwd())
     complete_regex = search_folder + regex + "$"
     folders = []
-    for fold,dirs,_ in os.walk(search_folder):
-        dirs[:] = [d for d in dirs for ex in exclude if not re.match(ex,d)]
-        if re.match(complete_regex,fold):
+    for fold, dirs, _ in os.walk(search_folder):
+        dirs[:] = [d for d in dirs for ex in exclude if not re.match(ex, d)]
+        if re.match(complete_regex, fold):
             folders.append(fold)
     folders.sort()
     return folders
+
 
 def _get_datafiles_from_dir(path=False, fn_filter=False):
     """ Return file names of Foam files from cwd if no path
@@ -289,13 +291,13 @@ def import_foam_mesh(path, exclude=None):
 
 
 def import_foam_folder(
-            path,
-            search,
-            files,
-            skiplines=1,
-            maxlines=0,
-            skiptimes=1,
-            exclude=None
+        path,
+        search,
+        files,
+        skiplines=1,
+        maxlines=0,
+        skiptimes=1,
+        exclude=None
         ):
     """ returns a Dataframe for every file in fileList """
     #import StringIO
@@ -303,7 +305,8 @@ def import_foam_folder(
 
     if not path.endswith('/'):
         path = path + '/'
-    fileList = find_datafiles(path, search=search, files=files, exclude=exclude)
+    fileList = find_datafiles(
+        path, search=search, files=files, exclude=exclude)
     if not fileList:
         print("no files found")
         return

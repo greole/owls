@@ -67,6 +67,11 @@ def adjustColumn(style, whereRow, whereFigs=None, rows=None):
     return rows
 
 
+def figure():
+    import bokeh.plotting as bk
+    return bk.figure()
+
+
 def merge(*args, **kwargs):
     import bokeh.plotting as bk
     figure = (bk.figure() if not kwargs.get('figure', False) else
