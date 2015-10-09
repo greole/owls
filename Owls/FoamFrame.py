@@ -182,7 +182,7 @@ class FoamFrame(DataFrame):
         show_func = kwargs.get('show_func', None)
         validate = kwargs.get('validate', True)
         preHooks = kwargs.get('preHooks', None)
-        exclude = kwargs.get('exclude', None)
+        exclude = kwargs.get('exclude', [" "])  # FIXME
 
         keys = ['skiplines',
                 'skiptimes',
@@ -204,32 +204,32 @@ class FoamFrame(DataFrame):
                 kwargs.pop(k)
 
         # TODO explain what happens here
-        if folder == None:
-           #super(FoamFrame, self).__init__(*args, **kwargs)
-           DataFrame.__init__(self, *args, **kwargs)
+        if folder is None:
+            # super(FoamFrame, self).__init__(*args, **kwargs)
+            DataFrame.__init__(self, *args, **kwargs)
         else:
-           if preHooks:
+            if preHooks:
                 for hook in preHooks:
                     hook.execute()
-           if (folder in case_data_base) and Database:
+            if (folder in case_data_base) and Database:
                 print("re-importing", end=" ")
-           else:
+            else:
                 print("importing", end=" ")
-           print(name + ": ", end="")
-           origins, data = io.import_foam_folder(
-                       path=folder,
-                       search=search,
-                       files=files,
-                       skiplines=skip,
-                       maxlines=lines,
-                       skiptimes=times,
-                       exclude=exclude,
-                  )
-           try:
+            print(name + ": ", end="")
+            origins, data = io.import_foam_folder(
+                path=folder,
+                search=search,
+                files=files,
+                skiplines=skip,
+                maxlines=lines,
+                skiptimes=times,
+                exclude=exclude,
+                )
+            try:
                 DataFrame.__init__(self, data)
-           except:
+            except:
                 pass
-           self.properties = Props(
+            self.properties = Props(
                 origins,
                 name,
                 plot_properties,
@@ -238,10 +238,10 @@ class FoamFrame(DataFrame):
                 data.index.levels[0],
                 symb,
                 show_func)
-           if validate and Database:
+            if validate and Database:
                 self.validate_origins(folder, origins)
-           # register to database
-           if Database:
+            # register to database
+            if Database:
                 case_data_base.sync()
 
     def validate_origins(self, folder, origins):
