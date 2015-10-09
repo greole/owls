@@ -320,6 +320,7 @@ class FoamFrame(DataFrame):
     @property
     def latest(self):
         """ return latest time for case """
+        import pandas as pd
         ret = self.loc[[self.properties.latest_time]]
         ret.properties = self.properties
         return ret
@@ -473,6 +474,14 @@ class FoamFrame(DataFrame):
         else:
             return getattr(self, self.properties.show_func)(y=y, figure=figure, **kwargs)
 
+    def show_func(self, value):
+        """ set the default plot style
+            valid arguments: scatter, plot """
+        self.properties.show_func = value
+
+    def set_plot_properties(self, **values):
+        """ set plot properties  """
+        self.properties.plot_properties.set(values)
 
     def filterLocs(self, index):
         """ filter based on locations """
