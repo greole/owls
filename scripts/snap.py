@@ -12,11 +12,13 @@
         --nlatest=num       Process only n latest time steps
         --slice=dir         Slice normal, default=y
         --config=file       Specify config file
+        --json_config=str   Specify config file
         --vectors=fields    Explicit list of vector fields to read
         --scalars=fields    Explicit list of vector fields to read
         --gif               Create gifs
         --clean             Remove existing anim folder
         --update            Write till latest previously written snapshot
+        --force             Force overwriting old snapshots #TODO
 """
 
 import os, sys
@@ -110,6 +112,7 @@ class animator():
              animate=False,
              decomposed=False,
              config=False,
+             json_config=False,
              interpolate=False,
              update=False,
              cam_shift=1,
@@ -125,10 +128,13 @@ class animator():
         self.cam_view_up = cam_view_up
         self.anim = animate
         self.decomp = decomposed
-        self.conf = self.read_config(config)
+        if config:
+            self.conf = self.read_config(config)
+        if json_config:
+            self.conf = json.loads(json_config)
         self.path = os.getcwd()
-        self.scalars = (self.conf['scalars'] if not scalars else {key:('auto','Blues') for key in scalars.split(',')})
-        self.vectors = (self.conf['vectors'] if not vectors else {key:('auto','Blues') for key in vectors.split(',')})
+        self.scalars = (self.conf['scalars'] if not scalars else {key: ('auto', 'Blues') for key in scalars.split(',')})
+        self.vectors = (self.conf['vectors'] if not vectors else {key: ('auto', 'Blues') for key in vectors.split(',')})
         self.ntimes = ntimes
         self.interpolate = interpolate
         self.autoscaled = {}
@@ -215,23 +221,27 @@ class animator():
 
     def write_all_fields(self):
         for time_nr, t in enumerate(self.times):
+            self.reprSlice = self.slice_domain([0,0,1], [0,0,0])
+            self.reprSlice.Visibility = False
             for slice_name, (slice_origin, slice_normal) in self.conf['slices'].iteritems():
                 self.reprSlice = self.slice_domain(slice_normal, slice_origin)
                 self.reprSlice.Visibility = True
+                print self.reprSlice.Visibility
                 self.view.ViewTime = t
                 self.frame_nr = self.total_times - time_nr
                 print t
                 self.has_changed()
                 vectors = deepcopy(self.vectors)
+                link = True if time_nr == 0 else False
                 for field, (limits, lut_name) in vectors.iteritems():
                     try:
-                        self.display_vector_field(field, limits, str(lut_name),slice_dir=slice_name)
+                        self.display_vector_field(field, limits, str(lut_name), slice_dir=slice_name, link=link)
                     except Exception as e:
                         print e
                 scalars = deepcopy(self.scalars)
-                for field, (limits,lut_name) in scalars.iteritems():
+                for field, (limits, lut_name) in scalars.iteritems():
                     try:
-                        self.display_scalar(field, limits, str(lut_name), slice_dir=slice_name)
+                        self.display_scalar(field, limits, str(lut_name), slice_dir=slice_name, link=link)
                     except Exception as e:
                         print e
                 if self.stop:
@@ -239,7 +249,7 @@ class animator():
                     break
                 self.reprSlice.Visibility = False
 
-    def display_vector_field(self, name, lim, lut_name, slice_dir):
+    def display_vector_field(self, name, lim, lut_name, slice_dir, link):
         if name not in self.reader.CellData.keys():
             return
         ncomps = (3 if lim =="auto" else len(lim))
@@ -258,9 +268,9 @@ class animator():
             lt.VectorComponent = j
             self.reprSlice.LookupTable = lt
             self.color_map.LookupTable = lt
-            self.write_image(name, j, slice_dir=slice_dir)
+            self.write_image(name, j, slice_dir=slice_dir, link=link)
 
-    def display_scalar(self, name, lim, lut_name, slice_dir):
+    def display_scalar(self, name, lim, lut_name, slice_dir, link):
         if name not in self.reader.CellData.keys():
             return
         self.set_field(name)
@@ -274,15 +284,15 @@ class animator():
         lt = AssignLookupTable(self.reader.CellData[0], lut_name, lim)
         self.reprSlice.LookupTable = lt
         self.color_map.LookupTable = lt
-        self.write_image(name, slice_dir=slice_dir)
+        self.write_image(name, slice_dir=slice_dir, link=link)
 
     def set_field(self, name):
         #reprSlice.MeshVisibility = 1
         _ = ('POINTS' if self.interpolate else 'CELLS')
-        self.reprSlice.ColorArrayName = (_,str(name))
+        self.reprSlice.ColorArrayName = (_, str(name))
         self.color_map.Title = str(name)
 
-    def write_image(self, name, component=0, slice_dir='z'):
+    def write_image(self, name, component=0, slice_dir='z', link=False):
         image_name = "{}/postProcessing/anim/{}{}_{}_{}_({}).png".format(self.path,
                                          slice_dir,
                                          name,
@@ -290,12 +300,21 @@ class animator():
                                          str(self.frame_nr).zfill(4),
                                          self.view.ViewTime
                                          )
+
         if os.path.exists(image_name) and self.update:
             print 'STOP'
             self.stop = True
             return 0
 
         WriteImage(image_name)
+        if link:
+            image_name = "{}/postProcessing/anim/last_{}{}_{}.png".format(self.path,
+                                             slice_dir,
+                                             name,
+                                             component,
+                                             )
+            WriteImage(image_name)
+
         print "written : " + image_name.split('/')[-1]
 
 def main(arguments):
@@ -307,7 +326,7 @@ def main(arguments):
 
     if arguments['--nlatest'] and arguments['--all']:
         print "cannot use --nlatest and --all at the same time"
-        # exit 0
+        sys.exit()
 
     if not arguments['--slice']:
         cam_shift = 1
@@ -325,7 +344,8 @@ def main(arguments):
     anim = animator(
         animate=arguments['--all'],
         decomposed=arguments['--decomposed'],
-        config=arguments['--config'],
+        config=arguments.get('--config', False),
+        json_config=arguments.get('--json_config', False),
         interpolate=arguments['--interpolate'],
         update=arguments['--update'],
         cam_shift=cam_shift,
