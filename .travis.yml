@@ -1,6 +1,9 @@
 sudo: false
 language: python
 
+before_install:
+    - pip install ipython
+
 python:
     - 2.7
     - 3.3
