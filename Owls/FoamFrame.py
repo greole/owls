@@ -33,9 +33,14 @@ def from_dict(input_dict, func, **kwargs):
 
 
 def read_sets(folder, name="None",
-              search="(postProcessing/)*sets/" + io.FPNUMBER,
+              search=io.FPNUMBER,
               **kwargs):
-    return FoamFrame(folder=folder, search_files=False,
+    def setsfolder(folder):
+        p = os.path.join(folder, "postProcessing")
+        return (os.path.join(p, "sets") if os.path.exists(p)
+                else os.path.join(folder, "sets"))
+
+    return FoamFrame(folder=setsfolder(folder), search_files=False,
                      search_pattern=search, name=name,
                      show_func="plot", preHooks=None,
                      exclude=['processor'], **kwargs)
