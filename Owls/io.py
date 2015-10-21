@@ -76,6 +76,7 @@ def find_datafiles(
             Ordered dict with times as key and
             list of found files
     """
+    exclude = exclude if exclude else []
     data_folders = find_datafolders(search, path, exclude)
     return OrderedDict(
         [(time, _get_datafiles_from_dir(time, files))
@@ -87,6 +88,7 @@ def find_datafolders(regex, path=False, exclude=None):
     """ Find data folders according to regex
         replaces old find_times function
         Returns sorted list of times as strings """
+    exclude = exclude if exclude else []
     search_folder = (path if path else os.getcwd())
     complete_regex = search_folder + regex + "$"
     folders = []
