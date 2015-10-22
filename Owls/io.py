@@ -16,9 +16,8 @@ import numpy as np
 import re
 import os
 import hashlib
-from pandas import DataFrame
-from collections import defaultdict
-from collections import OrderedDict
+from pandas import DataFrame, concat
+from collections import defaultdict, OrderedDict
 from IPython.display import display, clear_output
 
 FPNUMBER = "[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?"
@@ -518,10 +517,11 @@ def import_logs(folder, keys):
                 "ExecutionTime":[0,1]
         """
         import re
-        for key, col_names in keys.iteritems():
+        for key, col_names in keys.items():
             if re.search(key, line):
-                return col_names, map(float,filter(lambda x:
-                        x, re.findall("[0-9]+[.]?[0-9]*[e]?[\-]?[0-9]*", line)))
+                return col_names, list(
+                        map(float,filter(lambda x:
+                        x, re.findall("[0-9]+[.]?[0-9]*[e]?[\-]?[0-9]*", line))))
         return None, None
 
     fold,dirs,files = next(os.walk(folder))
@@ -546,7 +546,7 @@ def import_logs(folder, keys):
                     # Very slow but, so far the solution
                     # to keep subiterations attached to correct time
                     # FIXME: still needs handling of different length dictionaries
-                    df = concat([df,DataFrame(dataDict)])
+                    df = concat([df, DataFrame(dataDict)])
                     dataDict = defaultdict(list)
                  for i, col in enumerate(col_names):
                     dataDict[col].append(values[i])
