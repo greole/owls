@@ -87,10 +87,12 @@ def find_datafolders(regex, path=False, exclude=None):
     """ Find data folders according to regex
         replaces old find_times function
         Returns sorted list of times as strings """
-    search_folder = (path if path else os.getcwd())
-    complete_regex = search_folder + regex + "$"
+    path = (path if path else os.getcwd())
+    if not path.endswith('/'):
+        path = path + '/'
+    complete_regex = path + regex + "$"
     folders = []
-    for fold, dirs, _ in os.walk(search_folder):
+    for fold, dirs, _ in os.walk(path):
         if exclude:
             dirs[:] = [d for d in dirs for ex in exclude if not re.match(ex, d)]
         folders.append(fold)
@@ -266,13 +268,15 @@ def strip_time(path, base):
 def import_foam_mesh(path, exclude=None):
     """ returns a Dataframe containing the raw mesh data """
     from pandas import concat
-    if not path.endswith('/'):
-        path = path + '/'
+    mesh_loc = "constant/polyMesh"
+    if mesh_loc not in path:
+        path = os.path.join(path, mesh_loc)
+
     fileList = find_datafiles(
             path,
-            search="constant\/polyMesh",
+            search="[.\/A-Za-z]*",
             files=['faces', 'points', 'owner', 'neighbour'],
-            exclude = exclude,
+            exclude=exclude,
         )
     if not fileList:
         print("no mesh files found")
@@ -304,9 +308,6 @@ def import_foam_folder(
     """ returns a Dataframe for every file in fileList """
     #import StringIO
     from pandas import concat
-
-    if not path.endswith('/'):
-        path = path + '/'
     fileList = find_datafiles(
         path, search=search, files=files, exclude=exclude)
     if not fileList:
