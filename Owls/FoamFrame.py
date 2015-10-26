@@ -49,7 +49,7 @@ def read_sets(folder, name="None",
 def read_lag(folder, files, skiplines=1,
              name="None", cloud="[A-Za-z]*Cloud1",
              preHooks=None, decomposed=False, **kwargs):
-    search = io.FPNUMBER + "/lagrangian/" + cloud,
+    search = io.FPNUMBER + "/lagrangian/" + cloud
     search = (search if not decomposed else "processor[0-9]?/" + search)
     return FoamFrame(folder=folder, search_files=files,
                      search_pattern=search, name=name,
