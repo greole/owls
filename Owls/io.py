@@ -490,7 +490,7 @@ def req_file(file_name, requested):
         return file_name.split('/')[-1] in requested
 
 
-def import_logs(folder, keys):
+def import_logs(folder, search, keys):
     """
         keys = {"ExectionTime": ["ExecTime", "ClockTime"]}
 
@@ -524,8 +524,8 @@ def import_logs(folder, keys):
                         x, re.findall("[0-9]+[.]?[0-9]*[e]?[\-]?[0-9]*", line))))
         return None, None
 
-    fold,dirs,files = next(os.walk(folder))
-    logs = [fold + "/" + log for log in files if 'log' in log]
+    fold, dirs, files = next(os.walk(folder))
+    logs = [fold + "/" + log for log in files if search in log]
     p_bar = ProgressBar(n_tot = len(logs))
     # Lets make sure that we find Timesteps in the log
     keys.update({"^Time = ": ['Time']})
@@ -563,8 +563,8 @@ def import_logs(folder, keys):
             print(log_name)
             print("failed to process")
             print(e)
-            return {},None
-    return {},df
+            return {}, None
+    return {}, DataFrame()
 
 
 
