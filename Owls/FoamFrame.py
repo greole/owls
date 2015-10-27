@@ -73,11 +73,11 @@ def read_exp(folder, name="None", search="", **kwargs):
                      show_func="scatter", **kwargs)
 
 
-def read_log(folder, keys, log_name='*log*', plot_properties=False):
-    origins, df = io.import_logs(folder, keys)
+def read_log(folder, keys, log_name='log', plot_properties=False, name="None"):
+    origins, df = io.import_logs(folder, log_name, keys)
     ff = FoamFrame(df)
     ff.properties = Props(
-        origins=origins, name='LogFiles',
+        origins=origins, name=folder,
         plot_properties=plot_properties,
         folder=folder, times=[0], symb="-",
         show_func="plot")
@@ -433,24 +433,28 @@ class FoamFrame(DataFrame):
             else:
                 return Range1d(start=p_range[0], end=p_range[1])
 
-        # TODO: change colors if y is of list type
-        # wrap y to a list so that we can iterate
-        y = (y if type(y) == list else [y])
-
         figure_properties = {"title": title}
 
         if kwargs.get('x_range', False):
             figure_properties.update({"x_range": kwargs.get('x_range')})
         figure.set(**figure_properties)
-        for yi in y:
-            x_data, y_data = self[x], self[yi]
-            # TODO FIXME
-            for k in ['symbols', 'order', 'colors', 'symbol']:
-                if k in kwargs.keys():
-                    kwargs.pop(k)
-            getattr(figure, func)(x=x_data,
-                                  y=y_data,
+        if func == "quad":
+            getattr(figure, func)(top=y, bottom=0, left=x[:-1], right=x[1:],
                                   **kwargs)
+            return figure
+        else:
+            # TODO: change colors if y is of list type
+            # wrap y to a list so that we can iterate
+            y = (y if type(y) == list else [y])
+            for yi in y:
+                x_data, y_data = self[x], self[yi]
+                # TODO FIXME
+                for k in ['symbols', 'order', 'colors', 'symbol']:
+                    if k in kwargs.keys():
+                        kwargs.pop(k)
+                getattr(figure, func)(x=x_data,
+                                      y=y_data,
+                                      **kwargs)
 
         for ax, data in {'x': x, 'y': y[0]}.items():
             if _label(ax, data):
@@ -460,6 +464,13 @@ class FoamFrame(DataFrame):
             if _range(ax, data):
                 r = setattr(figure, ax+'_range', _range(ax, data))
         return figure
+
+    def histogram(self, y, x=None, title="", figure=False, **kwargs):
+        figure = (figure if figure else plt.figure())
+        import numpy as np
+        hist, edges = np.histogram(self[y], density=True, bins=50)
+
+        return self.draw(x=edges, y=hist, z=None, title=title, func="quad", figure=figure, **kwargs)
 
     def scatter(self, y, x='Pos', z=False, title="", figure=False, **kwargs):
         figure = (figure if figure else plt.figure())
