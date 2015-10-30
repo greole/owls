@@ -417,7 +417,7 @@ def read_data_file(fn, skiplines=1, maxlines=False):
             is_a_vector = (True if entries > 1 else False)
             end = start + num_entries
             if is_a_vector:
-                data = list(map(lambda x: re.sub(r'[()]', '', x).split(),
+                data = list(map(lambda x: re.sub("[0-9]*\(|\)", '', x).split(),
                             content[start:end:skiplines]))
                 loc, names = evaluate_names(fn, entries)
                 df = DataFrame(data=data, columns=names)
