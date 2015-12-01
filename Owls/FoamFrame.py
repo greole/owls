@@ -437,12 +437,19 @@ class FoamFrame(DataFrame):
         if kwargs.get('x_range', False):
             figure_properties.update({"x_range": kwargs.get('x_range')})
         figure.set(**figure_properties)
+        colors = plt.next_color()
+        spec_color = kwargs.get("color", False)
+        spec_legend = kwargs.get("legend", False)
         for yi in y:
             x_data, y_data = self[x], self[yi]
             # TODO FIXME
             for k in ['symbols', 'order', 'colors', 'symbol']:
                 if k in kwargs.keys():
                     kwargs.pop(k)
+            if not spec_color:
+                kwargs.update({"color": next(colors)})
+            if not spec_legend:
+                kwargs.update({"legend": yi})
             getattr(figure, func)(x=x_data,
                                   y=y_data,
                                   **kwargs)
