@@ -530,6 +530,10 @@ class FoamFrame(DataFrame):
         func = (func if func else lambda x: x)
         return self.by(field, field=func)
 
+    def by_location(self, func=None):
+        func = (func if func else lambda x: x)
+        return self.by("Loc", index=func)
+
     def by(self, name, index=None, field=None):
         """ facet by given function
 
