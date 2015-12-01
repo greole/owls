@@ -490,7 +490,7 @@ class FoamFrame(DataFrame):
         """ set plot properties  """
         self.properties.plot_properties.set(values)
 
-    def filterLocs(self, index):
+    def filter_locations(self, index):
         """ filter based on locations """
         return self.filter(name='Loc', index=index)
 
