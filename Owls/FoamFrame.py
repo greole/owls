@@ -438,23 +438,29 @@ class FoamFrame(DataFrame):
         if kwargs.get('x_range', False):
             figure_properties.update({"x_range": kwargs.get('x_range')})
         figure.set(**figure_properties)
+
         if func == "quad":
             getattr(figure, func)(top=y, bottom=0, left=x[:-1], right=x[1:],
                                   **kwargs)
             return figure
-        else:
-            # TODO: change colors if y is of list type
-            # wrap y to a list so that we can iterate
-            y = (y if type(y) == list else [y])
-            for yi in y:
-                x_data, y_data = self[x], self[yi]
-                # TODO FIXME
-                for k in ['symbols', 'order', 'colors', 'symbol']:
-                    if k in kwargs.keys():
-                        kwargs.pop(k)
-                getattr(figure, func)(x=x_data,
-                                      y=y_data,
-                                      **kwargs)
+
+        colors = plt.next_color()
+        spec_color = kwargs.get("color", False)
+        spec_legend = kwargs.get("legend", False)
+        y = (y if type(y) == list else [y])
+        for yi in y:
+            x_data, y_data = self[x], self[yi]
+            # TODO FIXME
+            for k in ['symbols', 'order', 'colors', 'symbol']:
+                if k in kwargs.keys():
+                    kwargs.pop(k)
+            if not spec_color:
+                kwargs.update({"color": next(colors)})
+            if not spec_legend:
+                kwargs.update({"legend": yi})
+            getattr(figure, func)(x=x_data,
+                                  y=y_data,
+                                  **kwargs)
 
         for ax, data in {'x': x, 'y': y[0]}.items():
             if _label(ax, data):
