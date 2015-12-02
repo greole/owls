@@ -16,9 +16,8 @@ import numpy as np
 import re
 import os
 import hashlib
-from pandas import DataFrame
-from collections import defaultdict
-from collections import OrderedDict
+from pandas import DataFrame, concat
+from collections import defaultdict, OrderedDict
 from IPython.display import display, clear_output
 
 FPNUMBER = "[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?"
@@ -87,13 +86,17 @@ def find_datafolders(regex, path=False, exclude=None):
     """ Find data folders according to regex
         replaces old find_times function
         Returns sorted list of times as strings """
-    search_folder = (path if path else os.getcwd())
-    complete_regex = search_folder + regex + "$"
+    path = (path if path else os.getcwd())
+    if not path.endswith('/'):
+        path = path + '/'
+    complete_regex = path + regex + "$"
     folders = []
-    for fold, dirs, _ in os.walk(search_folder):
-        dirs[:] = [d for d in dirs for ex in exclude if not re.match(ex, d)]
-        if re.match(complete_regex, fold):
-            folders.append(fold)
+    for fold, dirs, _ in os.walk(path):
+        if exclude:
+            dirs[:] = [d for d in dirs for ex in exclude if not re.match(ex, d)]
+        folders.append(fold)
+
+    folders = [_ for _ in folders if re.match(complete_regex, _)]
     folders.sort()
     return folders
 
@@ -264,13 +267,15 @@ def strip_time(path, base):
 def import_foam_mesh(path, exclude=None):
     """ returns a Dataframe containing the raw mesh data """
     from pandas import concat
-    if not path.endswith('/'):
-        path = path + '/'
+    mesh_loc = "constant/polyMesh"
+    if mesh_loc not in path:
+        path = os.path.join(path, mesh_loc)
+
     fileList = find_datafiles(
             path,
-            search="constant\/polyMesh",
+            search="[.\/A-Za-z]*",
             files=['faces', 'points', 'owner', 'neighbour'],
-            exclude = exclude,
+            exclude=exclude,
         )
     if not fileList:
         print("no mesh files found")
@@ -302,9 +307,6 @@ def import_foam_folder(
     """ returns a Dataframe for every file in fileList """
     #import StringIO
     from pandas import concat
-
-    if not path.endswith('/'):
-        path = path + '/'
     fileList = find_datafiles(
         path, search=search, files=files, exclude=exclude)
     if not fileList:
@@ -415,7 +417,7 @@ def read_data_file(fn, skiplines=1, maxlines=False):
             is_a_vector = (True if entries > 1 else False)
             end = start + num_entries
             if is_a_vector:
-                data = list(map(lambda x: re.sub(r'[()]', '', x).split(),
+                data = list(map(lambda x: re.sub("[0-9]*\(|\)", '', x).split(),
                             content[start:end:skiplines]))
                 loc, names = evaluate_names(fn, entries)
                 df = DataFrame(data=data, columns=names)
@@ -488,7 +490,7 @@ def req_file(file_name, requested):
         return file_name.split('/')[-1] in requested
 
 
-def import_logs(folder, keys):
+def import_logs(folder, search, keys):
     """
         keys = {"ExectionTime": ["ExecTime", "ClockTime"]}
 
@@ -515,14 +517,15 @@ def import_logs(folder, keys):
                 "ExecutionTime":[0,1]
         """
         import re
-        for key, col_names in keys.iteritems():
+        for key, col_names in keys.items():
             if re.search(key, line):
-                return col_names, map(float,filter(lambda x:
-                        x, re.findall("[0-9]+[.]?[0-9]*[e]?[\-]?[0-9]*", line)))
+                return col_names, list(
+                        map(float,filter(lambda x:
+                        x, re.findall("[0-9]+[.]?[0-9]*[e]?[\-]?[0-9]*", line))))
         return None, None
 
-    fold,dirs,files = next(os.walk(folder))
-    logs = [fold + "/" + log for log in files if 'log' in log]
+    fold, dirs, files = next(os.walk(folder))
+    logs = [fold + "/" + log for log in files if search in log]
     p_bar = ProgressBar(n_tot = len(logs))
     # Lets make sure that we find Timesteps in the log
     keys.update({"^Time = ": ['Time']})
@@ -543,7 +546,7 @@ def import_logs(folder, keys):
                     # Very slow but, so far the solution
                     # to keep subiterations attached to correct time
                     # FIXME: still needs handling of different length dictionaries
-                    df = concat([df,DataFrame(dataDict)])
+                    df = concat([df, DataFrame(dataDict)])
                     dataDict = defaultdict(list)
                  for i, col in enumerate(col_names):
                     dataDict[col].append(values[i])
@@ -560,8 +563,8 @@ def import_logs(folder, keys):
             print(log_name)
             print("failed to process")
             print(e)
-            return {},None
-    return {},df
+            return {}, None
+    return {}, DataFrame()
 
 
 

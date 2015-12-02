@@ -33,9 +33,14 @@ def from_dict(input_dict, func, **kwargs):
 
 
 def read_sets(folder, name="None",
-              search="(postProcessing/)*sets/" + io.FPNUMBER,
+              search=io.FPNUMBER,
               **kwargs):
-    return FoamFrame(folder=folder, search_files=False,
+    def setsfolder(folder):
+        p = os.path.join(folder, "postProcessing")
+        return (os.path.join(p, "sets") if os.path.exists(p)
+                else os.path.join(folder, "sets"))
+
+    return FoamFrame(folder=setsfolder(folder), search_files=False,
                      search_pattern=search, name=name,
                      show_func="plot", preHooks=None,
                      exclude=['processor'], **kwargs)
@@ -44,7 +49,7 @@ def read_sets(folder, name="None",
 def read_lag(folder, files, skiplines=1,
              name="None", cloud="[A-Za-z]*Cloud1",
              preHooks=None, decomposed=False, **kwargs):
-    search = io.FPNUMBER + "/lagrangian/" + cloud,
+    search = io.FPNUMBER + "/lagrangian/" + cloud
     search = (search if not decomposed else "processor[0-9]?/" + search)
     return FoamFrame(folder=folder, search_files=files,
                      search_pattern=search, name=name,
@@ -68,11 +73,11 @@ def read_exp(folder, name="None", search="", **kwargs):
                      show_func="scatter", **kwargs)
 
 
-def read_log(folder, keys, log_name='*log*', plot_properties=False):
-    origins, df = io.import_logs(folder, keys)
+def read_log(folder, keys, log_name='log', plot_properties=False, name="None"):
+    origins, df = io.import_logs(folder, log_name, keys)
     ff = FoamFrame(df)
     ff.properties = Props(
-        origins=origins, name='LogFiles',
+        origins=origins, name=folder,
         plot_properties=plot_properties,
         folder=folder, times=[0], symb="-",
         show_func="plot")
@@ -428,10 +433,6 @@ class FoamFrame(DataFrame):
             else:
                 return Range1d(start=p_range[0], end=p_range[1])
 
-        # TODO: change colors if y is of list type
-        # wrap y to a list so that we can iterate
-        y = (y if type(y) == list else [y])
-
         figure_properties = {"title": title}
 
         if kwargs.get('x_range', False):
@@ -440,6 +441,16 @@ class FoamFrame(DataFrame):
         colors = plt.next_color()
         spec_color = kwargs.get("color", False)
         spec_legend = kwargs.get("legend", False)
+
+        if func == "quad":
+            getattr(figure, func)(top=y, bottom=0, left=x[:-1], right=x[1:],
+                                  **kwargs)
+            return figure
+
+        colors = plt.next_color()
+        spec_color = kwargs.get("color", False)
+        spec_legend = kwargs.get("legend", False)
+        y = (y if isinstance(y, list) else [y])
         for yi in y:
             x_data, y_data = self[x], self[yi]
             # TODO FIXME
@@ -462,6 +473,13 @@ class FoamFrame(DataFrame):
             if _range(ax, data):
                 r = setattr(figure, ax+'_range', _range(ax, data))
         return figure
+
+    def histogram(self, y, x=None, title="", figure=False, **kwargs):
+        figure = (figure if figure else plt.figure())
+        import numpy as np
+        hist, edges = np.histogram(self[y], density=True, bins=50)
+
+        return self.draw(x=edges, y=hist, z=None, title=title, func="quad", figure=figure, **kwargs)
 
     def scatter(self, y, x='Pos', z=False, title="", figure=False, **kwargs):
         figure = (figure if figure else plt.figure())
