@@ -13,6 +13,7 @@ from . import MultiFrame as mf
 from . import plot as plt
 from . import io
 
+import bokeh.plotting as bk
 
 # Series.__repr__ = (lambda x: ("Hash: {}\nTimes: {}\nLoc: {}\nValues: {}".format(
 #                     io.hash_series(x),
@@ -408,7 +409,7 @@ class FoamFrame(DataFrame):
                 return super(FoamFrame, self).__getitem__(item)
 
     def draw(self, x, y, z, title, func, figure, **kwargs):
-
+        # TODO Rename to _draw
         def _label(axis, field):
             label = kwargs.get(axis + '_label', False)
             if label:
@@ -492,12 +493,22 @@ class FoamFrame(DataFrame):
         return self.draw(x, y, z, title, func="line", figure=figure, **kwargs)
 
 
-    def show(self, y, x=None, figure=False, **kwargs):
-        figure = (figure if figure else plt.figure())
-        if x:
-            return getattr(self, self.properties.show_func)(y=y, x=x, figure=figure, **kwargs)
+    def show(self, y, x=None, figure=False, overlay=True, **kwargs):
+        def create_figure(y_, f):
+            if x:
+                return getattr(self, self.properties.show_func)(y=y_, x=x, figure=f, **kwargs)
+            else:
+                return getattr(self, self.properties.show_func)(y=y_, figure=f, **kwargs)
+
+        if isinstance(y, list) and  not overlay:
+            rows = []
+            for yi in y:
+                f = (figure if figure else plt.figure())
+                rows.append(create_figure(yi, f))
+            return bk.GridPlot(children=[rows])
         else:
-            return getattr(self, self.properties.show_func)(y=y, figure=figure, **kwargs)
+            f = (figure if figure else plt.figure())
+            return create_figure(y, f)
 
     def show_func(self, value):
         """ set the default plot style
