@@ -288,31 +288,38 @@ class FoamFrame(DataFrame):
         else:
             case_data_base[folder] = origins.dct
 
-    def add(self, data, label):
-        """
-        Add a given Series
-
-        Usage:
-        ------ing-
-        case.add(sqrt(uu),'u_rms')
-        """
-        self.latest[label] = data
-        return self
-
     def source(self, col):
         """ find corresponding file for column """
         # return get time loc  and return dict for every column
         # latest.source['u']
         return
 
-    def __str__(self):
-        return "FoamFrame: \n" + super(FoamFrame, self).__str__()
+    # ----------------------------------------------------------------------
+    # Internal helper methods
 
     @property
     def _constructor(self):
         # override DataFrames constructor
         # to enable method chaining
         return FoamFrame
+
+    def _is_idx(self, item):
+        """ test if item is column or idx """
+        itemt = type(item)
+        # if item is Series of booleans
+        # it cant be an index
+        from past.builtins import unicode
+        from past.builtins import str as text
+        if itemt not in [int, str, float, unicode, text]:
+            return False
+        else:
+            return item in self.index.names
+
+    # ----------------------------------------------------------------------
+    # Info methods
+
+    def __str__(self):
+        return "FoamFrame: \n" + super(FoamFrame, self).__str__()
 
     @property
     def times(self):
@@ -324,6 +331,22 @@ class FoamFrame(DataFrame):
         """ return times for case """
         return set([_[1] for _ in self.index.values])
 
+    # ----------------------------------------------------------------------
+    # Selection methods
+
+    def __getitem__(self, item):
+        """ call pandas DataFrame __getitem__ if item is not
+            an index
+        """
+        if self._is_idx(item):
+            level = self.index.names.index(item)
+            return list(zip(*self.index.values))[level]
+        else:
+            if (type(item) is str) and item not in self.columns:
+                return Series()
+            else:
+                return super(FoamFrame, self).__getitem__(item)
+
     @property
     def latest(self):
         """ return latest time for case """
@@ -331,14 +354,6 @@ class FoamFrame(DataFrame):
         ret = self.loc[[self.properties.latest_time]]
         ret.properties = self.properties
         return ret
-
-    # def _iter_names(self)
-    #     pass
-    #
-    # def get_hashes(self):
-    #     """ returns hashes of current selection based
-    #         on the data read from disk """
-    #     pass
 
     def at(self, idx_name, idx_val):
         """ select from foamframe based on index name and value"""
@@ -366,6 +381,19 @@ class FoamFrame(DataFrame):
         """ search for all field names matching keyword"""
         return [_ for _ in self.columns if key in _]
 
+    # ----------------------------------------------------------------------
+    # Manipulation methods
+
+    def add(self, data, label):
+        """
+        Add a given Series
+
+        Usage:
+            case.add(sqrt(uu),'u_rms')
+        """
+        self.latest[label] = data
+        return self
+
     def rename(self, search, replace):
         """ rename field names based on regex """
         import re
@@ -383,31 +411,8 @@ class FoamFrame(DataFrame):
         for s, r in rename_map.items():
             self.rename_idx(s, r)
 
-
-    def _is_idx(self, item):
-        """ test if item is column or idx """
-        itemt = type(item)
-        # if item is Series of booleans
-        # it cant be an index
-        from past.builtins import unicode
-        from past.builtins import str as text
-        if itemt not in [int, str, float, unicode, text]:
-            return False
-        else:
-            return item in self.index.names
-
-    def __getitem__(self, item):
-        """ call pandas DataFrame __getitem__ if item is not
-            an index
-        """
-        if self._is_idx(item):
-            level = self.index.names.index(item)
-            return list(zip(*self.index.values))[level]
-        else:
-            if (type(item) is str) and item not in self.columns:
-                return Series()
-            else:
-                return super(FoamFrame, self).__getitem__(item)
+    # ----------------------------------------------------------------------
+    # Plotting methods
 
     def draw(self, x, y, z, title, func, figure, **kwargs):
         # TODO Rename to _draw
@@ -523,8 +528,27 @@ class FoamFrame(DataFrame):
         """ set plot properties  """
         self.properties.plot_properties.set(values)
 
+    # ----------------------------------------------------------------------
+    # Filter methods
+
+    def filter_fields(self, name, lower, upper):
+        """ filter based on field values
+
+            Examples:
+
+                .filter_fields('T', 1000, 2000)
+        """
+        return self.filter(name, field=lambda x: lower < x < upper)
+
     def filter_locations(self, index):
-        """ filter based on locations """
+        """ filter based on locations
+
+            Examples:
+
+                .filter_location(Owls.isIn('radial'))
+                .filter_location(Owls.isNotIn('radial'))
+
+        """
         return self.filter(name='Loc', index=index)
 
     def filter(self, name, index=None, field=None):
@@ -546,18 +570,12 @@ class FoamFrame(DataFrame):
         else:
             return self
 
+    # ----------------------------------------------------------------------
+    # Grouping methods
+
     def by_index(self, field, func=None):
         func = (func if func else lambda x: x)
         return self.by(field, index=func)
-
-    # def map_level(self, dct, level=0):
-    #     index = self.index
-    #     index.set_levels([[dct.get(item, item)
-    #         for item in names] if i==level else names
-    #         #for i, names in enumerate(index.levels)], inplace=True)
-    #         for i, names in enumerate(index.levels)], inplace=False)
-    #     self.index = index
-    #     return self
 
     def by_field(self, field, func=None):
         func = (func if func else lambda x: x)
