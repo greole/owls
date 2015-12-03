@@ -11,6 +11,7 @@ from pandas import Series, DataFrame, Index
 
 from . import MultiFrame as mf
 from . import plot as plt
+from .plot import style as defstyle
 from . import io
 
 import bokeh.plotting as bk
@@ -493,7 +494,7 @@ class FoamFrame(DataFrame):
         return self.draw(x, y, z, title, func="line", figure=figure, **kwargs)
 
 
-    def show(self, y, x=None, figure=False, overlay=True, **kwargs):
+    def show(self, y, x=None, figure=False, overlay=True, style=defstyle, post_pone_style=False, **kwargs):
         def create_figure(y_, f):
             if x:
                 return getattr(self, self.properties.show_func)(y=y_, x=x, figure=f, **kwargs)
@@ -505,10 +506,13 @@ class FoamFrame(DataFrame):
             for yi in y:
                 f = (figure if figure else plt.figure())
                 rows.append(create_figure(yi, f))
-            return bk.GridPlot(children=[rows])
+            return bk.GridPlot(children=style(rows=[rows]))
         else:
             f = (figure if figure else plt.figure())
-            return create_figure(y, f)
+            if post_pone_style:
+                return create_figure(y, f)
+            else:
+                return bk.GridPlot(children=style(rows=[[create_figure(y, f)]]))
 
     def show_func(self, value):
         """ set the default plot style

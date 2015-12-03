@@ -84,7 +84,7 @@ class MultiFrame():
                                                     ...            }
                                         }
 
-                m1.by(overlay=False) -> { (cat1_1,cat2_1): FoamFrame1,
+                m1.by(overlay="Field") -> { (cat1_1,cat2_1): FoamFrame1,
                                           (cat1_1,cat2_2): FoamFrame2,
                                             ...
                                         }
@@ -93,20 +93,20 @@ class MultiFrame():
         """
         pass
 
-    def scatter(self, y, x='Pos', z=False, overlay=False, **kwargs):
+    def scatter(self, y, x='Pos', z=False, overlay="Field", **kwargs):
         return self._draw(x, y, z=z, overlay=overlay,
                     inst_func="scatter", **kwargs)
 
-    def histogram(self, y, x=None, z=False, overlay=False, **kwargs):
+    def histogram(self, y, x=None, z=False, overlay="Field", **kwargs):
         return self._draw(x, y, z=z, overlay=overlay,
                     inst_func="histogram", **kwargs)
 
 
-    def plot(self, y, x='Pos', z=False, overlay=False, style=defstyle, **kwargs):
+    def plot(self, y, x='Pos', z=False, overlay="Field", style=defstyle, **kwargs):
         return self._draw(x, y, z=z, overlay=overlay,
                     inst_func="plot", **kwargs)
 
-    def show(self, y, x='Pos', z=False, overlay=False, **kwargs):
+    def show(self, y, x='Pos', z=False, overlay="Field", **kwargs):
         """ Display single quantity y over multiple cases
             if overlay is set all cases are plotted in to single
             graph """
@@ -116,6 +116,7 @@ class MultiFrame():
     def show_multi(self, ys, locs, x='Pos', style=defstyle, **kwargs):
         bk.figure()
         rows=[]
+        ys = (ys if isinstance(ys, list) else [ys])
         for i, y in enumerate(ys):
             figs = plot.plot_cases(self, y=y, x=x, order=locs,
                     legend=True, **kwargs)
@@ -133,30 +134,42 @@ class MultiFrame():
             else:
                 return 1
 
-        if not overlay:
+        if overlay == "Field":
             rows=[]
             for name, instance in self.cases.items():
                 figure=bk.figure()
                 rows.append(
                         getattr(instance, inst_func)
-                            (x=x, y=y, title=str(name),figure=figure, **kwargs) #FIXME num cars
+                            (x=x, y=y, title=str(name), figure=figure, post_pone_style=True, **kwargs) #FIXME num cars
                     )
             rows = np.array(rows).reshape(greatest_divisor(len(rows)),-1).tolist()
             return bk.GridPlot(children=style(rows), title="Scatter")
-        else:
-           figure = bk.figure()
-           colors = plot.next_color()
-           exp_legend = kwargs.get("legend", None)
-           if exp_legend != None:
-                kwargs.pop("legend")
-           exp_title = kwargs.get("title", None)
-           if exp_title != None:
-                kwargs.pop("title")
-           for name, instance in self.cases.items():
-                color = next(colors)
-                legend = (exp_legend if exp_legend != None else name)
-                title = (exp_title if exp_title != None else "")
-                getattr(instance, inst_func)(
-                    x=x, y=y, title=title, color=color,
-                    legend=legend, figure=figure, **kwargs)
-           return figure
+
+        if overlay == "Group":
+            colors = plot.next_color()
+            rows=[bk.figure() for _ in y]
+            for yi, figure in zip(y, rows):
+                for name, instance in self.cases.items():
+                    color = next(colors)
+                    getattr(instance, inst_func) (x=x, y=yi, title=yi, figure=figure,
+                            post_pone_style=True, legend=str(name), color=color, **kwargs) #FIXME num cars
+            rows = np.array(rows).reshape(greatest_divisor(len(rows)),-1).tolist()
+            return bk.GridPlot(children=style(rows), title="Scatter")
+
+        # if overlay == "Field":
+        #    figure = bk.figure()
+        #    colors = plot.next_color()
+        #    exp_legend = kwargs.get("legend", None)
+        #    if exp_legend != None:
+        #         kwargs.pop("legend")
+        #    exp_title = kwargs.get("title", None)
+        #    if exp_title != None:
+        #         kwargs.pop("title")
+        #    for name, instance in self.cases.items():
+        #         color = next(colors)
+        #         legend = (exp_legend if exp_legend != None else name)
+        #         title = (exp_title if exp_title != None else "")
+        #         getattr(instance, inst_func)(
+        #             x=x, y=y, title=title, color=color,
+        #             legend=legend, figure=figure, **kwargs)
+        #    return figure
