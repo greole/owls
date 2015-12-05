@@ -1,3 +1,6 @@
+# TODO MultiFrame -> GroupedFrame
+#      new MultiFrame for multidata
+
 from __future__ import print_function
 from future.builtins import *
 
@@ -15,6 +18,8 @@ from .plot import style as defstyle
 from . import io
 
 import bokeh.plotting as bk
+
+import numpy as np
 
 # Series.__repr__ = (lambda x: ("Hash: {}\nTimes: {}\nLoc: {}\nValues: {}".format(
 #                     io.hash_series(x),
@@ -315,6 +320,11 @@ class FoamFrame(DataFrame):
         else:
             return item in self.index.names
 
+
+    @property
+    def grouped(self):
+        return self._is_idx("Group")
+
     # ----------------------------------------------------------------------
     # Info methods
 
@@ -362,6 +372,9 @@ class FoamFrame(DataFrame):
         # match = [(val in idx_val)
         #      for val in self.index.get_level_values(idx_name)]
         # ret = self[match]
+        if idx_name == "Group":
+            ret.index = ret.index.droplevel("Group")
+
         ret.properties = self.properties
         return ret
 
@@ -506,18 +519,41 @@ class FoamFrame(DataFrame):
             else:
                 return getattr(self, self.properties.show_func)(y=y_, figure=f, **kwargs)
 
-        if isinstance(y, list) and  not overlay:
-            rows = []
-            for yi in y:
-                f = (figure if figure else plt.figure())
-                rows.append(create_figure(yi, f))
-            return bk.GridPlot(children=style(rows=[rows]))
-        else:
-            f = (figure if figure else plt.figure())
-            if post_pone_style:
-                return create_figure(y, f)
+        if not self.grouped:
+            if isinstance(y, list) and not overlay:
+                rows = []
+                for yi in y:
+                    f = (figure if figure else plt.figure())
+                    rows.append(create_figure(yi, f))
+                return bk.GridPlot(children=style(rows=[rows]))
             else:
-                return bk.GridPlot(children=style(rows=[[create_figure(y, f)]]))
+                f = (figure if figure else plt.figure())
+                if post_pone_style:
+                    return create_figure(y, f)
+                else:
+                    return bk.GridPlot(children=style(rows=[[create_figure(y, f)]]))
+        else:
+            groups = set(self["Group"])
+            if overlay == "Group":
+                rows=[bk.figure() for _ in y]
+                for yi, figure in zip(y, rows):
+                    colors = plt.next_color()
+                    for name in groups:
+                        color = next(colors)
+                        figure=self.at("Group", name).show(x=x, y=yi, title=yi, figure=figure,
+                                post_pone_style=True, legend=str(name), color=color, **kwargs) #FIXME num cars
+                rows = np.array(rows).reshape(greatest_divisor(len(rows)),-1).tolist()
+                return bk.GridPlot(children=style(rows), title="Scatter")
+            if overlay == "Field":
+                rows=[]
+                for group in groups:
+                    figure=bk.figure()
+                    field = self.at("Group", group)
+                    rows.append(
+                            field.show(x=x, y=y, title=str(group), figure=figure, post_pone_style=True, **kwargs) #FIXME num cars
+                        )
+                rows = np.array(rows).reshape(greatest_divisor(len(rows)),-1).tolist()
+                return bk.GridPlot(children=style(rows), title="Scatter")
 
     def show_func(self, value):
         """ set the default plot style
@@ -575,34 +611,60 @@ class FoamFrame(DataFrame):
 
     def by_index(self, field, func=None):
         func = (func if func else lambda x: x)
-        return self.by(field, index=func)
+        return self.by(field, func)
 
     def by_field(self, field, func=None):
         func = (func if func else lambda x: x)
-        return self.by(field, field=func)
+        return self.by(field, func)
 
     def by_location(self, func=None):
         func = (func if func else lambda x: x)
-        return self.by("Loc", index=func)
+        return self.by("Loc", func)
 
-    def by(self, name, index=None, field=None):
-        """ facet by given function
+    def by_time(self, func=None):
+        func = (func if func else lambda x: x)
+        return self.by("Time", func)
 
-            Examples:
+    # def by(self, name, index=None, field=None):
+    #     """ facet by given function
+    #
+    #         Examples:
+    #
+    #         .by(index=lambda x: x)
+    #         .by(field=lambda x: ('T_high' if x['T'] > 1000 else 'T_low'))
+    #     """
+    #     ret = OrderedDict()
+    #     if index:
+    #         index_values = self.index.get_level_values(name)
+    #         idx_values = sorted(set(index_values))
+    #         for val in idx_values:
+    #             ret.update([(index(val), self[index_values == val])])
+    #     else:
+    #         selection = self[name].apply(field)
+    #         for cat in set(selection):
+    #             ret.update([(cat, self[selection == cat])])
+    #     for _ in ret.values():
+    #         _.properties = self.properties
+    #     return mf.MultiFrame(ret)
 
-            .by(index=lambda x: x)
-            .by(field=lambda x: ('T_high' if x['T'] > 1000 else 'T_low'))
-        """
-        ret = OrderedDict()
-        if index:
-            index_values = self.index.get_level_values(name)
-            idx_values = sorted(set(index_values))
-            for val in idx_values:
-                ret.update([(index(val), self[index_values == val])])
+    def by(self, name, func):
+        ret = self.copy() # Too expensive ? pd.concat( [A, pd.DataFrame(s)], axis=1 )
+        ret.properties = self.properties
+        if self._is_idx(name):
+            index_values = ret.index.get_level_values(name)
+            ret["Group"] = index_values.map(func)
         else:
-            selection = self[name].apply(field)
-            for cat in set(selection):
-                ret.update([(cat, self[selection == cat])])
-        for _ in ret.values():
-            _.properties = self.properties
-        return mf.MultiFrame(ret)
+            ret["Group"] = ret[name].map(func)
+        ret.set_index("Group", append=True, inplace=True)
+        ret.reorder_levels(['Time', 'Loc', 'Id', 'Group'])
+        return ret
+
+
+def greatest_divisor(number):
+    if number == 1:
+        return 1
+    for i in reversed(range(number)):
+        if number % i == 0:
+            return i
+    else:
+        return 1
