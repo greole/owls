@@ -1,3 +1,6 @@
+# TODO MultiFrame -> GroupedFrame
+#      new MultiFrame for multidata
+
 from __future__ import print_function
 from future.builtins import *
 
@@ -11,8 +14,12 @@ from pandas import Series, DataFrame, Index
 
 from . import MultiFrame as mf
 from . import plot as plt
+from .plot import style as defstyle
 from . import io
 
+import bokeh.plotting as bk
+
+import numpy as np
 
 # Series.__repr__ = (lambda x: ("Hash: {}\nTimes: {}\nLoc: {}\nValues: {}".format(
 #                     io.hash_series(x),
@@ -286,31 +293,43 @@ class FoamFrame(DataFrame):
         else:
             case_data_base[folder] = origins.dct
 
-    def add(self, data, label):
-        """
-        Add a given Series
-
-        Usage:
-        ------ing-
-        case.add(sqrt(uu),'u_rms')
-        """
-        self.latest[label] = data
-        return self
-
     def source(self, col):
         """ find corresponding file for column """
         # return get time loc  and return dict for every column
         # latest.source['u']
         return
 
-    def __str__(self):
-        return "FoamFrame: \n" + super(FoamFrame, self).__str__()
+    # ----------------------------------------------------------------------
+    # Internal helper methods
 
     @property
     def _constructor(self):
         # override DataFrames constructor
         # to enable method chaining
         return FoamFrame
+
+    def _is_idx(self, item):
+        """ test if item is column or idx """
+        itemt = type(item)
+        # if item is Series of booleans
+        # it cant be an index
+        from past.builtins import unicode
+        from past.builtins import str as text
+        if itemt not in [int, str, float, unicode, text]:
+            return False
+        else:
+            return item in self.index.names
+
+
+    @property
+    def grouped(self):
+        return self._is_idx("Group")
+
+    # ----------------------------------------------------------------------
+    # Info methods
+
+    def __str__(self):
+        return "FoamFrame: \n" + super(FoamFrame, self).__str__()
 
     @property
     def times(self):
@@ -322,6 +341,22 @@ class FoamFrame(DataFrame):
         """ return times for case """
         return set([_[1] for _ in self.index.values])
 
+    # ----------------------------------------------------------------------
+    # Selection methods
+
+    def __getitem__(self, item):
+        """ call pandas DataFrame __getitem__ if item is not
+            an index
+        """
+        if self._is_idx(item):
+            level = self.index.names.index(item)
+            return list(zip(*self.index.values))[level]
+        else:
+            if (type(item) is str) and item not in self.columns:
+                return Series()
+            else:
+                return super(FoamFrame, self).__getitem__(item)
+
     @property
     def latest(self):
         """ return latest time for case """
@@ -330,14 +365,6 @@ class FoamFrame(DataFrame):
         ret.properties = self.properties
         return ret
 
-    # def _iter_names(self)
-    #     pass
-    #
-    # def get_hashes(self):
-    #     """ returns hashes of current selection based
-    #         on the data read from disk """
-    #     pass
-
     def at(self, idx_name, idx_val):
         """ select from foamframe based on index name and value"""
         # TODO FIX This
@@ -345,6 +372,9 @@ class FoamFrame(DataFrame):
         # match = [(val in idx_val)
         #      for val in self.index.get_level_values(idx_name)]
         # ret = self[match]
+        if idx_name == "Group":
+            ret.index = ret.index.droplevel("Group")
+
         ret.properties = self.properties
         return ret
 
@@ -364,6 +394,19 @@ class FoamFrame(DataFrame):
         """ search for all field names matching keyword"""
         return [_ for _ in self.columns if key in _]
 
+    # ----------------------------------------------------------------------
+    # Manipulation methods
+
+    def add(self, data, label):
+        """
+        Add a given Series
+
+        Usage:
+            case.add(sqrt(uu),'u_rms')
+        """
+        self.latest[label] = data
+        return self
+
     def rename(self, search, replace):
         """ rename field names based on regex """
         import re
@@ -381,34 +424,11 @@ class FoamFrame(DataFrame):
         for s, r in rename_map.items():
             self.rename_idx(s, r)
 
+    # ----------------------------------------------------------------------
+    # Plotting methods
 
-    def _is_idx(self, item):
-        """ test if item is column or idx """
-        itemt = type(item)
-        # if item is Series of booleans
-        # it cant be an index
-        from past.builtins import unicode
-        from past.builtins import str as text
-        if itemt not in [int, str, float, unicode, text]:
-            return False
-        else:
-            return item in self.index.names
-
-    def __getitem__(self, item):
-        """ call pandas DataFrame __getitem__ if item is not
-            an index
-        """
-        if self._is_idx(item):
-            level = self.index.names.index(item)
-            return list(zip(*self.index.values))[level]
-        else:
-            if (type(item) is str) and item not in self.columns:
-                return Series()
-            else:
-                return super(FoamFrame, self).__getitem__(item)
-
-    def draw(self, x, y, z, title, func, figure, **kwargs):
-
+    def draw(self, x, y, z, title, func, figure, legend_prefix="", **kwargs):
+        # TODO Rename to _draw
         def _label(axis, field):
             label = kwargs.get(axis + '_label', False)
             if label:
@@ -438,9 +458,6 @@ class FoamFrame(DataFrame):
         if kwargs.get('x_range', False):
             figure_properties.update({"x_range": kwargs.get('x_range')})
         figure.set(**figure_properties)
-        colors = plt.next_color()
-        spec_color = kwargs.get("color", False)
-        spec_legend = kwargs.get("legend", False)
 
         if func == "quad":
             getattr(figure, func)(top=y, bottom=0, left=x[:-1], right=x[1:],
@@ -451,6 +468,7 @@ class FoamFrame(DataFrame):
         spec_color = kwargs.get("color", False)
         spec_legend = kwargs.get("legend", False)
         y = (y if isinstance(y, list) else [y])
+        legend_prefix = (legend_prefix if not legend_prefix else legend_prefix + "-")
         for yi in y:
             x_data, y_data = self[x], self[yi]
             # TODO FIXME
@@ -460,7 +478,7 @@ class FoamFrame(DataFrame):
             if not spec_color:
                 kwargs.update({"color": next(colors)})
             if not spec_legend:
-                kwargs.update({"legend": yi})
+                kwargs.update({"legend": legend_prefix + yi})
             getattr(figure, func)(x=x_data,
                                   y=y_data,
                                   **kwargs)
@@ -492,12 +510,53 @@ class FoamFrame(DataFrame):
         return self.draw(x, y, z, title, func="line", figure=figure, **kwargs)
 
 
-    def show(self, y, x=None, figure=False, **kwargs):
-        figure = (figure if figure else plt.figure())
-        if x:
-            return getattr(self, self.properties.show_func)(y=y, x=x, figure=figure, **kwargs)
-        else:
-            return getattr(self, self.properties.show_func)(y=y, figure=figure, **kwargs)
+    def show(self, y, x="Pos", figure=False, overlay=True, style=defstyle, legend_prefix="", post_pone_style=False, row=None, **kwargs):
+        def create_figure(y_, f):
+            return getattr(self, self.properties.show_func)(y=y_, x=x, figure=f, legend_prefix=legend_prefix, **kwargs)
+
+        def create_figure_row(y, arow=None):
+            arow = (arow if arow else OrderedDict())
+            if not self.grouped:
+                y = (y if isinstance(y, list) else [y])
+                if overlay == "Field":
+                    # SINGLE FIGURE MUTLIPLE FIELDS
+                    fig_id, f = (figure if figure else ("".join(y), plt.figure()))
+                    for yi in y:
+                        create_figure(y, f)
+                    arow[fig_id] = f
+                if not overlay:
+                    # MULTIPLE FIGURES
+                    # test if figure with same id already exists
+                    # so that we can plot into it
+                    # otherwise create a new figure
+                    for yi in y:
+                        fig_id, f = ((yi, arow[yi]) if arow.get(yi, False) else (yi, plt.figure()))
+                        arow[fig_id] = create_figure(yi, f)
+            if self.grouped:
+                groups = list(set(self["Group"]))
+                groups.sort()
+                if overlay == "Group":
+                    # ALIGN ALOMNG GROUPS
+                    # for every yi a new figure is needed
+                    #arow = (arow if arow else OrderedDict())
+                    for yi in y:
+                        fig_id, f = ((yi, arow[yi]) if arow.get(yi, False) else (yi, plt.figure()))
+                        colors = plt.next_color()
+                        for name in groups:
+                            color = next(colors)
+                            arow[yi] = self.at("Group", name).show(x=x, y=yi, title=yi, figure=(fig_id, f),
+                                    post_pone_style=True, overlay="Field", legend=legend_prefix + "-" + str(name), color=color, legend_prefix=legend_prefix, **kwargs)[yi]
+                if overlay == "Field":
+                    #row = (arow if arow else OrderedDict())
+                    for group in groups:
+                        fig_id, f = ((group, arow[group]) if arow.get(group, False) else (group, plt.figure()))
+                        field = self.at("Group", group)
+                        arow[group] = field.show(x=x, y=y, title=str(group), figure=(group, f), overlay="Field", post_pone_style=True, legend_prefix=legend_prefix, **kwargs)[group]
+            return arow
+
+        fig_row = create_figure_row(y, row)
+        return (fig_row if post_pone_style else bk.GridPlot(children=style(rows=[list(fig_row.values())])))
+
 
     def show_func(self, value):
         """ set the default plot style
@@ -508,8 +567,27 @@ class FoamFrame(DataFrame):
         """ set plot properties  """
         self.properties.plot_properties.set(values)
 
+    # ----------------------------------------------------------------------
+    # Filter methods
+
+    def filter_fields(self, name, lower, upper):
+        """ filter based on field values
+
+            Examples:
+
+                .filter_fields('T', 1000, 2000)
+        """
+        return self.filter(name, field=lambda x: lower < x < upper)
+
     def filter_locations(self, index):
-        """ filter based on locations """
+        """ filter based on locations
+
+            Examples:
+
+                .filter_location(Owls.isIn('radial'))
+                .filter_location(Owls.isNotIn('radial'))
+
+        """
         return self.filter(name='Loc', index=index)
 
     def filter(self, name, index=None, field=None):
@@ -531,45 +609,55 @@ class FoamFrame(DataFrame):
         else:
             return self
 
+    # ----------------------------------------------------------------------
+    # Grouping methods
+
     def by_index(self, field, func=None):
         func = (func if func else lambda x: x)
-        return self.by(field, index=func)
-
-    # def map_level(self, dct, level=0):
-    #     index = self.index
-    #     index.set_levels([[dct.get(item, item)
-    #         for item in names] if i==level else names
-    #         #for i, names in enumerate(index.levels)], inplace=True)
-    #         for i, names in enumerate(index.levels)], inplace=False)
-    #     self.index = index
-    #     return self
+        return self.by(field, func)
 
     def by_field(self, field, func=None):
         func = (func if func else lambda x: x)
-        return self.by(field, field=func)
+        return self.by(field, func)
 
     def by_location(self, func=None):
         func = (func if func else lambda x: x)
-        return self.by("Loc", index=func)
+        return self.by("Loc", func)
 
-    def by(self, name, index=None, field=None):
-        """ facet by given function
+    def by_time(self, func=None):
+        func = (func if func else lambda x: x)
+        return self.by("Time", func)
 
-            Examples:
+    # def by(self, name, index=None, field=None):
+    #     """ facet by given function
+    #
+    #         Examples:
+    #
+    #         .by(index=lambda x: x)
+    #         .by(field=lambda x: ('T_high' if x['T'] > 1000 else 'T_low'))
+    #     """
+    #     ret = OrderedDict()
+    #     if index:
+    #         index_values = self.index.get_level_values(name)
+    #         idx_values = sorted(set(index_values))
+    #         for val in idx_values:
+    #             ret.update([(index(val), self[index_values == val])])
+    #     else:
+    #         selection = self[name].apply(field)
+    #         for cat in set(selection):
+    #             ret.update([(cat, self[selection == cat])])
+    #     for _ in ret.values():
+    #         _.properties = self.properties
+    #     return mf.MultiFrame(ret)
 
-            .by(index=lambda x: x)
-            .by(field=lambda x: ('T_high' if x['T'] > 1000 else 'T_low'))
-        """
-        ret = OrderedDict()
-        if index:
-            index_values = self.index.get_level_values(name)
-            idx_values = sorted(set(index_values))
-            for val in idx_values:
-                ret.update([(index(val), self[index_values == val])])
+    def by(self, name, func):
+        ret = self.copy() # Too expensive ? pd.concat( [A, pd.DataFrame(s)], axis=1 )
+        ret.properties = self.properties
+        if self._is_idx(name):
+            index_values = ret.index.get_level_values(name)
+            ret["Group"] = index_values.map(func)
         else:
-            selection = self[name].apply(field)
-            for cat in set(selection):
-                ret.update([(cat, self[selection == cat])])
-        for _ in ret.values():
-            _.properties = self.properties
-        return mf.MultiFrame(ret)
+            ret["Group"] = ret[name].map(func)
+        ret.set_index("Group", append=True, inplace=True)
+        ret.reorder_levels(['Time', 'Loc', 'Id', 'Group'])
+        return ret

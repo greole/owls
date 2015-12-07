@@ -1,5 +1,13 @@
 import re
 
+# for snappy
+import subprocess, os, json
+from IPython.display import HTML, display
+from glob import glob
+import shutil
+
+import numpy as np
+
 colored = ["aqua", "black", "blue", "fuchsia", "gray", "green",
            "lime", "maroon", "navy", "olive", "orange", "purple",
            "red", "silver", "teal", "yellow"]
@@ -219,43 +227,77 @@ cleanTitle = partial(adjustColumn, {'title': ""}, tail, all)
 cleanXAxis = partial(adjustColumn, {'xaxis.visible': False}, rtail, all)
 cleanYAxis = partial(adjustColumn, {'yaxis.visible': False}, all, tail)
 
+arangement = lambda x: np.array(x).reshape(greatest_divisor(len(x)),-1).tolist()
+
+# arangement = lambda **x: list(map(list, zip(*ow.style(rows=x['rows']))))
+
 default_style = [size, font, color]
 
 compose_styles = lambda x, y: multi_compose(x + y)
 
+
+def greatest_divisor(number):
+    if number == 1:
+        return 1
+    for i in reversed(range(number)):
+        if number % i == 0:
+            return i
+    else:
+        return 1
+
 style = multi_compose(default_style)
-
-
 # snapshots
 
-def snapshot(path, json_config, notebook_dir, size):
-    import subprocess, os, json
-    from IPython.display import HTML, display
-    from glob import glob
-    import shutil
-    snappy_path = os.path.dirname(__file__) + "/../scripts/snap.py"
-    old_dir = os.getcwd()
-    os.chdir(path)
-    cmd = "python " + snappy_path + " -d --json_config=\'" + json_config + "\'"
-    subprocess.check_call(cmd, shell=True)
-    vals = json.loads(json_config)
-    images=[]
+class Snappy():
 
-    dest_dir = notebook_dir
-    if not os.path.exists(dest_dir): os.makedirs(dest_dir)
 
-    for s in vals["slices"].keys():
-        for v in vals["vectors"].keys():
-            for i in range(3):
-                iname = "last_" + s + v + "_" + str(i) + ".png"
-                images.append(iname)
-        for v in vals["scalars"].keys():
-            iname = "last_" + s + v + "_0.png"
-            images.append(iname)
-    imagesList=''.join(["<img style='width:" + str(size) + "px; margin: 0px; float: left; border: 1px solid black;' src='%s' />" % str(s)
-                         for s in images])
+    def __init__(self, path, config, out_path):
+        self.path = path
+        self.baseName = os.path.basename(self.path)
+        self.config = config
+        self.out_path = out_path
+        self.snappy_path = os.path.dirname(__file__) + "/../scripts/snap.py"
 
-    for filename in glob(os.path.join(path + "/postProcessing/anim", '*.png')):
-            shutil.copy(filename, dest_dir)
-    os.chdir(old_dir)
-    return display(HTML(imagesList))
+    def generate(self, animate=False):
+        old_dir = os.getcwd()
+        os.chdir(self.path)
+        args = " -d " if not animate else " -da --gif "
+        cmd = "python {} {} --json_config=\'{}\' &".format(
+                self.snappy_path, args, self.config)
+        subprocess.check_call(cmd, shell=True)
+        os.chdir(old_dir)
+
+    def generate_image_list(self, animate=False, ext=".mp4"):
+        images = []
+        vals = json.loads(self.config)
+        def appendr(images, prefix, extension):
+            for s in vals["slices"].keys():
+                for f in ["vectors", "scalars"]:
+                    for v in vals[f].keys():
+                        iname = self.baseName + "/" + prefix + s + v + extension
+                        images.append(iname)
+            return images
+
+        if not animate:
+            images = appendr(images, "last_", "_0.png")
+            images = appendr(images, "last_", "_1.png")
+            images = appendr(images, "last_", "_2.png")
+        else:
+            images = appendr(images, "", ext)
+        self.images=images
+        return images
+
+    def copy_to_notebook(self):
+        for p in [self.out_path, os.path.join(self.out_path, self.baseName)]:
+            if not os.path.exists(p): os.makedirs(p)
+        for ext in ["*.png", "*.mp4", "*.gif"]:
+            for fn in glob(os.path.join(self.path + "/postProcessing/anim", ext)):
+                    shutil.copy(fn, os.path.join(self.out_path, self.baseName))
+
+    def display(self, size, media_type="mp4"):
+        if media_type == "mp4":
+            i = '<video width={} height="222" controls="controls"> <source src={} type="video/mp4" /></video>'
+        else:
+            i = "<img style='width: {}px; margin: 0px; float: left; border: 1px solid black;' src='{}' />"
+        images = ''.join([i.format(size, s) for s in self.images])
+        return display(HTML(images))
