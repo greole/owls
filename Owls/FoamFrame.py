@@ -512,48 +512,54 @@ class FoamFrame(DataFrame):
         return self.draw(x, y, z, title, func="line", figure=figure, **kwargs)
 
 
-    def show(self, y, x=None, figure=False, overlay=True, style=defstyle, post_pone_style=False, **kwargs):
+    def show(self, y, x="Pos", figure=False, overlay=True, style=defstyle, post_pone_style=False, **kwargs):
         def create_figure(y_, f):
-            if x:
-                return getattr(self, self.properties.show_func)(y=y_, x=x, figure=f, **kwargs)
-            else:
-                return getattr(self, self.properties.show_func)(y=y_, figure=f, **kwargs)
+            return getattr(self, self.properties.show_func)(y=y_, x=x, figure=f, **kwargs)
 
-        if not self.grouped:
-            if isinstance(y, list) and not overlay:
-                rows = []
-                for yi in y:
-                    f = (figure if figure else plt.figure())
-                    rows.append(create_figure(yi, f))
-                return bk.GridPlot(children=style(rows=[rows]))
-            else:
-                f = (figure if figure else plt.figure())
-                if post_pone_style:
-                    return create_figure(y, f)
-                else:
-                    return bk.GridPlot(children=style(rows=[[create_figure(y, f)]]))
-        else:
-            groups = set(self["Group"])
-            if overlay == "Group":
-                rows=[bk.figure() for _ in y]
-                for yi, figure in zip(y, rows):
-                    colors = plt.next_color()
-                    for name in groups:
-                        color = next(colors)
-                        figure=self.at("Group", name).show(x=x, y=yi, title=yi, figure=figure,
-                                post_pone_style=True, legend=str(name), color=color, **kwargs) #FIXME num cars
-                rows = np.array(rows).reshape(greatest_divisor(len(rows)),-1).tolist()
-                return bk.GridPlot(children=style(rows), title="Scatter")
-            if overlay == "Field":
-                rows=[]
-                for group in groups:
-                    figure=bk.figure()
-                    field = self.at("Group", group)
-                    rows.append(
-                            field.show(x=x, y=y, title=str(group), figure=figure, post_pone_style=True, **kwargs) #FIXME num cars
-                        )
-                rows = np.array(rows).reshape(greatest_divisor(len(rows)),-1).tolist()
-                return bk.GridPlot(children=style(rows), title="Scatter")
+        def create_figure_row(y, arow=None):
+            row = (arow if arow else OrderedDict())
+            if not self.grouped:
+                y = (y if isinstance(y, list) else [y])
+                if overlay == "Field":
+                    # SINGLE FIGURE MUTLIPLE FIELDS
+                    fig_id, f = (figure if figure else ("".join(y), plt.figure()))
+                    for yi in y:
+                        create_figure(y, f)
+                    row[fig_id] = f
+                if not overlay:
+                    row = (arow if arow else OrderedDict())
+                    # MULTIPLE FIGURES
+                    # test if figure with same id already exists
+                    # so that we can plot into it
+                    # otherwise create a new figure
+                    for yi in y:
+                        fig_id, f = (figure if row.get(yi, False) else (yi, plt.figure()))
+                        row[yi] = create_figure(yi, f)
+            if self.grouped:
+                groups = list(set(self["Group"]))
+                groups.sort()
+                if overlay == "Group":
+                    # ALIGN ALOMNG GROUPS
+                    # for every yi a new figure is needed
+                    row = (arow if arow else OrderedDict())
+                    for yi in y:
+                        fig_id, f = (figure if row.get(yi, False) else (yi, plt.figure()))
+                        colors = plt.next_color()
+                        for name in groups:
+                            color = next(colors)
+                            row[yi] = self.at("Group", name).show(x=x, y=yi, title=yi, figure=(yi, f),
+                                    post_pone_style=True, overlay="Field", legend=str(name), color=color, **kwargs)[yi]
+                if overlay == "Field":
+                    row = (arow if arow else OrderedDict())
+                    for group in groups:
+                        fig_id, f = (figure if row.get(group, False) else (group, plt.figure()))
+                        field = self.at("Group", group)
+                        row[group] = field.show(x=x, y=y, title=str(group), figure=(group, f), overlay="Field", post_pone_style=True, **kwargs)[group]
+            return row
+
+        fig_row = create_figure_row(y)
+        return (fig_row if post_pone_style else bk.GridPlot(children=style(rows=[list(fig_row.values())])))
+
 
     def show_func(self, value):
         """ set the default plot style
