@@ -427,7 +427,7 @@ class FoamFrame(DataFrame):
     # ----------------------------------------------------------------------
     # Plotting methods
 
-    def draw(self, x, y, z, title, func, figure, **kwargs):
+    def draw(self, x, y, z, title, func, figure, legend_prefix="", **kwargs):
         # TODO Rename to _draw
         def _label(axis, field):
             label = kwargs.get(axis + '_label', False)
@@ -458,9 +458,6 @@ class FoamFrame(DataFrame):
         if kwargs.get('x_range', False):
             figure_properties.update({"x_range": kwargs.get('x_range')})
         figure.set(**figure_properties)
-        colors = plt.next_color()
-        spec_color = kwargs.get("color", False)
-        spec_legend = kwargs.get("legend", False)
 
         if func == "quad":
             getattr(figure, func)(top=y, bottom=0, left=x[:-1], right=x[1:],
@@ -471,6 +468,7 @@ class FoamFrame(DataFrame):
         spec_color = kwargs.get("color", False)
         spec_legend = kwargs.get("legend", False)
         y = (y if isinstance(y, list) else [y])
+        legend_prefix = (legend_prefix if not legend_prefix else legend_prefix + "-")
         for yi in y:
             x_data, y_data = self[x], self[yi]
             # TODO FIXME
@@ -480,7 +478,7 @@ class FoamFrame(DataFrame):
             if not spec_color:
                 kwargs.update({"color": next(colors)})
             if not spec_legend:
-                kwargs.update({"legend": yi})
+                kwargs.update({"legend": legend_prefix + yi})
             getattr(figure, func)(x=x_data,
                                   y=y_data,
                                   **kwargs)
@@ -512,12 +510,12 @@ class FoamFrame(DataFrame):
         return self.draw(x, y, z, title, func="line", figure=figure, **kwargs)
 
 
-    def show(self, y, x="Pos", figure=False, overlay=True, style=defstyle, post_pone_style=False, **kwargs):
+    def show(self, y, x="Pos", figure=False, overlay=True, style=defstyle, legend_prefix="", post_pone_style=False, row=None, **kwargs):
         def create_figure(y_, f):
-            return getattr(self, self.properties.show_func)(y=y_, x=x, figure=f, **kwargs)
+            return getattr(self, self.properties.show_func)(y=y_, x=x, figure=f, legend_prefix=legend_prefix, **kwargs)
 
         def create_figure_row(y, arow=None):
-            row = (arow if arow else OrderedDict())
+            arow = (arow if arow else OrderedDict())
             if not self.grouped:
                 y = (y if isinstance(y, list) else [y])
                 if overlay == "Field":
@@ -525,39 +523,38 @@ class FoamFrame(DataFrame):
                     fig_id, f = (figure if figure else ("".join(y), plt.figure()))
                     for yi in y:
                         create_figure(y, f)
-                    row[fig_id] = f
+                    arow[fig_id] = f
                 if not overlay:
-                    row = (arow if arow else OrderedDict())
                     # MULTIPLE FIGURES
                     # test if figure with same id already exists
                     # so that we can plot into it
                     # otherwise create a new figure
                     for yi in y:
-                        fig_id, f = (figure if row.get(yi, False) else (yi, plt.figure()))
-                        row[yi] = create_figure(yi, f)
+                        fig_id, f = ((yi, arow[yi]) if arow.get(yi, False) else (yi, plt.figure()))
+                        arow[fig_id] = create_figure(yi, f)
             if self.grouped:
                 groups = list(set(self["Group"]))
                 groups.sort()
                 if overlay == "Group":
                     # ALIGN ALOMNG GROUPS
                     # for every yi a new figure is needed
-                    row = (arow if arow else OrderedDict())
+                    #arow = (arow if arow else OrderedDict())
                     for yi in y:
-                        fig_id, f = (figure if row.get(yi, False) else (yi, plt.figure()))
+                        fig_id, f = ((yi, arow[yi]) if arow.get(yi, False) else (yi, plt.figure()))
                         colors = plt.next_color()
                         for name in groups:
                             color = next(colors)
-                            row[yi] = self.at("Group", name).show(x=x, y=yi, title=yi, figure=(yi, f),
-                                    post_pone_style=True, overlay="Field", legend=str(name), color=color, **kwargs)[yi]
+                            arow[yi] = self.at("Group", name).show(x=x, y=yi, title=yi, figure=(fig_id, f),
+                                    post_pone_style=True, overlay="Field", legend=legend_prefix + "-" + str(name), color=color, legend_prefix=legend_prefix, **kwargs)[yi]
                 if overlay == "Field":
-                    row = (arow if arow else OrderedDict())
+                    #row = (arow if arow else OrderedDict())
                     for group in groups:
-                        fig_id, f = (figure if row.get(group, False) else (group, plt.figure()))
+                        fig_id, f = ((group, arow[group]) if arow.get(group, False) else (group, plt.figure()))
                         field = self.at("Group", group)
-                        row[group] = field.show(x=x, y=y, title=str(group), figure=(group, f), overlay="Field", post_pone_style=True, **kwargs)[group]
-            return row
+                        arow[group] = field.show(x=x, y=y, title=str(group), figure=(group, f), overlay="Field", post_pone_style=True, legend_prefix=legend_prefix, **kwargs)[group]
+            return arow
 
-        fig_row = create_figure_row(y)
+        fig_row = create_figure_row(y, row)
         return (fig_row if post_pone_style else bk.GridPlot(children=style(rows=[list(fig_row.values())])))
 
 
@@ -664,13 +661,3 @@ class FoamFrame(DataFrame):
         ret.set_index("Group", append=True, inplace=True)
         ret.reorder_levels(['Time', 'Loc', 'Id', 'Group'])
         return ret
-
-
-def greatest_divisor(number):
-    if number == 1:
-        return 1
-    for i in reversed(range(number)):
-        if number % i == 0:
-            return i
-    else:
-        return 1
