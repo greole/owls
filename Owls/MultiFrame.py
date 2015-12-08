@@ -48,15 +48,6 @@ class MultiFrame():
         """ select a specific item """
         return self.cases[case]
 
-    def filter(self, selector):
-        """ select a specific item """
-        if type(selector) == list:
-            return MultiFrame({name:case for name,case in self.cases if
-                            name in selector})
-        else:
-            return MultiFrame({name:case for name,case in self.cases if
-                            func(name)})
-
     def items(self):
         for name, case in self.cases.items():
             yield name, case
@@ -71,20 +62,6 @@ class MultiFrame():
 
     def insert(self, key, value):
         self.cases[key] = value
-
-
-    # def scatter(self, y, x='Pos', z=False, overlay="Field", **kwargs):
-    #     return self._draw(x, y, z=z, overlay=overlay,
-    #                 inst_func="scatter", **kwargs)
-    #
-    # def histogram(self, y, x=None, z=False, overlay="Field", **kwargs):
-    #     return self._draw(x, y, z=z, overlay=overlay,
-    #                 inst_func="histogram", **kwargs)
-    #
-    #
-    # def plot(self, y, x='Pos', z=False, overlay="Field", style=defstyle, **kwargs):
-    #     return self._draw(x, y, z=z, overlay=overlay,
-    #                 inst_func="plot", **kwargs)
 
     def show(self, y, x='Pos', z=False, overlay="Field", style=defstyle, **kwargs):
         """ Display single quantity y over multiple cases
@@ -141,11 +118,18 @@ class MultiFrame():
         """
         return self.filter(name='Loc', index=index)
 
+    def filter_items(self, func):
+        """ select items based on filter funtion
+
+            Example .filter_items(lambda ff: "Foo" in ff.locations)
+        """
+        return MultiFrame(filter(func, self.cases.items()))
+
     # ----------------------------------------------------------------------
     # Selection methods
 
     def location(self, loc):
-        return MultiFrame([case.location(loc) for cname, case in self.cases.items()])
+        return MultiFrame([c.location(loc) for _, c in self.cases.items()])
 
     @property
     def latest(self):
