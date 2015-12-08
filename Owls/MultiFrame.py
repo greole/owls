@@ -48,10 +48,6 @@ class MultiFrame():
         """ select a specific item """
         return self.cases[case]
 
-    def items(self):
-        for name, case in self.cases.items():
-            yield name, case
-
     def values(self):
         for case in self.cases.values():
             yield case
