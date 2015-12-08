@@ -380,7 +380,7 @@ class FoamFrame(DataFrame):
 
     def id(self, loc):
         """ Return FoamFrame based on location """
-        return self.at(idx_name='Id', idx_val=loc)
+        return self.at(idx_name='Pos', idx_val=loc)
 
     def location(self, loc):
         """ Return FoamFrame based on location """
@@ -659,5 +659,5 @@ class FoamFrame(DataFrame):
         else:
             ret["Group"] = ret[name].map(func)
         ret.set_index("Group", append=True, inplace=True)
-        ret.reorder_levels(['Time', 'Loc', 'Id', 'Group'])
+        ret.reorder_levels(['Time', 'Loc', 'Pos', 'Group'])
         return ret
