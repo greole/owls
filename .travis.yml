@@ -1,9 +1,17 @@
 sudo: false
 language: python
+
+before_install:
+    - pip install ipython
+
 python:
     - 2.7
+    - 3.3
+    - 3.4
+    - 3.5
+
 install:
     - pip install .
 
 script:
-    py.test
+    py.test -k 'not integration'

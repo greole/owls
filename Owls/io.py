@@ -9,14 +9,15 @@ Bad Karma:
     * rename to FoamAna.io
 
 '''
+from __future__  import print_function
+from future.builtins import map, filter, open, next, range, zip, dict, str
 
 import numpy as np
 import re
 import os
 import hashlib
-from pandas import *
-from collections import defaultdict
-from collections import OrderedDict
+from pandas import DataFrame, concat
+from collections import defaultdict, OrderedDict
 from IPython.display import display, clear_output
 
 FPNUMBER = "[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?"
@@ -57,6 +58,7 @@ def find_datafiles(
         path=False,
         files=False,
         search=FPNUMBER,
+        exclude=None,
     ):
     """ Find all datafiles in each time folder,
 
@@ -73,22 +75,31 @@ def find_datafiles(
             Ordered dict with times as key and
             list of found files
     """
-    data_folders = find_datafolders(search, path)
+    data_folders = find_datafolders(search, path, exclude)
     return OrderedDict(
         [(time, _get_datafiles_from_dir(time, files))
             for time in data_folders]
         )
 
-def find_datafolders(regex, path=False):
+
+def find_datafolders(regex, path=False, exclude=None):
     """ Find data folders according to regex
         replaces old find_times function
         Returns sorted list of times as strings """
-    search_folder = (path if path else os.getcwd())
-    complete_regex = search_folder + regex + "$"
-    folders = [fold for fold,_,_ in os.walk(search_folder)
-                    if re.match(complete_regex,fold)]
+    path = (path if path else os.getcwd())
+    if not path.endswith('/'):
+        path = path + '/'
+    complete_regex = path + regex + "$"
+    folders = []
+    for fold, dirs, _ in os.walk(path):
+        if exclude:
+            dirs[:] = [d for d in dirs for ex in exclude if not re.match(ex, d)]
+        folders.append(fold)
+
+    folders = [_ for _ in folders if re.match(complete_regex, _)]
     folders.sort()
     return folders
+
 
 def _get_datafiles_from_dir(path=False, fn_filter=False):
     """ Return file names of Foam files from cwd if no path
@@ -126,10 +137,10 @@ def find_times(fold=None):
 
 def dataframe_to_foam(fullname, ftype, dataframe, boundaries):
     """ writes an OpenFOAM field file from given dataframe """
-    with open(fullname, 'w') as f:
+    with open(fullname, 'w', encoding='utf-8') as f:
         fname = fullname.split('/')[-1]
         time = fullname.split('/')[-2]
-        print "writing %s : %s" % (time, fname)
+        print("writing %s : %s" % (time, fname))
         f.write(FOAM_HEADER.format(ftype.capitalize(), time, fname, ftype))
         f.write(str(len(dataframe)))
         f.write("\n(\n")
@@ -236,11 +247,11 @@ class ProgressBar():
     def next(self):
         self.count += 1.0
         if self.count/self.tot > self.cur:
-            print "#",
+            print("#", end="")
             self.cur += 0.1
 
     def done(self):
-        print "[done]"#,
+        print("[done]")
 
 def strip_time(path, base):
     """ try to extract time from path """
@@ -253,32 +264,60 @@ def strip_time(path, base):
     else:
         return 0.0
 
-def import_foam_folder(
+def import_foam_mesh(path, exclude=None):
+    """ returns a Dataframe containing the raw mesh data """
+    mesh_loc = "constant/polyMesh"
+    if mesh_loc not in path:
+        path = os.path.join(path, mesh_loc)
+
+    fileList = find_datafiles(
             path,
-            search,
-            files,
-            skiplines=1,
-            maxlines=0,
-            skiptimes=1,
+            search="[.\/A-Za-z]*",
+            files=['faces', 'points', 'owner', 'neighbour'],
+            exclude=exclude,
+        )
+    if not fileList:
+        print("no mesh files found")
+        return
+    p_bar = ProgressBar(n_tot=sum([len(l) for l in fileList.values()]))
+    df = DataFrame()
+    from collections import defaultdict
+    origins = Origins()
+    els = list(fileList.items())
+    time, files = els[0]
+    df_tmp = dict()
+    for fn in files:
+        ret = read_data_file(fn, skiplines=1, maxlines=False)
+        p_bar.next()
+        field_names, x, hashes = ret
+        df_tmp[fn] = x
+    return df_tmp
+
+
+def import_foam_folder(
+        path,
+        search,
+        files,
+        skiplines=1,
+        maxlines=0,
+        skiptimes=1,
+        exclude=None
         ):
     """ returns a Dataframe for every file in fileList """
     #import StringIO
-    from pandas import concat
-
-    if not path.endswith('/'):
-        path = path + '/'
-    fileList = find_datafiles(path, search=search, files=files)
+    fileList = find_datafiles(
+        path, search=search, files=files, exclude=exclude)
     if not fileList:
-        print "no files found"
+        print("no files found")
         return
-    p_bar = ProgressBar(n_tot=sum([len(l) for l in fileList.itervalues()]))
+    p_bar = ProgressBar(n_tot=sum([len(l) for l in fileList.values()]))
     df = DataFrame()
     #df.index = MultiIndex.from_tuples(zip([],[]),names=['Loc',0])
     from collections import defaultdict
     origins = Origins()
-    els = list(fileList.iteritems())[::skiptimes]
-    for time, files in els:
-        time = strip_time(time, path)
+    els = list(fileList.items())[::skiptimes]
+    for fullpath, files in els:
+        time = strip_time(fullpath, path)
         df_tmp = DataFrame()
         for fn in files:
             #ret = read_table(StringIO.StringIO(foam_to_csv(fn)))
@@ -292,27 +331,29 @@ def import_foam_folder(
                 df_tmp = x
             else:
                 try:
-                    # use combine first for all df at existing Loc or
-                    # if not Loc is specified (Eul or Lag fields)
-                    if x.index.levels[0][0] in df_tmp.index.levels[0]:
-                        df_tmp = df_tmp.combine_first(x)
-                        #df_tmp = concat([df_tmp, x], axis=1)
-                        pass
-                    else:
-                        df_tmp = concat([df_tmp, x])
+                    df_tmp = df_tmp.combine_first(x)
                 except Exception as e:
-                    print x
-                    print e
+                    print("failed to concat: ",
+                            df_tmp, "and", x, "new_loc ",
+                            x.index.levels[0][0], " existing_locs ",
+                            df_tmp.index.levels[0] )
+                    print(e)
             field_names = ([field_names] if not type(field_names) == list else field_names)
             for field in field_names:
-                origins.insert(time,loc,field,fn,hashes[field])
+                if field == "Pos":
+                    continue
+                origins.insert(time, loc, field, fn, hashes[field])
         df_tmp['Time'] = time
         if df.empty:
             df = df_tmp
         else:
             df = df.append(df_tmp)
     df.set_index('Time', append=True, inplace=True)
-    df = df.reorder_levels(['Time','Loc','Id'])
+    if not "Loc" in  df.index.names:
+        print(df)
+        # df = df.reorder_levels(['Time', ])
+    else:
+        df = df.reorder_levels(['Time', 'Loc', 'Pos'])
     p_bar.done()
     return origins, df
 
@@ -330,18 +371,18 @@ def foam_to_csv(fn, ):
         prints data directly to std:out
     """
     try:
-        with open(fn) as f:
+        with open(fn, encoding="utf-8") as f:
             content = f.readlines()
             start, num_entries = if_header_skip(content)
             entries = len(content[start].split())
             for l in content:
-                print re.sub("\t",",",re.sub("[\(\)\\n]","",l))
+                print(re.sub("\t",",",re.sub("[\(\)\\n]","",l)))
     except Exception as e:
-        print e
+        print(e)
 
 def read_boundary_names(fn):
     """ Todo use iterator method to avoid reading complete file """
-    with open(fn) as f:
+    with open(fn, encoding="utf-8") as f:
         boundary_names = []
         lines  = reversed(f.readlines())
         for line in lines:
@@ -361,12 +402,13 @@ def read_data_file(fn, skiplines=1, maxlines=False):
          index after header
     """
 
+    # TODO check if sorting the index gives any performance benefits
     # print "opening file {}".format(fn)
     if not os.path.exists(fn):
-        print "Can not open file " + fn
+        print("Can not open file " + fn)
         return None
     try:
-        with open(fn) as f:
+        with open(fn, encoding="utf-8") as f:
             field = fn.split('/')[-1]
             content = f.readlines()
             content.append('bla')
@@ -374,43 +416,47 @@ def read_data_file(fn, skiplines=1, maxlines=False):
             entries = len(content[start].split())
             is_a_vector = (True if entries > 1 else False)
             end = start + num_entries
+            # FIXME this fails for eulerian/lagrangian vector fields
+            # since no positional entry is produced
             if is_a_vector:
-                data = map(lambda x: re.sub(r'[()]', '', x).split(),
-                            content[start:end:skiplines])
+                data = list(map(lambda x: re.sub("[0-9]*\(|\)", '', x).split(),
+                            content[start:end:skiplines]))
                 loc, names = evaluate_names(fn, entries)
                 df = DataFrame(data=data, columns=names)
                 if loc:
                     df['Loc'] = loc
                 else:
                     df['Loc'] = range(len(df))
-                df.set_index('Loc', append=True, inplace=True)
-                df.index.names=['Id','Loc']
-                df = df.reorder_levels(['Loc','Id'])
+                df.set_index('Loc', append=False, inplace=True)
+                df.set_index('Pos', append=True, inplace=True)
+                df.index.names=['Loc', 'Pos']
+                df = df.reorder_levels(['Loc', 'Pos'])
                 df = df.astype(float)
                 hashes = {}
                 for row in df.columns:
                     hashes.update({row: hash_series(df[row])})
                 return names, df, hashes
+            # DataFile with a single row are seen as Eulerian or Lagrangian fields
             else:
                 data = [np.float32(x) for x in content[start:end:skiplines]]
                 entries = 1
                 df = DataFrame(data=data, columns=[field])
                 df['Loc'] = "Field"
                 df.set_index('Loc', append=True, inplace=True)
-                df.index.names=['Id','Loc']
-                df = df.reorder_levels(['Loc','Id'])
-                hashes={field: int(hashlib.md5(str(data)).hexdigest(),16)}
+                df.index.names=['Pos', 'Loc']
+                df = df.reorder_levels(['Loc', 'Pos'])
+                hashes = {field: int(hashlib.md5(str(data).encode('utf-8')).hexdigest(),16)}
                 return field, df, hashes
     except Exception as e:
         if DEBUG:
-            print "Error processing datafile " + fn
-            print e
+            print("Error processing datafile " + fn)
+            print(e)
         return None
 
 def hash_series(series):
     d = series.values
     d.flags.writeable = False #TODO needed?
-    s = str(list(d))
+    s = str(list(d)).encode('utf-8')
     return int(hashlib.md5(s).hexdigest(),16) #NOT
 
 
@@ -448,7 +494,7 @@ def req_file(file_name, requested):
         return file_name.split('/')[-1] in requested
 
 
-def import_logs(folder, keys):
+def import_logs(folder, search, keys):
     """
         keys = {"ExectionTime": ["ExecTime", "ClockTime"]}
 
@@ -475,20 +521,21 @@ def import_logs(folder, keys):
                 "ExecutionTime":[0,1]
         """
         import re
-        for key, col_names in keys.iteritems():
+        for key, col_names in keys.items():
             if re.search(key, line):
-                return col_names, map(float,filter(lambda x:
-                        x, re.findall("[0-9]+[.]?[0-9]*[e]?[\-]?[0-9]*", line)))
+                return col_names, list(
+                        map(float,filter(lambda x:
+                        x, re.findall("[0-9]+[.]?[0-9]*[e]?[\-]?[0-9]*", line))))
         return None, None
 
-    fold,dirs,files = next(os.walk(folder))
-    logs = [fold + "/" + log for log in files if 'log' in log]
+    fold, dirs, files = next(os.walk(folder))
+    logs = [fold + "/" + log for log in files if search in log]
     p_bar = ProgressBar(n_tot = len(logs))
     # Lets make sure that we find Timesteps in the log
     keys.update({"^Time = ": ['Time']})
 
     for log_number, log_name in enumerate(logs):
-        with open(log_name) as log:
+        with open(log_name, encoding="utf-8") as log:
             f = log.readlines()
             start = find_start(f)
             dataDict = defaultdict(list)
@@ -503,7 +550,7 @@ def import_logs(folder, keys):
                     # Very slow but, so far the solution
                     # to keep subiterations attached to correct time
                     # FIXME: still needs handling of different length dictionaries
-                    df = concat([df,DataFrame(dataDict)])
+                    df = concat([df, DataFrame(dataDict)])
                     dataDict = defaultdict(list)
                  for i, col in enumerate(col_names):
                     dataDict[col].append(values[i])
@@ -517,11 +564,11 @@ def import_logs(folder, keys):
             df = df.reorder_levels(['Loc','Time','Id'])
             p_bar.done()
         except Exception as e:
-            print log_name
-            print "failed to process"
-            print e
-            return {},None
-    return {},df
+            print(log_name)
+            print("failed to process")
+            print(e)
+            return {}, None
+    return {}, DataFrame()
 
 
 

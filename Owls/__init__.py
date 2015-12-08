@@ -1,4 +1,4 @@
-#__all__ = ["case", "plot", "analysis"]
+from __future__  import print_function
 import os
 
 owls_path = os.path.expanduser('~') + "/.owls"
@@ -6,15 +6,16 @@ if not os.path.exists(owls_path):
     os.makedirs(owls_path)
 
 from .version import __version__
-from io import *
-from plot import *
-from foam import *
-from FoamFrame import *
-from MultiFrame import *
+# from . import io
+from .plot import *
+# from .foam import *
+from .FoamFrame import *
+# from .MultiFrame import *
 
-print "Owls Version: " + __version__
+from future.builtins import *
+print("Owls Version: " + __version__)
 
 try:
   from mplinterface import *
 except:
-  print "Warning no matplotlib support"
+  print("Warning no matplotlib support")
