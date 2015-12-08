@@ -73,29 +73,33 @@ class MultiFrame():
         self.cases[key] = value
 
 
-    def scatter(self, y, x='Pos', z=False, overlay="Field", **kwargs):
-        return self._draw(x, y, z=z, overlay=overlay,
-                    inst_func="scatter", **kwargs)
-
-    def histogram(self, y, x=None, z=False, overlay="Field", **kwargs):
-        return self._draw(x, y, z=z, overlay=overlay,
-                    inst_func="histogram", **kwargs)
-
-
-    def plot(self, y, x='Pos', z=False, overlay="Field", style=defstyle, **kwargs):
-        return self._draw(x, y, z=z, overlay=overlay,
-                    inst_func="plot", **kwargs)
+    # def scatter(self, y, x='Pos', z=False, overlay="Field", **kwargs):
+    #     return self._draw(x, y, z=z, overlay=overlay,
+    #                 inst_func="scatter", **kwargs)
+    #
+    # def histogram(self, y, x=None, z=False, overlay="Field", **kwargs):
+    #     return self._draw(x, y, z=z, overlay=overlay,
+    #                 inst_func="histogram", **kwargs)
+    #
+    #
+    # def plot(self, y, x='Pos', z=False, overlay="Field", style=defstyle, **kwargs):
+    #     return self._draw(x, y, z=z, overlay=overlay,
+    #                 inst_func="plot", **kwargs)
 
     def show(self, y, x='Pos', z=False, overlay="Field", style=defstyle, **kwargs):
         """ Display single quantity y over multiple cases
             if overlay is set all cases are plotted in to single
             graph """
-        dashes = [[4,2], [4,4], [1,1]]
+        dashes = [[4, 2], [4, 4], [1, 1]]
         cases = list(self.cases.keys())
-        row = self.cases[cases[0]].show(x=x, y=y, overlay=overlay, legend_prefix=cases[0],
-                style=style, post_pone_style=True, **kwargs)
+        row = self.cases[cases[0]].show(x=x, y=y, overlay=overlay,
+                                        legend_prefix=cases[0], style=style,
+                                        post_pone_style=True, **kwargs)
         for c, d in zip(cases[1:], dashes):
-             row = self.cases[c].show(x=x, y=y, overlay=overlay, legend_prefix=c, style=style, row=row, post_pone_style=True, line_dash=d, **kwargs)
+            row = self.cases[c].show(x=x, y=y, overlay=overlay,
+                                     legend_prefix=c, style=style,
+                                     row=row, post_pone_style=True,
+                                     line_dash=d, **kwargs)
         return bk.GridPlot(children=style(rows=arangement(list(row.values()))))
 
     # def show_multi(self, ys, locs, x='Pos', style=defstyle, **kwargs):
