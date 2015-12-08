@@ -427,10 +427,15 @@ def read_data_file(fn, skiplines=1, maxlines=False):
                     df['Loc'] = loc
                 else:
                     df['Loc'] = range(len(df))
-                df.set_index('Loc', append=False, inplace=True)
-                df.set_index('Pos', append=True, inplace=True)
-                df.index.names=['Loc', 'Pos']
-                df = df.reorder_levels(['Loc', 'Pos'])
+                if "Pos" in df:
+                    df.set_index('Loc', append=False, inplace=True)
+                    df.set_index('Pos', append=True, inplace=True)
+                else:
+                    # if no pos is availible we have either
+                    # an eulerian or lagrangian field
+                    df.set_index('Loc', append=True, inplace=True)
+                    df.index.names = ['Pos', 'Loc']
+                    df = df.reorder_levels(['Loc', 'Pos'])
                 df = df.astype(float)
                 hashes = {}
                 for row in df.columns:
