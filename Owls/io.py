@@ -266,7 +266,6 @@ def strip_time(path, base):
 
 def import_foam_mesh(path, exclude=None):
     """ returns a Dataframe containing the raw mesh data """
-    from pandas import concat
     mesh_loc = "constant/polyMesh"
     if mesh_loc not in path:
         path = os.path.join(path, mesh_loc)
@@ -306,7 +305,6 @@ def import_foam_folder(
         ):
     """ returns a Dataframe for every file in fileList """
     #import StringIO
-    from pandas import concat
     fileList = find_datafiles(
         path, search=search, files=files, exclude=exclude)
     if not fileList:
@@ -333,19 +331,17 @@ def import_foam_folder(
                 df_tmp = x
             else:
                 try:
-                    # use combine first for all df at existing Loc or
-                    # if not Loc is specified (Eul or Lag fields)
-                    if x.index.levels[0][0] in df_tmp.index.levels[0]:
-                        df_tmp = df_tmp.combine_first(x)
-                        #df_tmp = concat([df_tmp, x], axis=1)
-                        pass
-                    else:
-                        df_tmp = concat([df_tmp, x])
+                    df_tmp = df_tmp.combine_first(x)
                 except Exception as e:
-                    print(x)
+                    print("failed to concat: ",
+                            df_tmp, "and", x, "new_loc ",
+                            x.index.levels[0][0], " existing_locs ",
+                            df_tmp.index.levels[0] )
                     print(e)
             field_names = ([field_names] if not type(field_names) == list else field_names)
             for field in field_names:
+                if field == "Pos":
+                    continue
                 origins.insert(time, loc, field, fn, hashes[field])
         df_tmp['Time'] = time
         if df.empty:
@@ -353,7 +349,11 @@ def import_foam_folder(
         else:
             df = df.append(df_tmp)
     df.set_index('Time', append=True, inplace=True)
-    df = df.reorder_levels(['Time','Loc','Id'])
+    if not "Loc" in  df.index.names:
+        print(df)
+        # df = df.reorder_levels(['Time', ])
+    else:
+        df = df.reorder_levels(['Time', 'Loc', 'Pos'])
     p_bar.done()
     return origins, df
 
@@ -416,6 +416,8 @@ def read_data_file(fn, skiplines=1, maxlines=False):
             entries = len(content[start].split())
             is_a_vector = (True if entries > 1 else False)
             end = start + num_entries
+            # FIXME this fails for eulerian/lagrangian vector fields
+            # since no positional entry is produced
             if is_a_vector:
                 data = list(map(lambda x: re.sub("[0-9]*\(|\)", '', x).split(),
                             content[start:end:skiplines]))
@@ -425,22 +427,24 @@ def read_data_file(fn, skiplines=1, maxlines=False):
                     df['Loc'] = loc
                 else:
                     df['Loc'] = range(len(df))
-                df.set_index('Loc', append=True, inplace=True)
-                df.index.names=['Id','Loc']
-                df = df.reorder_levels(['Loc','Id'])
+                df.set_index('Loc', append=False, inplace=True)
+                df.set_index('Pos', append=True, inplace=True)
+                df.index.names=['Loc', 'Pos']
+                df = df.reorder_levels(['Loc', 'Pos'])
                 df = df.astype(float)
                 hashes = {}
                 for row in df.columns:
                     hashes.update({row: hash_series(df[row])})
                 return names, df, hashes
+            # DataFile with a single row are seen as Eulerian or Lagrangian fields
             else:
                 data = [np.float32(x) for x in content[start:end:skiplines]]
                 entries = 1
                 df = DataFrame(data=data, columns=[field])
                 df['Loc'] = "Field"
                 df.set_index('Loc', append=True, inplace=True)
-                df.index.names=['Id','Loc']
-                df = df.reorder_levels(['Loc','Id'])
+                df.index.names=['Pos', 'Loc']
+                df = df.reorder_levels(['Loc', 'Pos'])
                 hashes = {field: int(hashlib.md5(str(data).encode('utf-8')).hexdigest(),16)}
                 return field, df, hashes
     except Exception as e:
