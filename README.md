@@ -67,8 +67,7 @@ s1.latest.location('y0.1')
 Data can be filtered using user defined function
 ~~~~.python
 s1.filter_locations(ow.isIn('axis')) # filter all location with axis in the name
-s1.filter_fields("T", 1000, 2000) # return alll fields where temperature is between 1000 and 2000
-s1.latest.filter(name="T", func=lambda x: 291<x<291.5)
+s1.filter_fields("T", 1000, 2000) # return all fields where temperature is between 1000 and 2000
 s1.latest.filter(name="Pos", func=lambda x: 0.1<x<0.2)
 ~~~~
 
