@@ -5,21 +5,30 @@
 ![](https://pypip.in/py_versions/owls/badge.svg)
 ![](https://travis-ci.org/greole/owls.svg?branch=master)
 
-The Owls package is a collection of python tools for data analysis and 
-plotting of OpenFOAM cases. It provides the following basic functionality: 
+The Owls package is a collection of python tools for data analysis and
+plotting of OpenFOAM cases. It provides the following basic functionality:
 
 - A reader for OpenFOAM scalar and vector fields, set files and log files
 - Converting OpenFOAM data to FoamFrames which are derived DataFrames from the pandas library
 
-This tutorial aims to illustrate the basic workflow of the Owls package.
-After installing, make sure that the module following imports are available
 
 # Installation
+Owls can be installed via pip
+
+~~~~.bash
+pip install Owls # non development version probably out of date
+~~~~
+
+For a more recent version install the development version
 
 ~~~~.bash
 python setup.py install --user
-pip install Owls # or for non development version
-                 # but probably out of date   
+~~~~
+
+
+If you have docker installed you can use the automaticly build docker container
+~~~~.bash
+docker pull greole/owls
 ~~~~
 
 # Dependencies
@@ -32,18 +41,18 @@ import Owls as ow
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ## Reading Foam Data
-Owls provides convenient methods to import OpenFOAM data and experimental data i.e. 
+Owls provides convenient methods to import OpenFOAM data and experimental data i.e.
 
 ~~~~.python
 s1 = read_sets(
-    folder='/some/path/', 
-    name='foo', # name of the case 
+    folder='/some/path/',
+    name='foo', # name of the case
     )
 ~~~~
-where folder is the root folder of your OpenFOAM case. Additionally available read_eul, read_lag, and read_exp, read_log
+where folder is the root folder of your OpenFOAM case. Additionally available `read_eul`, `read_lag`, and `read_exp`, `read_log`
 
 ## Accessing Data
-Since Owls is build on Pandas you can use the standard features of Pandas like bracket notation to access the data
+Owls is build on Pandas and you can use the standard features of Pandas like bracket notation to access the data
 
 ~~~~.python
 s1['T'] # access full Temperature row
@@ -51,30 +60,33 @@ s1.latest['T'] # access latest temperature row
 # access latest temperature data
 # at 'y0.1' location
 # corresponds to sets/TIME/y0.1_T.xy
-s1.latest.location('y0.1') 
+s1.latest.location('y0.1')
 ~~~~
 
 ## Filtering Data
 Data can be filtered using user defined function
 ~~~~.python
-s1.latest.filter(name="T", field=lambda x: 291<x<291.5)
-s1.latest.filter(name="Pos", field=lambda x: 0.1<x<0.2)
+s1.filter_locations(ow.isIn('axis')) # filter all location with axis in the name
+s1.filter_fields("T", 1000, 2000) # return alll fields where temperature is between 1000 and 2000
+s1.latest.filter(name="T", func=lambda x: 291<x<291.5)
+s1.latest.filter(name="Pos", func=lambda x: 0.1<x<0.2)
 ~~~~
 
 
 ## Grouping Data
-Data can be grouped/facetted to generated plot matrizes or overlayed plots
+Data can be grouped to generate multiple plots at once
 
 ~~~~.python
-s1.by_index('Loc')
-s1.by(name='Loc', index=lambda x: x))
+s1.by_index('Loc') # group into locations
+s1.by_location() # group into locations
+s1.by_time() # group by times
 ~~~~
 
 ### Automatic renaming of sets and exp data
-Owls tries to give meaningfull names to set and exp data. 
+Owls tries to give meaningfull names to set and exp data.
 OpenFoam sets files are assumed to following the naming convetion
 yw*setname_field1_field2.xy* this referes to a file containing 3 fields
-position, field1 and field2 these fields will be accessible by the name 
+position, field1 and field2 these fields will be accessible by the name
 defined by the file name. Vector fields like U will be replace by u, v, w etc.
 If the field names cannot be determined by the file name the fields will have
 the following naming convetion *setname_field1_field2.xy_0 ,.. *setname_field1_field2.xy_2
@@ -85,20 +97,20 @@ Currently bokeh is choosen to generate on the fly data visualisations.
 
 If .show is called the natural representation of the FoamFrame will be choosen, i.e. line plots for sets and scatter experimental data. To make standard calls concise the default value of x='Pos'.
 ~~~~.python
-s1.by_index('Loc').show(y='v') 
-s1.by_index('Loc').scatter(x='u',y='v') 
+s1.by_location().show(y=['v','u'], overlay="Field") # plot u and v for each location
+s1.by_location().show(y=['v','u'], overlay="Group") # plot u and v for each location
 ~~~~
 
 you can pass bokeh arguments through the plot function for styling
 ~~~~.python
-s1.by_index('Loc').show(y='v', y_label='foo') 
-s1.by_index('Loc').scatter(x='u',y='v',legend='bar') 
+s1.by_index('Loc').show(y='v', y_label='foo')
+s1.by_index('Loc').scatter(x='u',y='v',legend='bar')
 ~~~~
 
 ## Further Information
 you will find an example Owls demo notebook for ipython in the examples folder.
 
 
-##Contribution
+## Contribution
 
 Yes please!
