@@ -1,12 +1,16 @@
-FROM greole/python2.7
+FROM jupyter/notebook
 
-EXPOSE 9999
+ADD . /opt/owls
+WORKDIR /opt/owls
+RUN apt-get update && \
+    apt-get install -y libpng12-dev libfreetype6-dev
 
-ADD . /root/pkp
-WORKDIR /root/pkp
-RUN pip install json2html
-RUN python setup.py install
-WORKDIR /root/notebooks/pkp
+RUN python3 -m pip install numpy
+RUN python3 -m pip install pandas
 
-CMD ip="$(ifconfig | grep -A 1 'eth0' | tail -1 | cut -d ':' -f 2 | cut -d ' ' -f 1)" && ipython notebook --ip $ip --port 9999
+RUN python3 -m pip install matplotlib
 
+RUN python3 setup.py install
+
+ENTRYPOINT ["tini", "--"]
+CMD ["jupyter", "notebook"]
