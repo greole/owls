@@ -81,15 +81,6 @@ s1.by_location() # group into locations
 s1.by_time() # group by times
 ~~~~
 
-### Automatic renaming of sets and exp data
-Owls tries to give meaningfull names to set and exp data.
-OpenFoam sets files are assumed to following the naming convetion
-yw*setname_field1_field2.xy* this referes to a file containing 3 fields
-position, field1 and field2 these fields will be accessible by the name
-defined by the file name. Vector fields like U will be replace by u, v, w etc.
-If the field names cannot be determined by the file name the fields will have
-the following naming convetion *setname_field1_field2.xy_0 ,.. *setname_field1_field2.xy_2
-
 ## Data Visualisation
 Data can be passed to any standard python plotting library i.e. matplotlib, ggplot, seaborn.
 Currently bokeh is choosen to generate on the fly data visualisations.
@@ -105,11 +96,3 @@ you can pass bokeh arguments through the plot function for styling
 s1.by_index('Loc').show(y='v', y_label='foo')
 s1.by_index('Loc').scatter(x='u',y='v',legend='bar')
 ~~~~
-
-## Further Information
-you will find an example Owls demo notebook for ipython in the examples folder.
-
-
-## Contribution
-
-Yes please!
