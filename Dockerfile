@@ -12,5 +12,7 @@ RUN python3 -m pip install matplotlib
 
 RUN python3 setup.py install
 
+WORKDIR /notebooks
+
 ENTRYPOINT ["tini", "--"]
 CMD ["jupyter", "notebook"]
