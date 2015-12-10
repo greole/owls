@@ -510,7 +510,7 @@ class FoamFrame(DataFrame):
         return self.draw(x, y, z, title, func="line", figure=figure, **kwargs)
 
 
-    def show(self, y, x="Pos", figure=False, overlay=True, style=defstyle, legend_prefix="", post_pone_style=False, row=None, **kwargs):
+    def show(self, y, x="Pos", figure=False, overlay="Field", style=defstyle, legend_prefix="", post_pone_style=False, row=None, **kwargs):
         def create_figure(y_, f):
             return getattr(self, self.properties.show_func)(y=y_, x=x, figure=f, legend_prefix=legend_prefix, **kwargs)
 
