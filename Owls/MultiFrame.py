@@ -5,7 +5,7 @@ from collections import OrderedDict
 
 from . import plot
 from .plot import style as defstyle
-from .plot import arangement
+from .plot import arangement, compose_styles
 
 import bokeh.plotting as bk
 
@@ -63,6 +63,7 @@ class MultiFrame():
         """ Display single quantity y over multiple cases
             if overlay is set all cases are plotted in to single
             graph """
+        style = (compose_styles(style, []) if isinstance(style, list) else style)
         dashes = [[4, 2], [4, 4], [1, 1]]
         cases = list(self.cases.keys())
         row = self.cases[cases[0]].show(x=x, y=y, overlay=overlay,

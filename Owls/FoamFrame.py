@@ -15,6 +15,7 @@ from pandas import Series, DataFrame, Index
 from . import MultiFrame as mf
 from . import plot as plt
 from .plot import style as defstyle
+from .plot import compose_styles
 from . import io
 
 import bokeh.plotting as bk
@@ -468,7 +469,7 @@ class FoamFrame(DataFrame):
         spec_color = kwargs.get("color", False)
         spec_legend = kwargs.get("legend", False)
         y = (y if isinstance(y, list) else [y])
-        legend_prefix = (legend_prefix if not legend_prefix else legend_prefix + "-")
+        # legend_prefix = (legend_prefix if not legend_prefix else legend_prefix + "-")
         for yi in y:
             x_data, y_data = self[x], self[yi]
             # TODO FIXME
@@ -478,7 +479,8 @@ class FoamFrame(DataFrame):
             if not spec_color:
                 kwargs.update({"color": next(colors)})
             if not spec_legend:
-                kwargs.update({"legend": legend_prefix + yi})
+                legend = (legend_prefix + "-" + yi if legend_prefix else yi)
+                kwargs.update({"legend": legend})
             getattr(figure, func)(x=x_data,
                                   y=y_data,
                                   **kwargs)
@@ -510,7 +512,12 @@ class FoamFrame(DataFrame):
         return self.draw(x, y, z, title, func="line", figure=figure, **kwargs)
 
 
-    def show(self, y, x="Pos", figure=False, overlay="Field", style=defstyle, legend_prefix="", post_pone_style=False, row=None, **kwargs):
+    def show(self, y, x="Pos", figure=False,
+             overlay="Field", style=defstyle,
+             legend_prefix="", post_pone_style=False,
+             row=None, **kwargs):
+        style = (compose_styles(style, []) if isinstance(style, list) else style)
+
         def create_figure(y_, f):
             return getattr(self, self.properties.show_func)(y=y_, x=x, figure=f, legend_prefix=legend_prefix, **kwargs)
 
@@ -530,32 +537,49 @@ class FoamFrame(DataFrame):
                     # so that we can plot into it
                     # otherwise create a new figure
                     for yi in y:
-                        fig_id, f = ((yi, arow[yi]) if arow.get(yi, False) else (yi, plt.figure()))
+                        fig_id, f = ((yi, arow[yi])
+                                     if arow.get(yi, False)
+                                     else (yi, plt.figure()))
                         arow[fig_id] = create_figure(yi, f)
             if self.grouped:
                 groups = list(set(self["Group"]))
                 groups.sort()
                 if overlay == "Group":
-                    # ALIGN ALOMNG GROUPS
+                    # ALIGN ALONG GROUPS
                     # for every yi a new figure is needed
                     #arow = (arow if arow else OrderedDict())
                     for yi in y:
-                        fig_id, f = ((yi, arow[yi]) if arow.get(yi, False) else (yi, plt.figure()))
+                        fig_id, f = ((yi, arow[yi])
+                                if arow.get(yi, False)
+                                else (yi, plt.figure()))
                         colors = plt.next_color()
                         for name in groups:
                             color = next(colors)
-                            arow[yi] = self.at("Group", name).show(x=x, y=yi, title=yi, figure=(fig_id, f),
-                                    post_pone_style=True, overlay="Field", legend=legend_prefix + "-" + str(name), color=color, legend_prefix=legend_prefix, **kwargs)[yi]
+                            arow[yi] = self.at("Group", name).show(
+                                    x=x, y=yi, title=yi, figure=(fig_id, f),
+                                    post_pone_style=True, overlay="Field",
+                                    color=color, legend_prefix=legend_prefix,
+                                    legend=str(name),
+                                    **kwargs)[yi]
                 if overlay == "Field":
-                    #row = (arow if arow else OrderedDict())
+                    # row = (arow if arow else OrderedDict())
                     for group in groups:
-                        fig_id, f = ((group, arow[group]) if arow.get(group, False) else (group, plt.figure()))
+                        fig_id, f = ((group, arow[group])
+                                     if arow.get(group, False)
+                                     else (group, plt.figure()))
                         field = self.at("Group", group)
-                        arow[group] = field.show(x=x, y=y, title=str(group), figure=(group, f), overlay="Field", post_pone_style=True, legend_prefix=legend_prefix, **kwargs)[group]
+                        arow[group] = field.show(x=x, y=y, title=str(group),
+                                                 figure=(group, f), overlay="Field",
+                                                 post_pone_style=True,
+                                                 legend_prefix=legend_prefix,
+                                                 **kwargs)[group]
             return arow
 
         fig_row = create_figure_row(y, row)
-        return (fig_row if post_pone_style else bk.GridPlot(children=style(rows=[list(fig_row.values())])))
+        return (fig_row
+                if post_pone_style
+                else bk.GridPlot(children=style(rows=[list(fig_row.values())]))
+               )
 
 
     def show_func(self, value):
