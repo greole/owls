@@ -8,9 +8,9 @@ import shutil
 
 import numpy as np
 
-colored = ["aqua", "black", "blue", "fuchsia", "gray", "green",
+colored = ["black", "blue", "fuchsia", "gray", "green",
            "lime", "maroon", "navy", "olive", "orange", "purple",
-           "red", "silver", "teal", "yellow"]
+           "red", "silver", "teal", "yellow", "aqua"]
 
 symbols_full = ["circle", "square", "triangle", "diamond", "inverted_triangle"]
 
@@ -224,10 +224,17 @@ cleanXAxis = partial(adjustColumn, {'xaxis.visible': False}, rtail, all)
 cleanYAxis = partial(adjustColumn, {'yaxis.visible': False}, all, tail)
 
 
+# reset legends
+# all but last
 cleanLegendIa = partial(adjustColumn, {'legend.legends': []}, rtail, all)
 cleanLegendIb = partial(adjustColumn, {'legend.legends': []}, all, rtail)
 cleanLegendIIa = partial(adjustColumn, {'legend.border_line_color': None}, all, rtail)
 cleanLegendIIb = partial(adjustColumn, {'legend.border_line_color': None}, rtail, all)
+# all but first
+cleanLegendIc = partial(adjustColumn, {'legend.legends': []}, all, tail)
+cleanLegendId = partial(adjustColumn, {'legend.legends': []}, tail, all)
+cleanLegendIIc = partial(adjustColumn, {'legend.border_line_color': None}, all, tail)
+cleanLegendIId = partial(adjustColumn, {'legend.border_line_color': None}, tail, all)
 
 legendTopLeft = partial(adjustColumn, {'legend.orientation': "top_left"}, all, all)
 legendBottomLeft = partial(adjustColumn, {'legend.orientation': "bottom_left"}, all, all)
@@ -236,6 +243,8 @@ legendBottomRight = partial(adjustColumn, {'legend.orientation': "bottom_right"}
 
 
 lastLegend = [cleanLegendIa, cleanLegendIb, cleanLegendIIa, cleanLegendIIb]
+firstLegend = [cleanLegendIc, cleanLegendId, cleanLegendIIc, cleanLegendIId]
+
 
 
 arangement = lambda x: np.array(x).reshape(greatest_divisor(len(x)),-1).tolist()
