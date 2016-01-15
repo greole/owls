@@ -123,13 +123,11 @@ class Props():
 
     def __init__(self, origins, name,
                  plot_properties, folder,
-                 times, symb, show_func):
+                 symb, show_func):
         self.origins = origins
         self.name = name
         self.plot_properties = plot_properties
         self.folder = folder
-        self.times = times
-        self.latest_time = max(times)
         self.symb = symb
         self.show_func = show_func
 
@@ -247,8 +245,6 @@ class FoamFrame(DataFrame):
                 name,
                 plot_properties,
                 folder,
-                # FIXME fix it for read logs
-                data.index.levels[0],
                 symb,
                 show_func)
             if validate and Database:
@@ -361,10 +357,14 @@ class FoamFrame(DataFrame):
     @property
     def latest(self):
         """ return latest time for case """
-        import pandas as pd
-        ret = self.loc[[self.properties.latest_time]]
+        ret = self.query('Time == {}'.format(self.latest_time))
         ret.properties = self.properties
         return ret
+
+    @property
+    def latest_time(self):
+        """ return value of latest time step """
+        return max(self.index.levels[0])
 
     def at(self, idx_name, idx_val):
         """ select from foamframe based on index name and value"""
@@ -517,6 +517,9 @@ class FoamFrame(DataFrame):
              legend_prefix="", post_pone_style=False,
              row=None, **kwargs):
         style = (compose_styles(style, []) if isinstance(style, list) else style)
+        if kwargs.get("props", False):
+            props = kwargs.pop("props")
+            self.properties.plot_properties.set(props)
 
         def create_figure(y_, f):
             return getattr(self, self.properties.show_func)(y=y_, x=x, figure=f, legend_prefix=legend_prefix, **kwargs)
