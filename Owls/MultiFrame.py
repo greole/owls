@@ -59,7 +59,7 @@ class MultiFrame():
     def insert(self, key, value):
         self.cases[key] = value
 
-    def show(self, y, x='Pos', z=False, overlay="Field", style=defstyle, **kwargs):
+    def show(self, y, x='Pos', z=False, overlay="Field", show=True, style=defstyle, **kwargs):
         """ Display single quantity y over multiple cases
             if overlay is set all cases are plotted in to single
             graph """
@@ -74,7 +74,11 @@ class MultiFrame():
                                      legend_prefix=c, style=style,
                                      row=row, post_pone_style=True,
                                      line_dash=d, **kwargs)
-        return bk.GridPlot(children=style(rows=arangement(list(row.values()))))
+        gp = bk.GridPlot(children=style(rows=arangement(list(row.values()))))
+        if show:
+            return bk.show(gp)
+        else:
+            return gp
 
     # def show_multi(self, ys, locs, x='Pos', style=defstyle, **kwargs):
     #     bk.figure()
@@ -155,3 +159,10 @@ class MultiFrame():
     def by(self, name, func):
         """ Grouping delegator """
         return MultiFrame([ case.by(name, func) for cname, case in self.cases.items()])
+
+    def update_plot_properties(self, field, d):
+        """ update plot properties of all casese """
+
+        for _, c in self.cases.items():
+                c.properties.plot_properties.insert(field, d)
+        return self
