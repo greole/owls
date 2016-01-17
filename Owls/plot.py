@@ -230,11 +230,14 @@ cleanLegendIa = partial(adjustColumn, {'legend.legends': []}, rtail, all)
 cleanLegendIb = partial(adjustColumn, {'legend.legends': []}, all, rtail)
 cleanLegendIIa = partial(adjustColumn, {'legend.border_line_color': None}, all, rtail)
 cleanLegendIIb = partial(adjustColumn, {'legend.border_line_color': None}, rtail, all)
+cleanLegenda = partial(adjustColumn, {'legend.legends': []}, all, all)
+cleanLegendb = partial(adjustColumn, {'legend.border_line_color': None}, all, all)
 # all but first
 cleanLegendIc = partial(adjustColumn, {'legend.legends': []}, all, tail)
 cleanLegendId = partial(adjustColumn, {'legend.legends': []}, tail, all)
 cleanLegendIIc = partial(adjustColumn, {'legend.border_line_color': None}, all, tail)
 cleanLegendIId = partial(adjustColumn, {'legend.border_line_color': None}, tail, all)
+cleanLegendb = partial(adjustColumn, {'legend.border_line_color': None}, all, all)
 
 legendTopLeft = partial(adjustColumn, {'legend.orientation': "top_left"}, all, all)
 legendBottomLeft = partial(adjustColumn, {'legend.orientation': "bottom_left"}, all, all)
@@ -244,6 +247,7 @@ legendBottomRight = partial(adjustColumn, {'legend.orientation': "bottom_right"}
 
 lastLegend = [cleanLegendIa, cleanLegendIb, cleanLegendIIa, cleanLegendIIb]
 firstLegend = [cleanLegendIc, cleanLegendId, cleanLegendIIc, cleanLegendIId]
+noLegend = [cleanLegenda, cleanLegendb]
 
 
 
