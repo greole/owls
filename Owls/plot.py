@@ -71,9 +71,9 @@ def adjustColumn(style, whereRow, whereFigs=None, rows=None):
     return rows
 
 
-def figure():
+def figure(**kwargs):
     import bokeh.plotting as bk
-    return bk.figure()
+    return bk.figure(**kwargs)
 
 
 # def merge(*args, **kwargs):
