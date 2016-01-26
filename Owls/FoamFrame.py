@@ -346,8 +346,12 @@ class FoamFrame(DataFrame):
             an index
         """
         if self._is_idx(item):
-            level = self.index.names.index(item)
-            return list(zip(*self.index.values))[level]
+            try:
+                level = self.index.names.index(item)
+                return list(zip(*self.index.values))[level]
+            except:
+                return
+                # print("failed ", item) NOTE for debugging
         else:
             if (type(item) is str) and item not in self.columns:
                 return Series()
@@ -557,7 +561,7 @@ class FoamFrame(DataFrame):
                                      else (yi, plt.figure(title=title)))
                         arow[fig_id] = create_figure(yi, f, title=title)
             if self.grouped:
-                groups = list(set(self["Group"]))
+                groups = list(set(self["Group"]) if self["Group"] else set())
                 groups.sort()
                 if overlay == "Group":
                     # ALIGN ALONG GROUPS
