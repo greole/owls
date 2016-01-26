@@ -59,21 +59,31 @@ class MultiFrame():
     def insert(self, key, value):
         self.cases[key] = value
 
+
+    def histogram(self, y, x=None, **kwargs):
+        cases = list(self.cases.keys())
+        fig = self.cases[cases[0]].histogram(x=x, y=y, **kwargs)
+        for c in cases:
+            fig = self.cases[c].histogram(x=x, y=y, figure=fig, **kwargs)
+        return fig
+
+
     def show(self, y, x='Pos', z=False, overlay="Field", show=True, style=defstyle, **kwargs):
         """ Display single quantity y over multiple cases
             if overlay is set all cases are plotted in to single
             graph """
+        # TODO if not overlay, common part should be figure title
         style = (compose_styles(style, []) if isinstance(style, list) else style)
         dashes = [[4, 2], [4, 4], [1, 1]]
         cases = list(self.cases.keys())
         row = self.cases[cases[0]].show(x=x, y=y, overlay=overlay,
                                         legend_prefix=cases[0], style=style,
-                                        post_pone_style=True, **kwargs)
+                                        post_pone_style=True, titles=y, **kwargs)
         for c, d in zip(cases[1:], dashes):
             row = self.cases[c].show(x=x, y=y, overlay=overlay,
                                      legend_prefix=c, style=style,
                                      row=row, post_pone_style=True,
-                                     line_dash=d, **kwargs)
+                                     line_dash=d, titles=y, **kwargs)
         gp = bk.GridPlot(children=style(rows=arangement(list(row.values()))))
         if show:
             return bk.show(gp)
