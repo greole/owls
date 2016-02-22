@@ -1,42 +1,40 @@
-from __future__  import print_function
+from __future__ import print_function
 from future.builtins import *
 
 from collections import OrderedDict
 
-from . import plot
 from .plot import style as defstyle
 from .plot import arangement, compose_styles
 
 import bokeh.plotting as bk
 
+
 def multiframes(folder, names, reader, **kwargs):
     """ create a collection of cases for which
         only the folder is different """
     return MultiFrame([reader(f, name=n, **kwargs)
-            for (f, n) in zip(folder, names)])
+                       for (f, n) in zip(folder, names)])
+
 
 class MultiFrame():
     """ Class for storage of multiple case items
         or faceted data from FoamFrame
     """
-    #TODO:  implememt multi-facetting
-    #       e.g. (cases.by_index('Loc')    <- returns a MultiFrame
-    #               .by_case(overlay=True) <- MultiFrame method
-    #               .show('T')
-    #TODO: implement __repr__ method
+
     def __repr__(self):
         s = "MultiFrame with {} entries:\n".format(len(self.cases))
         s += "\n".join(["{}\n{}:\n{}".format(80*"=", name, c.describe())
-            for name, c in self.cases.items()])
+                        for name, c in self.cases.items()])
         return s
 
     def __init__(self, cases=None):
         if type(cases) == list:
-            self.cases = OrderedDict([(case.properties.name, case) for case in cases])
+            self.cases = OrderedDict([(case.properties.name, case)
+                                      for case in cases])
         elif type(cases) == OrderedDict:
-            self.cases=cases
+            self.cases = cases
         else:
-            self.cases={}
+            self.cases = {}
 
     def __getitem__(self, field):
         return [serie[field] for serie in self.cases.values()]
@@ -59,7 +57,8 @@ class MultiFrame():
     def insert(self, key, value):
         self.cases[key] = value
 
-    def show(self, y, x='Pos', z=False, overlay="Field", style=defstyle, **kwargs):
+    def show(self, y, x='Pos', z=False, overlay="Field",
+             style=defstyle, **kwargs):
         """ Display single quantity y over multiple cases
             if overlay is set all cases are plotted in to single
             graph """
@@ -133,6 +132,14 @@ class MultiFrame():
         """ Grouping delegator """
         return MultiFrame([case.latest for cname, case in self.cases.items()])
 
+    def on(self, case, func, **kwargs):
+        """
+            mf.on('Exp', "location", loc='axis')
+        """
+        n = getattr(self.cases[case], func)(**kwargs)
+        return MultiFrame([(case_ if cname != case else n)
+                           for cname, case_ in self.cases.items()])
+
     # ----------------------------------------------------------------------
     # Grouping methods
 
@@ -154,4 +161,5 @@ class MultiFrame():
 
     def by(self, name, func):
         """ Grouping delegator """
-        return MultiFrame([ case.by(name, func) for cname, case in self.cases.items()])
+        return MultiFrame([case.by(name, func)
+                           for cname, case in self.cases.items()])
