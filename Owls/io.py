@@ -59,6 +59,7 @@ def find_datafiles(
         files=False,
         search=FPNUMBER,
         exclude=None,
+        times_slice=None,
     ):
     """ Find all datafiles in each time folder,
 
@@ -75,14 +76,14 @@ def find_datafiles(
             Ordered dict with times as key and
             list of found files
     """
-    data_folders = find_datafolders(search, path, exclude)
+    data_folders = find_datafolders(search, path, exclude, times_slice)
     return OrderedDict(
         [(time, _get_datafiles_from_dir(time, files))
             for time in data_folders]
         )
 
 
-def find_datafolders(regex, path=False, exclude=None):
+def find_datafolders(regex, path=False, exclude=None, slice_=None):
     """ Find data folders according to regex
         replaces old find_times function
         Returns sorted list of times as strings """
@@ -98,7 +99,12 @@ def find_datafolders(regex, path=False, exclude=None):
 
     folders = [_ for _ in folders if re.match(complete_regex, _)]
     folders.sort()
-    return folders
+    if slice_ == "all":
+        return folders
+    if slice_ == "latest":
+        return folders[-1]
+    # FIXME raise Exception
+    # return (folders if not slice_ else folders(slice_))
 
 
 def _get_datafiles_from_dir(path=False, fn_filter=False):
@@ -264,7 +270,7 @@ def strip_time(path, base):
     else:
         return 0.0
 
-def import_foam_mesh(path, exclude=None):
+def import_foam_mesh(path, exclude=None, times_slice=None):
     """ returns a Dataframe containing the raw mesh data """
     mesh_loc = "constant/polyMesh"
     if mesh_loc not in path:
@@ -275,6 +281,7 @@ def import_foam_mesh(path, exclude=None):
             search="[.\/A-Za-z]*",
             files=['faces', 'points', 'owner', 'neighbour'],
             exclude=exclude,
+            times_slice=times_slice,
         )
     if not fileList:
         print("no mesh files found")
@@ -301,15 +308,18 @@ def import_foam_folder(
         skiplines=1,
         maxlines=0,
         skiptimes=1,
-        exclude=None
+        exclude=None,
+        times_slice=None,
         ):
     """ returns a Dataframe for every file in fileList """
     #import StringIO
     fileList = find_datafiles(
-        path, search=search, files=files, exclude=exclude)
+        path, search=search, files=files,
+        exclude=exclude, times_slice=times_slice
+    )
     if not fileList:
         print("no files found")
-        return
+        return None, DataFrame()
     p_bar = ProgressBar(n_tot=sum([len(l) for l in fileList.values()]))
     df = DataFrame()
     #df.index = MultiIndex.from_tuples(zip([],[]),names=['Loc',0])
@@ -353,7 +363,7 @@ def import_foam_folder(
         print(df)
         # df = df.reorder_levels(['Time', ])
     else:
-        df = df.reorder_levels(['Time', 'Loc', 'Pos'])
+        df = df.reorder_levels(['Time', 'Loc', 'nPos'])
     p_bar.done()
     return origins, df
 
