@@ -8,6 +8,8 @@ import shutil
 
 import numpy as np
 
+TOOLS = "pan,wheel_zoom,box_zoom,reset,save"
+
 colored = ["black", "blue", "fuchsia", "gray", "green",
            "lime", "maroon", "navy", "olive", "orange", "purple",
            "red", "silver", "teal", "yellow", "aqua"]
@@ -73,7 +75,7 @@ def adjustColumn(style, whereRow, whereFigs=None, rows=None):
 
 def figure(**kwargs):
     import bokeh.plotting as bk
-    return bk.figure(**kwargs)
+    return bk.figure(tools=TOOLS, **kwargs)
 
 
 # def merge(*args, **kwargs):
