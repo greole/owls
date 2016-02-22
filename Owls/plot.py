@@ -1,5 +1,3 @@
-import re
-
 # for snappy
 import subprocess, os, json
 from IPython.display import HTML, display
@@ -8,9 +6,9 @@ import shutil
 
 import numpy as np
 
-colored = ["aqua", "black", "blue", "fuchsia", "gray", "green",
+colored = ["black", "blue", "fuchsia", "gray", "green",
            "lime", "maroon", "navy", "olive", "orange", "purple",
-           "red", "silver", "teal", "yellow"]
+           "red", "silver", "teal", "yellow", "aqua"]
 
 symbols_full = ["circle", "square", "triangle", "diamond", "inverted_triangle"]
 
@@ -47,16 +45,16 @@ def last(elems):
     return [elems[-1]]
 
 
-def adjustRow(style, whereRow, whereFigs=None, rows=None):
-    """ adjusts a list of figures to given geometry """
-    for f in where(figs):
-        for key, value in style.items():
-            if '.' in key:
-                _ = key.split('.')
-                f = getattr(f, _[0])
-                key = _[1]
-            setattr(f, key, value)
-    return figs
+# def adjustRow(style, whereRow, whereFigs=None, rows=None):
+#     """ adjusts a list of figures to given geometry """
+#     for f in where(figs):
+#         for key, value in style.items():
+#             if '.' in key:
+#                 _ = key.split('.')
+#                 f = getattr(f, _[0])
+#                 key = _[1]
+#             setattr(f, key, value)
+#     return figs
 
 def adjustColumn(style, whereRow, whereFigs=None, rows=None):
     for row in whereRow(rows):
@@ -208,6 +206,8 @@ rcParams = {
     }
 
 multi_compose = partial(freduce, compose)
+compose_styles = lambda x, y: multi_compose(x + y)
+
 #axis_label_text_font_style, major_label_text_font_style or axis_label_text_font_size
 #'min_border':12, 'plot_height': 350, 'plot_width': 350,
 rowLabel = partial(
@@ -229,10 +229,20 @@ cleanLegendIb = partial(adjustColumn, {'legend.legends': []}, all, rtail)
 cleanLegendIIa = partial(adjustColumn, {'legend.border_line_color': None}, all, rtail)
 cleanLegendIIb = partial(adjustColumn, {'legend.border_line_color': None}, rtail, all)
 
-legendTopLeft = partial(adjustColumn, {'legend.orientation': "top_left"}, all, all)
-legendBottomLeft = partial(adjustColumn, {'legend.orientation': "bottom_left"}, all, all)
-legendTopRight = partial(adjustColumn, {'legend.orientation': "top_right"}, all, all)
-legendBottomRight = partial(adjustColumn, {'legend.orientation': "bottom_right"}, all, all)
+# legendTopLeft = partial(adjustColumn, {'legend.orientation': "top_left"}, all, all)
+# legendBottomLeft = partial(adjustColumn, {'legend.orientation': "bottom_left"}, all, all)
+# legendTopRight = partial(adjustColumn, {'legend.orientation': "top_right"}, all, all)
+# legendBottomRight = partial(adjustColumn, {'legend.orientation': "bottom_right"}, all, all)
+#
+
+
+def legend(pos):
+    return partial(adjustColumn, {'legend.orientation': pos}, all, all)
+
+legendTopLeft = legend("top_left")
+legendBottomLeft = legend("bottom_left")
+legendTopRight = legend("top_right")
+legendBottomRight = legend("bottom_right")
 
 
 lastLegend = [cleanLegendIa, cleanLegendIb, cleanLegendIIa, cleanLegendIIb]
@@ -240,12 +250,7 @@ lastLegend = [cleanLegendIa, cleanLegendIb, cleanLegendIIa, cleanLegendIIb]
 
 arangement = lambda x: np.array(x).reshape(greatest_divisor(len(x)),-1).tolist()
 
-# arangement = lambda **x: list(map(list, zip(*ow.style(rows=x['rows']))))
-
 default_style = [size, font, color]
-
-compose_styles = lambda x, y: multi_compose(x + y)
-
 
 def greatest_divisor(number):
     if number == 1:
@@ -259,8 +264,8 @@ def greatest_divisor(number):
 style = multi_compose(default_style)
 # snapshots
 
-class Snappy():
 
+class Snappy():
 
     def __init__(self, path, config, out_path):
         self.path = path
@@ -274,7 +279,7 @@ class Snappy():
         os.chdir(self.path)
         args = " -d " if not animate else " -da --gif "
         cmd = "python {} {} --json_config=\'{}\' &".format(
-                self.snappy_path, args, self.config)
+              self.snappy_path, args, self.config)
         subprocess.check_call(cmd, shell=True)
         os.chdir(old_dir)
 
