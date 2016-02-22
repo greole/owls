@@ -196,6 +196,9 @@ class FoamFrame(DataFrame):
         validate = kwargs.get('validate', True)
         preHooks = kwargs.get('preHooks', None)
         exclude = kwargs.get('exclude', [" "])  # FIXME
+        times_stride = kwargs.get('times_stride', 1)
+        times_range = kwargs.get('times_range', "all") # FIXME implement strides
+        times_slice = times_range
 
         keys = ['skiplines',
                 'skiptimes',
@@ -210,6 +213,8 @@ class FoamFrame(DataFrame):
                 'plot_properties',
                 'show_func',
                 'exclude',
+                'times_stride',
+                'times_range',
                 ]
 
         for k in keys:
@@ -237,6 +242,7 @@ class FoamFrame(DataFrame):
                 maxlines=lines,
                 skiptimes=times,
                 exclude=exclude,
+                times_slice=times_slice
                 )
             try:
                 DataFrame.__init__(self, data)
