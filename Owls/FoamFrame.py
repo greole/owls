@@ -12,7 +12,6 @@ from collections import OrderedDict
 from pandas import Series, DataFrame, Index
 # from pandas import concat
 
-from . import MultiFrame as mf
 from . import plot as plt
 from .plot import style as defstyle
 from .plot import compose_styles
@@ -33,11 +32,6 @@ if Database:
     case_data_base = shelve.open(os.path.expanduser('~') + "/.owls/db")
 else:
     case_data_base = dict()
-
-
-def from_dict(input_dict, func, **kwargs):
-    return {name: func(folder=folder, name=name, **kwargs)
-            for name, folder in input_dict.items()}
 
 
 def read_sets(folder, name="None",
@@ -120,6 +114,7 @@ class PlotProperties():
 
 
 class Props():
+    # TODO default args
 
     def __init__(self, origins, name,
                  plot_properties, folder,
@@ -327,6 +322,20 @@ class FoamFrame(DataFrame):
     @property
     def grouped(self):
         return self._is_idx("Group")
+
+    @staticmethod
+    def from_dict(input_dict, name="None",
+            plot_properties=None, symb=".", show_func="scatter"
+            ):
+        """ import raw data from python dictionary
+            format {(timestep, pos, ): [fields]}
+            usage: {(0):[1,2,3]}
+
+        """
+        pP = (PlotProperties() if not plot_properties else plot_properties)
+        ff = FoamFrame(input_dict, folder=None)
+        ff.properties = Props("raw", name, pP, "", symb, show_func)
+        return ff
 
     # ----------------------------------------------------------------------
     # Info methods
@@ -676,28 +685,6 @@ class FoamFrame(DataFrame):
     def by_time(self, func=None):
         func = (func if func else lambda x: x)
         return self.by("Time", func)
-
-    # def by(self, name, index=None, field=None):
-    #     """ facet by given function
-    #
-    #         Examples:
-    #
-    #         .by(index=lambda x: x)
-    #         .by(field=lambda x: ('T_high' if x['T'] > 1000 else 'T_low'))
-    #     """
-    #     ret = OrderedDict()
-    #     if index:
-    #         index_values = self.index.get_level_values(name)
-    #         idx_values = sorted(set(index_values))
-    #         for val in idx_values:
-    #             ret.update([(index(val), self[index_values == val])])
-    #     else:
-    #         selection = self[name].apply(field)
-    #         for cat in set(selection):
-    #             ret.update([(cat, self[selection == cat])])
-    #     for _ in ret.values():
-    #         _.properties = self.properties
-    #     return mf.MultiFrame(ret)
 
     def by(self, name, func):
         ret = self.copy() # Too expensive ? pd.concat( [A, pd.DataFrame(s)], axis=1 )
