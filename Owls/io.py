@@ -333,7 +333,7 @@ def import_foam_folder(
             #ret = read_table(StringIO.StringIO(foam_to_csv(fn)))
             ret = read_data_file(fn, skiplines, maxlines)
             p_bar.next()
-            if not ret:
+            if not ret or ret[1].empty:
                 continue
             field_names, x, hashes = ret
             loc = x.index.values[-1][0]
@@ -439,6 +439,7 @@ def read_data_file(fn, skiplines=1, maxlines=False):
                     df['Loc'] = range(len(df))
                 if "Pos" in df:
                     df.set_index('Loc', append=False, inplace=True)
+                    df["Pos"] = df["Pos"].astype(float)
                     df.set_index('Pos', append=True, inplace=True)
                 else:
                     # if no pos is availible we have either

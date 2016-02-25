@@ -99,8 +99,10 @@ def convert_to_gif(slices, fields):
     for s in slices:
         for field in fields:
             try:
-                com = "convert postProcessing/anim/{}{}_* postProcessing/anim/{}{}.gif > /dev/null 2>&1".format(
-                        s, field, field)
+                path = "postProcessing/anim/{}{}".format(s, field)
+                src = path + "_*.png"
+                dst = path + ".mp4"
+                com = "ffmpeg -y -r 7.5 -pattern_type glob -i '{}' -c:v libx264 -vf 'fps=25,format=yuv420p' {}".format(src, dst)
                 out = subprocess.check_output(com, shell=True)
             except Exception as e:
                 print e
@@ -293,12 +295,12 @@ class animator():
         self.color_map.Title = str(name)
 
     def write_image(self, name, component=0, slice_dir='z', link=False):
-        image_name = "{}/postProcessing/anim/{}{}_{}_{}_({}).png".format(self.path,
+        image_name = "{}/postProcessing/anim/{}{}_{}_{}.png".format(self.path,
                                          slice_dir,
                                          name,
                                          component,
                                          str(self.frame_nr).zfill(4),
-                                         self.view.ViewTime
+                                         # self.view.ViewTime
                                          )
 
         if os.path.exists(image_name) and self.update:

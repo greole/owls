@@ -2,6 +2,7 @@ from __future__ import print_function
 from future.builtins import *
 
 from collections import OrderedDict
+from itertools import cycle
 
 from .plot import style as defstyle
 from .plot import arangement, compose_styles
@@ -57,23 +58,39 @@ class MultiFrame():
     def insert(self, key, value):
         self.cases[key] = value
 
+
+    def histogram(self, y, x=None, **kwargs):
+        cases = list(self.cases.keys())
+        fig = self.cases[cases[0]].histogram(x=x, y=y, **kwargs)
+        for c in cases:
+            fig = self.cases[c].histogram(x=x, y=y, figure=fig, **kwargs)
+        return fig
+
+
     def show(self, y, x='Pos', z=False, overlay="Field",
              style=defstyle, **kwargs):
         """ Display single quantity y over multiple cases
             if overlay is set all cases are plotted in to single
             graph """
+        # TODO if not overlay, common part should be figure title
         style = (compose_styles(style, []) if isinstance(style, list) else style)
-        dashes = [[4, 2], [4, 4], [1, 1]]
+        dashes = cycle([[8, 4], [4, 4], [4, 2], [1, 1]])
         cases = list(self.cases.keys())
         row = self.cases[cases[0]].show(x=x, y=y, overlay=overlay,
                                         legend_prefix=cases[0], style=style,
-                                        post_pone_style=True, **kwargs)
-        for c, d in zip(cases[1:], dashes):
+                                        post_pone_style=True, titles=y, **kwargs)
+        for c, d, col in zip(cases[1:], dashes, plot.colored[1:]):
             row = self.cases[c].show(x=x, y=y, overlay=overlay,
                                      legend_prefix=c, style=style,
                                      row=row, post_pone_style=True,
-                                     line_dash=d, **kwargs)
-        return bk.GridPlot(children=style(rows=arangement(list(row.values()))))
+                                     line_dash=d, titles=y, color=col, **kwargs)
+        gp = bk.GridPlot(children=style(rows=arangement(list(row.values()))))
+        if filename:
+            bk.save(gp, filename)
+        if show:
+            return bk.show(gp)
+        else:
+            return gp
 
     # def show_multi(self, ys, locs, x='Pos', style=defstyle, **kwargs):
     #     bk.figure()
@@ -163,3 +180,10 @@ class MultiFrame():
         """ Grouping delegator """
         return MultiFrame([case.by(name, func)
                            for cname, case in self.cases.items()])
+
+    def update_plot_properties(self, field, d):
+        """ update plot properties of all casese """
+
+        for _, c in self.cases.items():
+                c.properties.plot_properties.insert(field, d)
+        return self

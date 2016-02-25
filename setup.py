@@ -26,10 +26,9 @@ with open(version_py, 'w') as fh:
 #              package_name + '/version.py', 'exec'))
 
 packages = [
-    'ipython', # TODO atm needed for the snapshot function, clean up!
     'future',
     'numpy',
-    'pandas',
+    'pandas==0.17.1',
     'functional',
     'bokeh==0.10.0',
     ]

@@ -123,13 +123,11 @@ class Props():
 
     def __init__(self, origins, name,
                  plot_properties, folder,
-                 times, symb, show_func):
+                 symb, show_func):
         self.origins = origins
         self.name = name
         self.plot_properties = plot_properties
         self.folder = folder
-        self.times = times
-        self.latest_time = max(times)
         self.symb = symb
         self.show_func = show_func
 
@@ -253,8 +251,6 @@ class FoamFrame(DataFrame):
                 name,
                 plot_properties,
                 folder,
-                # FIXME fix it for read logs
-                data.index.levels[0],
                 symb,
                 show_func)
             if validate and Database:
@@ -356,8 +352,12 @@ class FoamFrame(DataFrame):
             an index
         """
         if self._is_idx(item):
-            level = self.index.names.index(item)
-            return list(zip(*self.index.values))[level]
+            try:
+                level = self.index.names.index(item)
+                return list(zip(*self.index.values))[level]
+            except:
+                return
+                # print("failed ", item) NOTE for debugging
         else:
             if (type(item) is str) and item not in self.columns:
                 return Series()
@@ -367,10 +367,14 @@ class FoamFrame(DataFrame):
     @property
     def latest(self):
         """ return latest time for case """
-        import pandas as pd
-        ret = self.loc[[self.properties.latest_time]]
+        ret = self.query('Time == {}'.format(self.latest_time))
         ret.properties = self.properties
         return ret
+
+    @property
+    def latest_time(self):
+        """ return value of latest time step """
+        return max(self.index.levels[0])
 
     def at(self, idx_name, idx_val):
         """ select from foamframe based on index name and value"""
@@ -434,7 +438,7 @@ class FoamFrame(DataFrame):
     # ----------------------------------------------------------------------
     # Plotting methods
 
-    def draw(self, x, y, z, title, func, figure, legend_prefix="", **kwargs):
+    def draw(self, x, y, z, title, func, figure, legend_prefix="", titles=None, **kwargs):
         # TODO Rename to _draw
         def _label(axis, field):
             label = kwargs.get(axis + '_label', False)
@@ -475,7 +479,6 @@ class FoamFrame(DataFrame):
         spec_color = kwargs.get("color", False)
         spec_legend = kwargs.get("legend", False)
         y = (y if isinstance(y, list) else [y])
-        # legend_prefix = (legend_prefix if not legend_prefix else legend_prefix + "-")
         for yi in y:
             x_data, y_data = self[x], self[yi]
             # TODO FIXME
@@ -485,8 +488,17 @@ class FoamFrame(DataFrame):
             if not spec_color:
                 kwargs.update({"color": next(colors)})
             if not spec_legend:
-                legend = (legend_prefix + "-" + yi if legend_prefix else yi)
+                # NOTE title overrides legend, does that make sense always?
+                yi = (yi if not title else "")
+                if yi and legend_prefix:
+                    legend = legend_prefix + "-" + yi
+                if not yi and legend_prefix:
+                    legend = legend_prefix
+                if not legend_prefix:
+                    legend = yi
+
                 kwargs.update({"legend": legend})
+
             getattr(figure, func)(x=x_data,
                                   y=y_data,
                                   **kwargs)
@@ -521,11 +533,17 @@ class FoamFrame(DataFrame):
     def show(self, y, x="Pos", figure=False,
              overlay="Field", style=defstyle,
              legend_prefix="", post_pone_style=False,
-             row=None, **kwargs):
+             row=None, titles=None, **kwargs):
         style = (compose_styles(style, []) if isinstance(style, list) else style)
+        if kwargs.get("props", False):
+            props = kwargs.pop("props")
+            self.properties.plot_properties.set(props)
 
-        def create_figure(y_, f):
-            return getattr(self, self.properties.show_func)(y=y_, x=x, figure=f, legend_prefix=legend_prefix, **kwargs)
+        def create_figure(y_, f, title=""):
+            if kwargs.get("title"):
+                title = kwargs.get("title")
+                kwargs.pop("title")
+            return getattr(self, self.properties.show_func)(y=y_, x=x, figure=f, legend_prefix=legend_prefix, title=title, **kwargs)
 
         def create_figure_row(y, arow=None):
             arow = (arow if arow else OrderedDict())
@@ -542,13 +560,14 @@ class FoamFrame(DataFrame):
                     # test if figure with same id already exists
                     # so that we can plot into it
                     # otherwise create a new figure
-                    for yi in y:
+                    for i, yi in enumerate(y):
+                        title = ("" if not titles else titles[i])
                         fig_id, f = ((yi, arow[yi])
                                      if arow.get(yi, False)
-                                     else (yi, plt.figure()))
-                        arow[fig_id] = create_figure(yi, f)
+                                     else (yi, plt.figure(title=title)))
+                        arow[fig_id] = create_figure(yi, f, title=title)
             if self.grouped:
-                groups = list(set(self["Group"]))
+                groups = list(set(self["Group"]) if self["Group"] else set())
                 groups.sort()
                 if overlay == "Group":
                     # ALIGN ALONG GROUPS

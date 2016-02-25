@@ -6,6 +6,8 @@ import shutil
 
 import numpy as np
 
+TOOLS = "pan,wheel_zoom,box_zoom,reset,save"
+
 colored = ["black", "blue", "fuchsia", "gray", "green",
            "lime", "maroon", "navy", "olive", "orange", "purple",
            "red", "silver", "teal", "yellow", "aqua"]
@@ -69,9 +71,9 @@ def adjustColumn(style, whereRow, whereFigs=None, rows=None):
     return rows
 
 
-def figure():
+def figure(**kwargs):
     import bokeh.plotting as bk
-    return bk.figure()
+    return bk.figure(tools=TOOLS, **kwargs)
 
 
 # def merge(*args, **kwargs):
@@ -224,20 +226,27 @@ cleanXAxis = partial(adjustColumn, {'xaxis.visible': False}, rtail, all)
 cleanYAxis = partial(adjustColumn, {'yaxis.visible': False}, all, tail)
 
 
+# reset legends
+# all but last
 cleanLegendIa = partial(adjustColumn, {'legend.legends': []}, rtail, all)
 cleanLegendIb = partial(adjustColumn, {'legend.legends': []}, all, rtail)
 cleanLegendIIa = partial(adjustColumn, {'legend.border_line_color': None}, all, rtail)
 cleanLegendIIb = partial(adjustColumn, {'legend.border_line_color': None}, rtail, all)
-
-# legendTopLeft = partial(adjustColumn, {'legend.orientation': "top_left"}, all, all)
-# legendBottomLeft = partial(adjustColumn, {'legend.orientation': "bottom_left"}, all, all)
-# legendTopRight = partial(adjustColumn, {'legend.orientation': "top_right"}, all, all)
-# legendBottomRight = partial(adjustColumn, {'legend.orientation': "bottom_right"}, all, all)
-#
-
+cleanLegenda = partial(adjustColumn, {'legend.legends': []}, all, all)
+cleanLegendb = partial(adjustColumn, {'legend.border_line_color': None}, all, all)
+# all but first
+cleanLegendIc = partial(adjustColumn, {'legend.legends': []}, all, tail)
+cleanLegendId = partial(adjustColumn, {'legend.legends': []}, tail, all)
+cleanLegendIIc = partial(adjustColumn, {'legend.border_line_color': None}, all, tail)
+cleanLegendIId = partial(adjustColumn, {'legend.border_line_color': None}, tail, all)
+cleanLegendb = partial(adjustColumn, {'legend.border_line_color': None}, all, all)
 
 def legend(pos):
     return partial(adjustColumn, {'legend.orientation': pos}, all, all)
+
+lastLegend = [cleanLegendIa, cleanLegendIb, cleanLegendIIa, cleanLegendIIb]
+firstLegend = [cleanLegendIc, cleanLegendId, cleanLegendIIc, cleanLegendIId]
+noLegend = [cleanLegenda, cleanLegendb]
 
 legendTopLeft = legend("top_left")
 legendBottomLeft = legend("bottom_left")
