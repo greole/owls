@@ -363,7 +363,7 @@ def import_foam_folder(
         print(df)
         # df = df.reorder_levels(['Time', ])
     else:
-        df = df.reorder_levels(['Time', 'Loc', 'nPos'])
+        df = df.reorder_levels(['Time', 'Loc', 'Pos'])
     p_bar.done()
     return origins, df
 
