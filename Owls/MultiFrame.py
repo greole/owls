@@ -4,8 +4,11 @@ from future.builtins import *
 from collections import OrderedDict
 from itertools import cycle
 
+
+from .FoamFrame import FoamFrame
 from .plot import style as defstyle
-from .plot import arangement, compose_styles
+from .plot import arangement, compose_styles, colored
+
 
 import bokeh.plotting as bk
 
@@ -21,6 +24,13 @@ class MultiFrame():
     """ Class for storage of multiple case items
         or faceted data from FoamFrame
     """
+
+    @staticmethod
+    def from_dict(input_dict, **kwargs):
+        return MultiFrame(
+                cases=[FoamFrame.from_dict(d, name=name, **kwargs)
+                        for name, d in input_dict.items()]
+                )
 
     def __repr__(self):
         s = "MultiFrame with {} entries:\n".format(len(self.cases))
@@ -68,7 +78,7 @@ class MultiFrame():
 
 
     def show(self, y, x='Pos', z=False, overlay="Field",
-             style=defstyle, **kwargs):
+             style=defstyle, filename=None, show=True, **kwargs):
         """ Display single quantity y over multiple cases
             if overlay is set all cases are plotted in to single
             graph """
@@ -79,7 +89,7 @@ class MultiFrame():
         row = self.cases[cases[0]].show(x=x, y=y, overlay=overlay,
                                         legend_prefix=cases[0], style=style,
                                         post_pone_style=True, titles=y, **kwargs)
-        for c, d, col in zip(cases[1:], dashes, plot.colored[1:]):
+        for c, d, col in zip(cases[1:], dashes, colored[1:]):
             row = self.cases[c].show(x=x, y=y, overlay=overlay,
                                      legend_prefix=c, style=style,
                                      row=row, post_pone_style=True,
