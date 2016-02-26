@@ -10,7 +10,7 @@ from .version import __version__
 from .plot import *
 # from .foam import *
 from .FoamFrame import *
-# from .MultiFrame import *
+from .MultiFrame import *
 
 from future.builtins import *
 print("Owls Version: " + __version__)
