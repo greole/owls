@@ -5,9 +5,10 @@ from collections import OrderedDict
 from itertools import cycle
 
 
-from .FoamFrame import FoamFrame
+from .FoamFrame import FoamFrame, rcParams
 from .plot import style as defstyle
-from .plot import arangement, compose_styles, colored
+from .plot import arangement, compose_styles
+from .plot import Bokeh, Gnuplot
 
 
 import bokeh.plotting as bk
@@ -86,21 +87,29 @@ class MultiFrame():
         style = (compose_styles(style, []) if isinstance(style, list) else style)
         dashes = cycle([[8, 4], [4, 4], [4, 2], [1, 1]])
         cases = list(self.cases.keys())
-        row = self.cases[cases[0]].show(x=x, y=y, overlay=overlay,
-                                        legend_prefix=cases[0], style=style,
-                                        post_pone_style=True, titles=y, **kwargs)
-        for c, d, col in zip(cases[1:], dashes, colored[1:]):
-            row = self.cases[c].show(x=x, y=y, overlay=overlay,
-                                     legend_prefix=c, style=style,
-                                     row=row, post_pone_style=True,
-                                     line_dash=d, titles=y, color=col, **kwargs)
-        gp = bk.GridPlot(children=style(rows=arangement(list(row.values()))))
-        if filename:
-            bk.save(gp, filename)
-        if show:
-            return bk.show(gp)
-        else:
-            return gp
+
+
+        # plotinterface.add
+
+        # call show method of first case instance
+        # this generates an ordered hashmap (row)
+        # of plot into which the subsequent plots
+        # are inserted.
+        row = self.cases[cases[0]].show(
+                x=x, y=y, overlay=overlay,
+                legend_prefix=cases[0], style=style,
+                post_pone_style=True, titles=y, **kwargs)
+
+        for c, d, col in zip(cases[1:], dashes, rcParams["plotWrapper"].colored[1:]):
+            row = self.cases[c].show(
+                    x=x, y=y, overlay=overlay,
+                    legend_prefix=c, style=style,
+                    row=row, post_pone_style=True,
+                    line_dash=d, titles=y, color=col, **kwargs)
+
+        # up to this point the plots are a single row
+        # and are rearranged by the arrangement func
+        return rcParams["plotWrapper"].GridPlot(row, filename, arangement, show)
 
     # def show_multi(self, ys, locs, x='Pos', style=defstyle, **kwargs):
     #     bk.figure()
@@ -190,6 +199,13 @@ class MultiFrame():
         """ Grouping delegator """
         return MultiFrame([case.by(name, func)
                            for cname, case in self.cases.items()])
+
+    def vectorize(self, func):
+        """  """
+        mfs = []
+        for name, mf in self.cases.items():
+            mfs.append(func(mf))
+        return MultiFrame(mfs)
 
     def update_plot_properties(self, field, d):
         """ update plot properties of all casese """

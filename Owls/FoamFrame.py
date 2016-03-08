@@ -9,12 +9,14 @@ import os
 import shelve
 from collections import OrderedDict
 
-from pandas import Series, DataFrame, Index
+from pandas import Series, DataFrame, Index, MultiIndex
+
 # from pandas import concat
 
 from . import plot as plt
 from .plot import style as defstyle
 from .plot import compose_styles
+from .plot import Bokeh, Gnuplot
 from . import io
 
 import bokeh.plotting as bk
@@ -33,6 +35,9 @@ if Database:
 else:
     case_data_base = dict()
 
+rcParams = {
+        "plotWrapper": Gnuplot()
+        }
 
 def read_sets(folder, name="None",
               search=io.FPNUMBER,
@@ -333,7 +338,13 @@ class FoamFrame(DataFrame):
 
         """
         pP = (PlotProperties() if not plot_properties else plot_properties)
-        ff = FoamFrame(input_dict, folder=None)
+        elems = len(input_dict[list(input_dict.keys())[0]])
+        zeros = [0 for _ in range(elems)]
+        mi = MultiIndex(
+                levels=[[0], [0], [0]],
+                labels=[zeros, zeros, zeros],
+                names=['Time', 'Loc', 'Pos'])
+        ff = FoamFrame(DataFrame(input_dict, index=mi), folder=None)
         ff.properties = Props("raw", name, pP, "", symb, show_func)
         return ff
 
@@ -447,93 +458,27 @@ class FoamFrame(DataFrame):
     # ----------------------------------------------------------------------
     # Plotting methods
 
-    def draw(self, x, y, z, title, func, figure, legend_prefix="", titles=None, **kwargs):
-        # TODO Rename to _draw
-        def _label(axis, field):
-            label = kwargs.get(axis + '_label', False)
-            if label:
-                self.properties.plot_properties.insert(
-                    field, {axis + '_label': label})
-            else:
-                label = self.properties.plot_properties.select(
-                    field, axis + '_label', "None")
-            return label
+    def draw(self, x, y, z, title, func, figure,
+            legend_prefix="", titles=None, **kwargs):
 
-        def _range(axis, field):
-            from bokeh.models import Range1d
-            p_range_args = kwargs.get(axis + '_range', False)
-            if p_range_args:
-                self.properties.plot_properties.insert(
-                    field, {axis + '_range': p_range})
-            else:
-                p_range = self.properties.plot_properties.select(
-                    field, axis + '_range')
-            if not p_range:
-                return False
-            else:
-                return Range1d(start=p_range[0], end=p_range[1])
-
-        figure_properties = {"title": title}
-
-        if kwargs.get('x_range', False):
-            figure_properties.update({"x_range": kwargs.get('x_range')})
-        figure.set(**figure_properties)
-
-        if func == "quad":
-            getattr(figure, func)(top=y, bottom=0, left=x[:-1], right=x[1:],
-                                  **kwargs)
-            return figure
-
-        colors = plt.next_color()
-        spec_color = kwargs.get("color", False)
-        spec_legend = kwargs.get("legend", False)
-        y = (y if isinstance(y, list) else [y])
-        for yi in y:
-            x_data, y_data = self[x], self[yi]
-            # TODO FIXME
-            for k in ['symbols', 'order', 'colors', 'symbol']:
-                if k in kwargs.keys():
-                    kwargs.pop(k)
-            if not spec_color:
-                kwargs.update({"color": next(colors)})
-            if not spec_legend:
-                # NOTE title overrides legend, does that make sense always?
-                yi = (yi if not title else "")
-                if yi and legend_prefix:
-                    legend = legend_prefix + "-" + yi
-                if not yi and legend_prefix:
-                    legend = legend_prefix
-                if not legend_prefix:
-                    legend = yi
-
-                kwargs.update({"legend": legend})
-
-            getattr(figure, func)(x=x_data,
-                                  y=y_data,
-                                  **kwargs)
-
-        for ax, data in {'x': x, 'y': y[0]}.items():
-            if _label(ax, data):
-                getattr(figure, ax+'axis')[0].axis_label = _label(ax, data)
-            # setattr(getattr(figure, ax + 'axis'),
-            #         'axis_label', _label(ax, data))
-            if _range(ax, data):
-                r = setattr(figure, ax+'_range', _range(ax, data))
-        return figure
+        return rcParams["plotWrapper"].draw(
+                    x, y, z, self, title, func, figure,
+                    legend_prefix="", titles=None,
+                    properties=self.properties, **kwargs)
 
     def histogram(self, y, x=None, title="", figure=False, **kwargs):
-        figure = (figure if figure else plt.figure())
+        figure = (figure if figure else rcParams["plotWrapper"].figure())
         import numpy as np
         hist, edges = np.histogram(self[y], density=True, bins=50)
 
         return self.draw(x=edges, y=hist, z=None, title=title, func="quad", figure=figure, **kwargs)
 
     def scatter(self, y, x='Pos', z=False, title="", figure=False, **kwargs):
-        figure = (figure if figure else plt.figure())
+        figure = (figure if figure else rcParams["plotWrapper"].figure())
         return self.draw(x, y, z, title, func="scatter", figure=figure, **kwargs)
 
     def plot(self, y, x='Pos', z=False, title="", figure=False, **kwargs):
-        figure = (figure if figure else plt.figure())
+        figure = (figure if figure else rcParams["plotWrapper"].figure())
         if kwargs.get('symbol', None):
             kwargs.pop('symbol')
         return self.draw(x, y, z, title, func="line", figure=figure, **kwargs)
@@ -543,16 +488,22 @@ class FoamFrame(DataFrame):
              overlay="Field", style=defstyle,
              legend_prefix="", post_pone_style=False,
              row=None, titles=None, **kwargs):
+
         style = (compose_styles(style, []) if isinstance(style, list) else style)
         if kwargs.get("props", False):
             props = kwargs.pop("props")
             self.properties.plot_properties.set(props)
 
         def create_figure(y_, f, title=""):
+
+            # TODO use plot wrapper class here
             if kwargs.get("title"):
                 title = kwargs.get("title")
                 kwargs.pop("title")
-            return getattr(self, self.properties.show_func)(y=y_, x=x, figure=f, legend_prefix=legend_prefix, title=title, **kwargs)
+            return getattr(self, self.properties.show_func)(
+                            y=y_, x=x, figure=f,
+                            legend_prefix=legend_prefix,
+                            title=title, **kwargs)
 
         def create_figure_row(y, arow=None):
             arow = (arow if arow else OrderedDict())
@@ -560,7 +511,7 @@ class FoamFrame(DataFrame):
                 y = (y if isinstance(y, list) else [y])
                 if overlay == "Field":
                     # SINGLE FIGURE MUTLIPLE FIELDS
-                    fig_id, f = (figure if figure else ("".join(y), plt.figure()))
+                    fig_id, f = (figure if figure else ("".join(y), rcParams["plotWrapper"].figure()))
                     for yi in y:
                         create_figure(y, f)
                     arow[fig_id] = f
@@ -573,7 +524,7 @@ class FoamFrame(DataFrame):
                         title = ("" if not titles else titles[i])
                         fig_id, f = ((yi, arow[yi])
                                      if arow.get(yi, False)
-                                     else (yi, plt.figure(title=title)))
+                                     else (yi, rcParams["plotWrapper"].figure(title=title)))
                         arow[fig_id] = create_figure(yi, f, title=title)
             if self.grouped:
                 groups = list(set(self["Group"]) if self["Group"] else set())
@@ -585,7 +536,7 @@ class FoamFrame(DataFrame):
                     for yi in y:
                         fig_id, f = ((yi, arow[yi])
                                 if arow.get(yi, False)
-                                else (yi, plt.figure()))
+                                else (yi, rcParams["plotWrapper"].figure()))
                         colors = plt.next_color()
                         for name in groups:
                             color = next(colors)
@@ -600,7 +551,7 @@ class FoamFrame(DataFrame):
                     for group in groups:
                         fig_id, f = ((group, arow[group])
                                      if arow.get(group, False)
-                                     else (group, plt.figure()))
+                                     else (group, rcParams["plotWrapper"].figure()))
                         field = self.at("Group", group)
                         arow[group] = field.show(x=x, y=y, title=str(group),
                                                  figure=(group, f), overlay="Field",
