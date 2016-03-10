@@ -102,7 +102,7 @@ def find_datafolders(regex, path=False, exclude=None, slice_=None):
     if slice_ == "all":
         return folders
     if slice_ == "latest":
-        return folders[-1]
+        return [folders[-1]]
     # FIXME raise Exception
     # return (folders if not slice_ else folders(slice_))
 
