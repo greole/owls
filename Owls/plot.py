@@ -152,7 +152,10 @@ class GnuplotFigure():
         self.y_label = "None"
 
         self.x_range = [None, None]
+        self.x_log = False
+
         self.y_range = [None, None]
+        self.y_log = False
 
         self.lw = 2
         self.title = "TEST"
@@ -164,22 +167,28 @@ class GnuplotFigure():
         self.y.append(y)
         self.lt.append(lt)
 
-
     @property
     def xrange(self):
         if list(map(lambda x: x != None, self.x_range))[0]:
             return self.x_range
         else:
-            return [min([min(x) for x in self.x]),
-                    max([max(x) for x in self.x])]
+            return [min([min(x) for x in self.x if len(x)]),
+                    max([max(x) for x in self.x if len(x)])]
 
     @property
     def yrange(self):
+        def valid_(y):
+            if y is None:
+                return False
+            else:
+                return len(y)
+
+
         if list(map(lambda x: x != None, self.y_range))[0]:
             return self.y_range
         else:
-            return [min([min(y) for y in self.y]),
-                    max([max(y) for y in self.y])]
+            return [min([min(y) for y in self.y if valid_(y) ]),
+                    max([max(y) for y in self.y if valid_(y) ])]
 
 class GnuplotMultiplot():
     # data is a OrderedDict of the form
@@ -206,7 +215,8 @@ class GnuplotMultiplot():
             self.write_body(data, f, n_sub_figs)
 
 
-        os.system("cd " + os.path.dirname(filename) + "; gnuplot " + os.path.basename(filename) + "-svg.gp")
+        cmd = "cd " + os.path.dirname(filename) + "; gnuplot " + os.path.basename(filename) + "-svg.gp"
+        os.system(cmd)
         os.system("cd " + os.path.dirname(filename) + "; gnuplot " + os.path.basename(filename) + ".gp")
 
     def header(self, ext):
@@ -221,23 +231,37 @@ class GnuplotMultiplot():
     def write_body(self, data, f, n_sub_figs):
             f.write("set multiplot layout {},{} \n".format(*n_sub_figs))
             f.write("set border 31 lw 2\n")
+            invalids = {}
             for pid, d in data.items():
                 for i, (x, y) in enumerate(zip(d.x, d.y)):
-                    f.write("${}_{} << EOD\n".format(pid, i))
-                    x_ = (x if isinstance(x,tuple) else x.values)
-                    y_ = y.values
-                    for i in range(len(x)):
-                        f.write("{} {} \n".format(x_[i], y_[i]))
-                    f.write("EOD\n")
+                    try:
+                        x_ = (x if isinstance(x, tuple) else x.values)
+                        y_ = y.values
+                        if not len(y_):
+                            invalids[pid,i] = True
+                            continue
+                        pid = pid.replace("(", "").replace(")","")
+                        f.write("${}_{} << EOD\n".format(pid, i))
+                        for j in range(len(y)):
+                            f.write("{} {} \n".format(x_[j], y_[j]))
+                        f.write("EOD\n")
+                    except Exception as e:
+                        invalids[pid,i] = True
+                        # print(e)
 
             for pid, d in data.items():
-                f.write("\nset xrange [{}: {}]\n".format(d.xrange[0], d.xrange[1]))
-                f.write("\nset yrange [{}: {}]\n".format(d.yrange[0], d.yrange[1]))
+                pid = pid.replace("(", "").replace(")","")
+                f.write("\nset xrange [{:.4g}: {:.4g}]\n".format(d.xrange[0], d.xrange[1]))
+                f.write("\nset yrange [{:.4g}: {:.4g}]\n".format(d.yrange[0], d.yrange[1]))
                 f.write("\nset xlabel \"{}\" offset 0,0.5 \n".format(d.x_label))
+                if d.x_log:
+                    f.write("set logscale x\n")
+                if d.y_log:
+                    f.write("set logscale y\n")
                 f.write("\nset ylabel \"{}\" offset 2.5,0 \n".format(d.y_label))
                 f.write("\nplot ")
                 data_blocks = [" ${}_{} title '{}' w l lw 2 dashtype {}".format(pid, i, l, i+1)
-                                for i, l in enumerate(d.legends)]
+                                for i, l in enumerate(d.legends) if not invalids.get((pid,i))]
                 f.write("".join(intersperse(", ", data_blocks)))
             f.write("\nunset multiplot")
 
@@ -292,6 +316,14 @@ class Gnuplot():
                 Range1d.append(p_range[1])
                 return Range1d
 
+        def _log(axis, field):
+            try:
+                p_range = properties.plot_properties.select(
+                    field, axis + '_log')
+                return p_range
+            except:
+                return False
+
         # Iterate requested Data
         y = (y if isinstance(y, list) else [y])
         for yi in y:
@@ -310,6 +342,8 @@ class Gnuplot():
             #         'axis_label', _label(ax, data))
             if _range(ax, data):
                 r = setattr(figure, ax+'_range', _range(ax, data))
+            if _log(ax, data):
+                r = setattr(figure, ax+'_log', _log(ax, data))
 
         return figure
 
