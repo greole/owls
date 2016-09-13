@@ -30,3 +30,5 @@ DEPS_TEST=$(cat <<EOF | python -
 from conda_build.metadata import MetaData
 print(" ".join([s.replace(" ", "") for s in MetaData("conda.recipe").get_value("test/requires")]))
 )
+git clone git@github.com:greole/Salvia.git
+cd Salivia && python setup.py install
