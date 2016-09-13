@@ -23,7 +23,10 @@ from . import io
 
 import numpy as np
 
-from Salvia import Gnuplot
+try:
+    from Salvia import Gnuplot
+except:
+    print("No Salvia installation found")
 
 # Series.__repr__ = (lambda x: ("Hash: {}\nTimes: {}\nLoc: {}\nValues: {}".format(
 #                     io.hash_series(x),
