@@ -13,15 +13,17 @@ from pandas import Series, DataFrame, Index, MultiIndex
 
 # from pandas import concat
 
-from . import plot as plt
-from .plot import style as defstyle
-from .plot import compose_styles
-from .plot import Bokeh, Gnuplot
+#from . import plot as plt
+#from .plot import style as defstyle
+#from .plot import compose_styles
+#from .plot import Bokeh, Gnuplot
 from . import io
 
-import bokeh.plotting as bk
+# import bokeh.plotting as bk
 
 import numpy as np
+
+from Salvia import Gnuplot
 
 # Series.__repr__ = (lambda x: ("Hash: {}\nTimes: {}\nLoc: {}\nValues: {}".format(
 #                     io.hash_series(x),
@@ -36,7 +38,7 @@ else:
     case_data_base = dict()
 
 rcParams = {
-        "plotWrapper": Gnuplot()
+        "plotWrapper": Gnuplot
         }
 
 def read_sets(folder, name="None",
@@ -86,7 +88,7 @@ def read_log(folder, keys, log_name='log', plot_properties=False, name="None"):
     ff.properties = Props(
         origins=origins, name=folder,
         plot_properties=plot_properties,
-        folder=folder, times=[0], symb="-",
+        folder=folder, symb="-",
         show_func="plot")
     return ff
 
@@ -244,8 +246,8 @@ class FoamFrame(DataFrame):
                 )
             try:
                 DataFrame.__init__(self, data)
-            except:
-                pass
+            except Exception as e:
+                print(e)
             self.properties = Props(
                 origins,
                 name,
@@ -340,12 +342,17 @@ class FoamFrame(DataFrame):
         pP = (PlotProperties() if not plot_properties else plot_properties)
         elems = len(input_dict[list(input_dict.keys())[0]])
         zeros = [0 for _ in range(elems)]
+        pos = (input_dict[("Pos")] if input_dict.get(("Pos"),False) else zeros)
+        nums = list(range(elems))
+        if input_dict.get("Pos"):
+                input_dict.pop("Pos")
         mi = MultiIndex(
-                levels=[[0], [0], [0]],
-                labels=[zeros, zeros, zeros],
+                levels=[zeros, zeros, pos],
+                labels=[nums, nums, nums],
                 names=['Time', 'Loc', 'Pos'])
         ff = FoamFrame(DataFrame(input_dict, index=mi), folder=None)
         ff.properties = Props("raw", name, pP, "", symb, show_func)
+        ff.index = mi
         return ff
 
     # ----------------------------------------------------------------------
@@ -458,43 +465,45 @@ class FoamFrame(DataFrame):
     # ----------------------------------------------------------------------
     # Plotting methods
 
-    def draw(self, x, y, z, title, func, figure,
+    def draw(self, x, y, z, title, func, figure, data=None,
             legend_prefix="", titles=None, **kwargs):
-
+        data = (data if isinstance(data, DataFrame) else self)
         return rcParams["plotWrapper"].draw(
-                    x, y, z, self, title, func, figure,
+                    x=x, y=y, z=z, data=data, title=title,
+                    func=func, figure=figure,
                     legend_prefix="", titles=None,
                     properties=self.properties, **kwargs)
 
     def histogram(self, y, x=None, title="", figure=False, **kwargs):
-        figure = (figure if figure else rcParams["plotWrapper"].figure())
-        import numpy as np
+        figure = (figure if figure else rcParams["plotWrapper"].GnuplotFigure())
         hist, edges = np.histogram(self[y], density=True, bins=50)
+        centres = [(edges[i] + edges[i+1])*0.5 for i in range(len(edges)-1)]
+        df = DataFrame({'centres': centres, 'hist': hist})
 
-        return self.draw(x=edges, y=hist, z=None, title=title, func="quad", figure=figure, **kwargs)
+        return self.draw(x='centres', y='hist', z=None,
+                data=df, title=title, func="quad", figure=figure, **kwargs)
 
-    def scatter(self, y, x='Pos', z=False, title="", figure=False, **kwargs):
-        figure = (figure if figure else rcParams["plotWrapper"].figure())
+    def scatter(self, y, x='Pos', z=None, title="", figure=False, **kwargs):
+        figure = (figure if figure else rcParams["plotWrapper"].GnuplotFigure())
         return self.draw(x, y, z, title, func="scatter", figure=figure, **kwargs)
 
-    def plot(self, y, x='Pos', z=False, title="", figure=False, **kwargs):
-        figure = (figure if figure else rcParams["plotWrapper"].figure())
+    def plot(self, y, x='Pos', z=None, title="", figure=False, **kwargs):
+        figure = (figure if figure else rcParams["plotWrapper"].GnuplotFigure())
         if kwargs.get('symbol', None):
             kwargs.pop('symbol')
         return self.draw(x, y, z, title, func="line", figure=figure, **kwargs)
 
 
     def show(self, y, x="Pos", figure=False,
-             overlay="Field", style=defstyle,
+             overlay="Field", style=None,
              legend_prefix="", post_pone_style=False,
              row=None, titles=None, **kwargs):
 
-        style = (compose_styles(style, []) if isinstance(style, list) else style)
         if kwargs.get("props", False):
             props = kwargs.pop("props")
             self.properties.plot_properties.set(props)
 
-        def create_figure(y_, f, title=""):
+        def create_figure(y_, f, title="", legend=""):
 
             # TODO use plot wrapper class here
             if kwargs.get("title"):
@@ -502,56 +511,61 @@ class FoamFrame(DataFrame):
                 kwargs.pop("title")
             return getattr(self, self.properties.show_func)(
                             y=y_, x=x, figure=f,
-                            legend_prefix=legend_prefix,
+                            legend_prefix=legend_prefix+legend,
                             title=title, **kwargs)
 
         def create_figure_row(y, arow=None):
-            arow = (arow if arow else OrderedDict())
+
+            # TODO let arow be an empty mutliplot
+            if not arow:
+                fn = kwargs.get("filename")
+                arow = rcParams["plotWrapper"].GnuplotMultiplot([], filename=fn)
+
             if not self.grouped:
                 y = (y if isinstance(y, list) else [y])
                 if overlay == "Field":
+
                     # SINGLE FIGURE MUTLIPLE FIELDS
-                    fig_id, f = (figure if figure else ("".join(y), rcParams["plotWrapper"].figure()))
+                    ids = "".join(y)
+                    fig_id, f = (figure if figure else (ids, arow.get(ids)))
                     for yi in y:
-                        create_figure(y, f)
+                        create_figure(yi, f)
                     arow[fig_id] = f
+
                 if not overlay:
+
                     # MULTIPLE FIGURES
                     # test if figure with same id already exists
                     # so that we can plot into it
                     # otherwise create a new figure
                     for i, yi in enumerate(y):
                         title = ("" if not titles else titles[i])
-                        fig_id, f = ((yi, arow[yi])
-                                     if arow.get(yi, False)
-                                     else (yi, rcParams["plotWrapper"].figure(title=title)))
-                        arow[fig_id] = create_figure(yi, f, title=title)
+                        f = arow.get(yi)
+                        arow[yi] = create_figure(yi, f, title=title)
+
             if self.grouped:
                 groups = list(set(self["Group"]) if self["Group"] else set())
                 groups.sort()
                 if overlay == "Group":
                     # ALIGN ALONG GROUPS
                     # for every yi a new figure is needed
-                    #arow = (arow if arow else OrderedDict())
                     for yi in y:
-                        fig_id, f = ((yi, arow[yi])
-                                if arow.get(yi, False)
-                                else (yi, rcParams["plotWrapper"].figure()))
-                        colors = plt.next_color()
-                        for name in groups:
-                            color = next(colors)
-                            arow[yi] = self.at("Group", name).show(
-                                    x=x, y=yi, title=yi, figure=(fig_id, f),
-                                    post_pone_style=True, overlay="Field",
-                                    color=color, legend_prefix=legend_prefix,
-                                    legend=str(name),
+
+                        f = arow.get(yi)
+
+                        for group in groups:
+                            arow[yi] = self.at("Group", group).show(
+                                    x=x, y=yi, title=yi, figure=(yi, f),
+                                    overlay="Field",
+                                    legend_prefix=legend_prefix,
+                                    legend=str(group),
                                     **kwargs)[yi]
+
                 if overlay == "Field":
-                    # row = (arow if arow else OrderedDict())
                     for group in groups:
-                        fig_id, f = ((group, arow[group])
-                                     if arow.get(group, False)
-                                     else (group, rcParams["plotWrapper"].figure()))
+
+                        f = arow.get(group)
+
                         field = self.at("Group", group)
                         arow[group] = field.show(x=x, y=y, title=str(group),
                                                  figure=(group, f), overlay="Field",
@@ -561,11 +575,7 @@ class FoamFrame(DataFrame):
             return arow
 
         fig_row = create_figure_row(y, row)
-        return (fig_row
-                if post_pone_style
-                else bk.GridPlot(children=style(rows=[list(fig_row.values())]))
-               )
-
+        return fig_row
 
     def show_func(self, value):
         """ set the default plot style
@@ -648,3 +658,25 @@ class FoamFrame(DataFrame):
         ret.set_index("Group", append=True, inplace=True)
         ret.reorder_levels(['Time', 'Loc', 'Pos', 'Group'])
         return ret
+
+    # ----------------------------------------------------------------------
+    # Compute methods
+
+    def rolling_mean(self, y, x="Pos", n=10, weight=False):
+        """ compute a rolling mean, returns a Series """
+
+        lower = min(self[x])
+        upper = max(self[x])
+        delta = (upper-lower)/n
+
+        bds = [(lower + i*delta, lower + (i+1)*delta)
+                for i in range(n)]
+
+        bins = {y:[
+                self.filter(name=x, field=lambda x:  (l < x < u))[y].mean()
+                for (l,u) in bds]}
+        bins.update({x: [(l+u)/2.0 for (l,u) in bds]})
+
+        return self.from_dict(bins,
+                name="rl" + self.properties.name,
+                show_func="plot")

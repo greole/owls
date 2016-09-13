@@ -118,7 +118,7 @@ class Bokeh():
         return figure
 
 
-    def GridPlot(self, row, filename, arangement, show):
+    def GridPlot(self, row, filename, arangement, show, style):
         gp = bk.GridPlot(
                 children=style(rows=arangement(list(row.values()))))
 
@@ -157,6 +157,11 @@ class GnuplotFigure():
         self.y_range = [None, None]
         self.y_log = False
 
+        # http://stackoverflow.com/questions/2827623
+        self.legend = lambda: None
+        self.legend.orientation = False
+        self.legend.visible = True
+
         self.lw = 2
         self.title = "TEST"
         self.legends = []
@@ -194,7 +199,7 @@ class GnuplotMultiplot():
     # data is a OrderedDict of the form
     # {"id": [ GnuplotDataSet  ]}
     # self.data = OrderedDict()
-    def __init__(self, data, filename):
+    def __init__(self, data, filename, transposed=False):
 
         self.filename = filename
 
@@ -225,10 +230,14 @@ class GnuplotMultiplot():
             return "set terminal svg enhanced size {}, {} fname 'Arial bold'\nset output '{}.svg'\n"
         if ext == ".eps":
             # return "set terminal epslatex color size {}cm, 5.75cm \nset out '{}.eps'\n"
-            return "set terminal epslatex color size {}cm, {}cm ',bx'\nset out '{}.eps'\n"
-
+            return "set terminal epslatex monochrome size {}cm, {}cm ',bx'\nset out '{}.eps'\n"
 
     def write_body(self, data, f, n_sub_figs):
+
+            def lt(arg):
+                return ("lp" if arg == "line" else "p")
+
+
             f.write("set multiplot layout {},{} \n".format(*n_sub_figs))
             f.write("set border 31 lw 2\n")
             invalids = {}
@@ -258,10 +267,16 @@ class GnuplotMultiplot():
                     f.write("set logscale x\n")
                 if d.y_log:
                     f.write("set logscale y\n")
-                f.write("\nset ylabel \"{}\" offset 2.5,0 \n".format(d.y_label))
+                if d.legend.orientation and d.legend.visible:
+                    f.write("set key " + d.legend.orientation + "\n")
+                else:
+                    f.write("unset key")
+                f.write("\nset ylabel \"{}\" offset 1.5,0 \n".format(d.y_label))
                 f.write("\nplot ")
-                data_blocks = [" ${}_{} title '{}' w l lw 2 dashtype {}".format(pid, i, l, i+1)
-                                for i, l in enumerate(d.legends) if not invalids.get((pid,i))]
+                data_blocks = [
+                    " ${}_{} title '{}' w {} pt {} pi {} lw 2 dashtype {}".format(
+                        pid, i, l, lt(d.lt[i]), i+1, int(len(d.x[i])/10), i+1)
+                        for i, l in enumerate(d.legends) if not invalids.get((pid,i))]
                 f.write("".join(intersperse(", ", data_blocks)))
             f.write("\nunset multiplot")
 
@@ -324,13 +339,15 @@ class Gnuplot():
             except:
                 return False
 
+        properties = properties if properties else lambda: None
         # Iterate requested Data
         y = (y if isinstance(y, list) else [y])
         for yi in y:
             x_data, y_data = data[x], data[yi]
-
+            name = kwargs.get("name", False)
+            name = name if name else properties.name
             figure.add(x=x_data, y=y_data,
-                    legend=legend_prefix + properties.name,
+                    legend=legend_prefix + name,
                     lt=func, plotProperties=properties.plot_properties)
 
 
@@ -347,8 +364,8 @@ class Gnuplot():
 
         return figure
 
-    def GridPlot(self, row, filename, arangement, show):
-        return GnuplotMultiplot(row, filename)
+    def GridPlot(self, row, filename, arangement, show, style):
+        return GnuplotMultiplot(style(rows=[row])[0], filename)
 
     def add_line(self, data, line_type, subplot):
         pass
@@ -390,14 +407,20 @@ def last(elems):
 #     return figs
 
 def adjustColumn(style, whereRow, whereFigs=None, rows=None):
+    from collections import OrderedDict
     for row in whereRow(rows):
-        row = (whereFigs(row) if whereFigs else row)
-        for fig in row:
+        if isinstance(row, OrderedDict):
+            iterate = list(zip(*row.items()))[1]
+        else:
+            iterate = row
+
+        iterate = (whereFigs(iterate) if whereFigs else iterate)
+
+        for fig in iterate:
             for key, value in style.items():
                 if '.' in key:
-                    _ = key.split('.')
-                    fig = getattr(fig, _[0])
-                    key = _[1]
+                    prop, key = key.split('.')
+                    fig = getattr(fig, prop)
                 setattr(fig, key, value)
     return rows
 
@@ -467,6 +490,10 @@ cleanLegendb = partial(adjustColumn, {'legend.border_line_color': None}, all, al
 def legend(pos):
     return partial(adjustColumn, {'legend.orientation': pos}, all, all)
 
+def gplegend(pos1, pos2):
+    return partial(adjustColumn, {'legend.visible': False}, pos1, pos2)
+
+
 lastLegend = [cleanLegendIa, cleanLegendIb, cleanLegendIIa, cleanLegendIIb]
 firstLegend = [cleanLegendIc, cleanLegendId, cleanLegendIIc, cleanLegendIId]
 noLegend = [cleanLegenda, cleanLegendb]
@@ -483,6 +510,8 @@ lastLegend = [cleanLegendIa, cleanLegendIb, cleanLegendIIa, cleanLegendIIb]
 arangement = lambda x: np.array(x).reshape(greatest_divisor(len(x)),-1).tolist()
 
 default_style = [size, font, color]
+
+empty_style = [partial(adjustColumn, {}, all, all)]
 
 def greatest_divisor(number):
     if number == 1:

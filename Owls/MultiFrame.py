@@ -6,12 +6,12 @@ from itertools import cycle
 
 
 from .FoamFrame import FoamFrame, rcParams
-from .plot import style as defstyle
-from .plot import arangement, compose_styles
-from .plot import Bokeh, Gnuplot
-
-
-import bokeh.plotting as bk
+# from .plot import style as defstyle
+# from .plot import arangement, compose_styles
+# from .plot import Bokeh, Gnuplot
+#
+#
+# import bokeh.plotting as bk
 
 
 def multiframes(folder, names, reader, **kwargs):
@@ -33,6 +33,17 @@ class MultiFrame():
                         for name, d in input_dict.items()]
                 )
 
+    def __mul__(self, other):
+        ''' multiply self with other, e.g. Foo() * 7 '''
+        return MultiFrame(OrderedDict([(i, c.__mul__(other))
+                    for i, c in self.cases.items()]))
+
+    def __rmul__(self, other):
+        ''' multiply other with self, e.g. 7 * Foo() '''
+        return MultiFrame(OrderedDict([(i, c.__rmul__(other))
+                    for i, c in self.cases.items()]))
+
+
     def __repr__(self):
         s = "MultiFrame with {} entries:\n".format(len(self.cases))
         s += "\n".join(["{}\n{}:\n{}".format(80*"=", name, c.describe())
@@ -49,7 +60,42 @@ class MultiFrame():
             self.cases = {}
 
     def __getitem__(self, field):
-        return [serie[field] for serie in self.cases.values()]
+        """ get field of all cases"""
+        return MultiFrame(OrderedDict([(key, serie[field])
+                for key, serie in self.cases.items()]))
+
+    def __setitem__(self, key, value):
+        for k, v in self.cases.items():
+            v.__setitem__(key, value.cases[k])
+
+
+    def sensitivity(self, base, params, baseParam):
+        from pandas import Series
+        baseCase = self.cases[base]
+        for fieldName, field in baseCase.items():
+            sName = "sens" + fieldName
+            for l in baseCase.locations:
+                    baseField = baseCase.location(l)[fieldName] * 0.0
+
+                    for (name, case), param in zip(self.cases.items(), params):
+                        if (name == base):
+                            continue
+                        try:
+                            # deltaF = Series(abs((case.location(l)[fieldName].values - baseField.values)/baseField.values))
+                            deltaF = Series(case.location(l)[fieldName].values - baseField.values)
+                            print(deltaF)
+                            deltaX = abs((param - baseParam)/baseParam)
+                            # NOTE different times
+                            foo = deltaF/deltaX / (len(self.cases)-1)
+                            foo.index = baseField.index
+                            baseField += foo
+                        # delta = abs(baseCase[fieldName] - case[fieldName])/abs(baseParam-param)
+                        # print(delta)
+                        except Exception as e:
+                             print(l, fieldName, e)
+
+
+
 
     def names(self):
         return [name for name in self.cases]
@@ -79,17 +125,14 @@ class MultiFrame():
 
 
     def show(self, y, x='Pos', z=False, overlay="Field",
-             style=defstyle, filename=None, show=True, **kwargs):
+             style=None, filename=None, show=True, **kwargs):
         """ Display single quantity y over multiple cases
             if overlay is set all cases are plotted in to single
             graph """
         # TODO if not overlay, common part should be figure title
-        style = (compose_styles(style, []) if isinstance(style, list) else style)
+        #style = (compose_styles(style, []) if isinstance(style, list) else style)
         dashes = cycle([[8, 4], [4, 4], [4, 2], [1, 1]])
         cases = list(self.cases.keys())
-
-
-        # plotinterface.add
 
         # call show method of first case instance
         # this generates an ordered hashmap (row)
@@ -107,20 +150,8 @@ class MultiFrame():
                     row=row, post_pone_style=True,
                     line_dash=d, titles=y, color=col, **kwargs)
 
-        # up to this point the plots are a single row
-        # and are rearranged by the arrangement func
-        return rcParams["plotWrapper"].GridPlot(row, filename, arangement, show)
+        return row
 
-    # def show_multi(self, ys, locs, x='Pos', style=defstyle, **kwargs):
-    #     bk.figure()
-    #     rows=[]
-    #     ys = (ys if isinstance(ys, list) else [ys])
-    #     for i, y in enumerate(ys):
-    #         figs = plot.plot_cases(self, y=y, x=x, order=locs,
-    #                 legend=True, **kwargs)
-    #         rows.append(figs)
-    #     return bk.GridPlot(children=style(rows=rows))
-    #
 
     # ----------------------------------------------------------------------
     # Filter methods
@@ -202,10 +233,8 @@ class MultiFrame():
 
     def vectorize(self, func):
         """  """
-        mfs = []
-        for name, mf in self.cases.items():
-            mfs.append(func(mf))
-        return MultiFrame(mfs)
+        mfs = [(name, func(mf)) for name, mf in self.cases.items()]
+        return MultiFrame(OrderedDict(mfs))
 
     def update_plot_properties(self, field, d):
         """ update plot properties of all casese """
