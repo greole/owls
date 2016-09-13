@@ -30,6 +30,7 @@ packages = [
     'numpy',
     'pandas==0.17.1',
     'functional',
+    'Salvia'
     # 'bokeh==0.10.0',
     ]
 
