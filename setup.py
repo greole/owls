@@ -30,7 +30,7 @@ packages = [
     'numpy',
     'pandas==0.17.1',
     'functional',
-    'bokeh==0.10.0',
+    # 'bokeh==0.10.0',
     ]
 
 if '--with-matplotlib' in sys.argv:
