@@ -68,14 +68,15 @@ def test_finddatafolders(create_directory_tree):
 
     fold = os.path.join(base, "test_finddatafolders0") + "/"
 
-    eulerian = io.find_datafolders(io.FPNUMBER, fold)
+    eulerian = io.find_datafolders(io.FPNUMBER, fold, slice="all")
 
     assert _all(fold, eulerian, folders)
     assert _all(fold, eulerian, ignored, negate=not_)
 
     lagrangian = io.find_datafolders(
         regex=io.FPNUMBER + "/lagrangian/[\w]*Cloud1",
-        path=fold
+        path=fold,
+        slice="all"
     )
 
     assert _all(fold, eulerian, ignored, negate=not_)
@@ -84,7 +85,8 @@ def test_finddatafolders(create_directory_tree):
 
     sets = io.find_datafolders(
         regex= "sets/" + io.FPNUMBER,
-        path=fold
+        path=fold,
+        slice="all"
     )
 
     assert _all(fold + "sets/", sets, folders)
@@ -92,7 +94,8 @@ def test_finddatafolders(create_directory_tree):
 
     eulerian_decomp = io.find_datafolders(
         regex="processor[0-9]\/" + io.FPNUMBER,
-        path=fold
+        path=fold,
+        slice="all"
     )
 
 def test_findDataFiles(create_directory_tree):
