@@ -1,4 +1,3 @@
-in/ipython
 '''
 Reads and converts OpenFoam logfiles and data
 to Pandas DataFrames and Series
