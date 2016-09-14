@@ -10,7 +10,7 @@ from collections import defaultdict
 
 from pandas import Series, DataFrame, Index, MultiIndex
 
-import .io as io
+from .io import FPNUMBER, import_foam_folder, import_logs
 
 import numpy as np
 
@@ -37,7 +37,7 @@ rcParams = {
         }
 
 def read_sets(folder, name="None",
-              search=io.FPNUMBER,
+              search=FPNUMBER,
               **kwargs):
     def setsfolder(folder):
         p = os.path.join(folder, "postProcessing")
@@ -53,7 +53,7 @@ def read_sets(folder, name="None",
 def read_lag(folder, files, skiplines=1,
              name="None", cloud="[A-Za-z]*Cloud1",
              preHooks=None, decomposed=False, **kwargs):
-    search = io.FPNUMBER + "/lagrangian/" + cloud
+    search = FPNUMBER + "/lagrangian/" + cloud
     search = (search if not decomposed else "processor[0-9]?/" + search)
     return FoamFrame(folder=folder, search_files=files,
                      search_pattern=search, name=name,
@@ -63,7 +63,7 @@ def read_lag(folder, files, skiplines=1,
 
 def read_eul(folder, files, skiplines=1, name="None",
              decomposed=False, preHooks=None, **kwargs):
-    search = io.FPNUMBER
+    search = FPNUMBER
     search = (search if not decomposed else "processor[0-9]?/" + search)
     return FoamFrame(folder=folder, search_files=files,
                      search_pattern=search, name=name,
@@ -78,7 +78,7 @@ def read_exp(folder, name="None", search="", **kwargs):
 
 
 def read_log(folder, keys, log_name='log', plot_properties=False, name="None"):
-    origins, df = io.import_logs(folder, log_name, keys)
+    origins, df = import_logs(folder, log_name, keys)
     ff = FoamFrame(df)
     ff.properties = Props(
         origins=origins, name=folder,
@@ -183,7 +183,7 @@ class FoamFrame(DataFrame):
         files = kwargs.get('search_files', None)
         properties = kwargs.get('properties', None)
         lines = kwargs.get('maxlines', 0)
-        search = kwargs.get('search_pattern', io.FPNUMBER)
+        search = kwargs.get('search_pattern', FPNUMBER)
         folder = kwargs.get('folder', None)
         plot_properties = kwargs.get('plot_properties', PlotProperties())
         show_func = kwargs.get('show_func', None)
@@ -228,7 +228,7 @@ class FoamFrame(DataFrame):
             else:
                 print("importing", end=" ")
             print(name + ": ", end="")
-            origins, data = io.import_foam_folder(
+            origins, data = import_foam_folder(
                 path=folder,
                 search=search,
                 files=files,
