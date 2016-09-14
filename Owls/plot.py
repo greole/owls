@@ -9,9 +9,14 @@ import numpy as np
 
 from itertools import cycle
 
+try:
+    import bokeh.plotting as bk
+except:
+    print("Warning No Bokeh Installation Found")
+
+
 
 class Bokeh():
-    import bokeh.plotting as bk
 
     TOOLS = "pan,wheel_zoom,box_zoom,reset,save"
 
