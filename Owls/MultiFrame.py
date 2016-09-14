@@ -6,13 +6,6 @@ from itertools import cycle
 
 
 from .FoamFrame import FoamFrame, rcParams
-# from .plot import style as defstyle
-# from .plot import arangement, compose_styles
-# from .plot import Bokeh, Gnuplot
-#
-#
-# import bokeh.plotting as bk
-
 
 def multiframes(folder, names, reader, **kwargs):
     """ create a collection of cases for which

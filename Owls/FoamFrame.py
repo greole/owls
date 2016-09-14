@@ -5,21 +5,12 @@ from __future__ import print_function
 from future.builtins import *
 
 import os
-# import re
 import shelve
 from collections import OrderedDict
 
 from pandas import Series, DataFrame, Index, MultiIndex
 
-# from pandas import concat
-
-#from . import plot as plt
-#from .plot import style as defstyle
-#from .plot import compose_styles
-#from .plot import Bokeh, Gnuplot
 from . import io
-
-# import bokeh.plotting as bk
 
 import numpy as np
 
