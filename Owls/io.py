@@ -1,4 +1,4 @@
-#!/usr/bin/ipython
+in/ipython
 '''
 Reads and converts OpenFoam logfiles and data
 to Pandas DataFrames and Series
@@ -177,7 +177,6 @@ class Origins():
                     }
               }
     """
-    from collections import defaultdict
     def __init__(self):
        self.dct = defaultdict(dict)
 

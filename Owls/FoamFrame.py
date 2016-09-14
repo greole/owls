@@ -6,17 +6,18 @@ from future.builtins import *
 
 import os
 import shelve
-from collections import OrderedDict
+from collections import defaultdict
 
 from pandas import Series, DataFrame, Index, MultiIndex
 
-from . import io
+import .io as io
 
 import numpy as np
 
 try:
     from Salvia import Gnuplot
 except:
+    Gnuplot = None
     print("No Salvia installation found")
 
 # Series.__repr__ = (lambda x: ("Hash: {}\nTimes: {}\nLoc: {}\nValues: {}".format(
@@ -95,7 +96,6 @@ isNotIn = lambda x: lambda y: x not in y
 class PlotProperties():
 
     def __init__(self):
-        from collections import defaultdict
         self.properties = defaultdict(dict)
 
     def insert(self, field, properties):
