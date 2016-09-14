@@ -109,17 +109,17 @@ def test_findDataFiles(create_directory_tree):
                 target = testdir + "{}{}/{}".format(search_fold, extra, file_)
                 assert target in result[testdir + search_fold + extra]
 
-    eulerian = io.find_datafiles(path=test_dir)
+    eulerian = io.find_datafiles(path=test_dir, times_slice="all")
     els_eulerian = len(eulerian)
     _test(test_dir, folders, files, eulerian)
 
-    sets = io.find_datafiles(path=test_dir, search="sets/" + io.FPNUMBER)
+    sets = io.find_datafiles(path=test_dir, search="sets/" + io.FPNUMBER, times_slice="all")
     _test(test_dir + "sets/", folders, files, sets)
 
-    lagrangian = io.find_datafiles(path=test_dir, search=io.FPNUMBER + "/lagrangian/[\w]*Cloud[0-9]?")
+    lagrangian = io.find_datafiles(path=test_dir, search=io.FPNUMBER + "/lagrangian/[\w]*Cloud[0-9]?", times_slice="all")
     _test(test_dir, folders, files, lagrangian, extra="/lagrangian/particleCloud1")
 
-    eulerian_decomp = io.find_datafiles(path=test_dir, search="processor[0-9]\/" + io.FPNUMBER)
+    eulerian_decomp = io.find_datafiles(path=test_dir, search="processor[0-9]\/" + io.FPNUMBER, times_slice="all")
     els_eulerian_decomp = len(eulerian_decomp)
 
     assert els_eulerian * 4 == els_eulerian_decomp
