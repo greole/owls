@@ -3,9 +3,7 @@ import subprocess, os, json
 from IPython.display import HTML, display
 from glob import glob
 import shutil
-import bokeh.plotting as bk
 from subprocess import call
-
 
 import numpy as np
 
@@ -13,6 +11,7 @@ from itertools import cycle
 
 
 class Bokeh():
+    import bokeh.plotting as bk
 
     TOOLS = "pan,wheel_zoom,box_zoom,reset,save"
 
