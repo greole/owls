@@ -497,7 +497,7 @@ def evaluate_names(fullfilename, num_entries):
             fields[0] = "Pos"
         return pos, fields
     else:
-        return "Unknown", [filename + '_' + str(i) for i in range(num_entries)]
+        return "Field", [filename + '_' + str(i) for i in range(num_entries)]
 
 
 def req_file(file_name, requested):
