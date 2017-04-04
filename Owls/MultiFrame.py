@@ -4,6 +4,8 @@ from future.builtins import *
 from collections import OrderedDict
 from itertools import cycle
 
+NumberTypes = (int, float, complex)
+
 
 from .FoamFrame import FoamFrame, rcParams
 
@@ -28,12 +30,51 @@ class MultiFrame():
 
     def __mul__(self, other):
         ''' multiply self with other, e.g. Foo() * 7 '''
-        return MultiFrame(OrderedDict([(i, c.__mul__(other))
-                    for i, c in self.cases.items()]))
+        if isinstance(other, NumberTypes):
+            return MultiFrame(OrderedDict([(i, c.__mul__(other))
+                        for i, c in self.cases.items()]))
+        else: # MultiFrame
+            return MultiFrame(OrderedDict([(i, c.__mul__(other.cases[i]))
+                        for i, c in self.cases.items()]))
+
+
 
     def __rmul__(self, other):
         ''' multiply other with self, e.g. 7 * Foo() '''
-        return MultiFrame(OrderedDict([(i, c.__rmul__(other))
+        if isinstance(other, NumberTypes):
+            return MultiFrame(OrderedDict([(i, c.__rmul__(other))
+                        for i, c in self.cases.items()]))
+        else: # MultiFrame
+            return MultiFrame(OrderedDict([(i, c.__rmul__(other.cases[i]))
+                        for i, c in self.cases.items()]))
+
+    def __truediv__(self, other):
+        ''' multiply self with other, e.g. Foo() * 7 '''
+        if isinstance(other, NumberTypes):
+            return MultiFrame(OrderedDict([(i, c.__truediv__(other))
+                        for i, c in self.cases.items()]))
+        else: # MultiFrame
+            return MultiFrame(OrderedDict([(i, c.__rtruediv__(other.cases[i]))
+                    for i, c in self.cases.items()]))
+
+    def __rtruediv__(self, other):
+        ''' multiply self with other, e.g. Foo() * 7 '''
+        if isinstance(other, NumberTypes):
+            return MultiFrame(OrderedDict([(i, c.__rtruediv__(other))
+                    for i, c in self.cases.items()]))
+        else: # MultiFrame
+            return MultiFrame(OrderedDict([(i, c.__rtruediv__(other.cases[i]))
+                    for i, c in self.cases.items()]))
+
+
+    def __add__(self, other):
+        ''' add self with other '''
+        return MultiFrame(OrderedDict([(i, c.__add__(other.cases[i]))
+                    for i, c in self.cases.items()]))
+
+    def __radd__(self, other):
+        ''' add other with self '''
+        return MultiFrame(OrderedDict([(i, c.__radd__(other.cases[i]))
                     for i, c in self.cases.items()]))
 
 
