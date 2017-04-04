@@ -169,6 +169,13 @@ class MultiFrame():
         """ select a specific item """
         return self.cases[case]
 
+    def unselect(self, cases):
+        """ select a specific item """
+
+        return MultiFrame(OrderedDict([(key, serie)
+                for key, serie in self.cases.items() if key not in cases ]))
+
+
     def values(self):
         for case in self.cases.values():
             yield case
