@@ -100,7 +100,32 @@ class MultiFrame():
 
     def __setitem__(self, key, value):
         for k, v in self.cases.items():
-            v.__setitem__(key, value.cases[k])
+            if isinstance(value, NumberTypes):
+                v.__setitem__(key, value)
+            else:
+                v.__setitem__(key, value.cases[k])
+
+    def fillna(self, value, **kwargs):
+        if not kwargs.get("inplace", False):
+            return MultiFrame(OrderedDict([(key, serie.fillna(value, **kwargs))
+                    for key, serie in self.cases.items()]))
+        else:
+            for _, s in self.cases.items():
+                s.fillna(value, **kwargs)
+
+    @property
+    def columns(self):
+        cls = []
+        for _, case in self.cases.items():
+            cls.extend(case.columns)
+        return set(cls)
+
+    def extend(self, value):
+        for c in self.columns:
+            for idx, case in self.cases.items():
+                if len(self.cases[idx][c]) == 0:
+                    self.cases[idx][c] = value
+        return self
 
 
     def sensitivity(self, base, params, baseParam):
