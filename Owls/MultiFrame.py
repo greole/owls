@@ -127,6 +127,9 @@ class MultiFrame():
                     self.cases[idx][c] = value
         return self
 
+    @property
+    def latest_times(self):
+        return {k: v.latest_time for k, v in self.cases.items()}
 
     def sensitivity(self, base, params, baseParam):
         from pandas import Series
