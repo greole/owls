@@ -397,6 +397,21 @@ class FoamFrame(DataFrame):
         """ return value of latest time step """
         return max(self.index.levels[0])
 
+    @property
+    def earliest_time(self):
+        """ return value of latest time step """
+        return min(self.index.levels[0])
+
+    def after(self, time):
+        return self.filter("Time", index=lambda x: x > time)
+
+    def at_time(self, time):
+        """ return latest time for case """
+        ret = self.query('Time == {}'.format(time))
+        ret.properties = self.properties
+        return ret
+
+
     def at(self, idx_name, idx_val):
         """ select from foamframe based on index name and value"""
         # TODO FIX This
