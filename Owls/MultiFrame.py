@@ -213,7 +213,8 @@ class MultiFrame():
         row = self.cases[cases[0]].show(
                 x=x, y=y, overlay=overlay,
                 legend_prefix=cases[0], style=style,
-                post_pone_style=True, titles=y, **kwargs)
+                post_pone_style=True, titles=y, filename=filename,
+                **kwargs)
 
         for c, d, col in zip(cases[1:], dashes, rcParams["plotWrapper"].colored[1:]):
             row = self.cases[c].show(
