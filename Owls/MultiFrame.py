@@ -156,7 +156,10 @@ class MultiFrame():
                         except Exception as e:
                              print(l, fieldName, e)
 
-
+    def time_average(self, suffix="Avg", time_start=0.0):
+        """ compute time average of fields """
+        return MultiFrame([case.time_average(suffix, time_start)
+                           for cname, case in self.cases.items()])
 
 
     def names(self):
