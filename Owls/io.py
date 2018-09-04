@@ -102,6 +102,8 @@ def find_datafolders(regex, path=False, exclude=None, slice_=None):
 
     folders = [_ for _ in folders if re.match(complete_regex, _)]
     folders.sort()
+    # TODO This legacy slicing should be removed
+    # and replaced by folders[slice_]
     if slice_ == "all":
         return folders
     if slice_ == "latest":
