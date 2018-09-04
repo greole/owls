@@ -486,14 +486,31 @@ class FoamFrame(DataFrame):
                     legend_prefix="", titles=None,
                     properties=self.properties, **kwargs)
 
-    def histogram(self, y, x=None, title="", figure=False, **kwargs):
+    def histo_data(self, y, weights, bins):
+        return np.histogram(
+                y, density=True, weights=weights,
+                bins=bins)
+
+    def histogram(self, y, x=None, title="", figure=False, weights=False, **kwargs):
         figure = (figure if figure else rcParams["plotWrapper"].GnuplotFigure())
-        hist, edges = np.histogram(self[y], density=True, bins=50)
+        if weights:
+            weights = self[weights]
+        hist, edges = self.histo_data(self[y], weights, kwargs.get("bins", 50))
+
         centres = [(edges[i] + edges[i+1])*0.5 for i in range(len(edges)-1)]
         df = DataFrame({'centres': centres, 'hist': hist})
 
         return self.draw(x='centres', y='hist', z=None,
                 data=df, title=title, func="quad", figure=figure, **kwargs)
+
+    def cdf(self, y, x=None, title="", figure=False, weights=False, **kwargs):
+        a, b = np.histogram(self[y], weights=self[weights], bins=20, normed=True)
+        dx = b[1]-b[0]
+        cdf = np.cumsum(a)*dx
+        df = DataFrame({'centres': b[1:], 'hist': cdf})
+
+        return self.draw(x='centres', y='hist', z=None,
+                data=df, title=title, func="line", figure=figure, **kwargs)
 
     def scatter(self, y, x='Pos', z=None, title="", figure=False, **kwargs):
         figure = (figure if figure else rcParams["plotWrapper"].GnuplotFigure())
@@ -687,8 +704,45 @@ class FoamFrame(DataFrame):
         bins = {y:[
                 self.filter(name=x, field=lambda x:  (l < x < u))[y].mean()
                 for (l,u) in bds]}
+
         bins.update({x: [(l+u)/2.0 for (l,u) in bds]})
 
         return self.from_dict(bins,
                 name="rl" + self.properties.name,
+                plot_properties=self.properties.plot_properties,
                 show_func="plot")
+
+    def weighted_rolling_mean(self, y, x="Pos", n=10, weight=False):
+        """ compute a rolling mean, returns a Series """
+
+        lower = min(self[x])
+        upper = max(self[x])
+        delta = (upper-lower)/n
+
+        bds = [(lower + i*delta, lower + (i+1)*delta)
+                for i in range(n)]
+
+        bins = {y: [
+                np.average(
+                    a=self.filter(name=x, field=lambda x:  (l < x < u))[y],
+                    weights=self.filter(name=x, field=lambda x:  (l < x < u))[weight])
+                for (l, u) in bds]}
+
+        bins.update({x: [(l+u)/2.0 for (l,u) in bds]})
+
+        return self.from_dict(bins,
+                name="rl" + self.properties.name,
+                plot_properties=self.properties.plot_properties,
+                show_func="plot")
+
+    def time_average(self, suffix="Avg", time_start=0.0):
+        """ compute time average of fields """
+        fs = self.after(time_start)
+        ret = fs.mean(level=["Loc", "Pos"])
+        latest = fs.latest
+        ret.index = latest.index
+        for c in self.columns:
+            latest[c+suffix] = ret[c]
+        return latest
+
+

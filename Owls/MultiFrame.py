@@ -9,6 +9,7 @@ NumberTypes = (int, float, complex)
 
 from .FoamFrame import FoamFrame, rcParams
 
+
 def multiframes(folder, names, reader, **kwargs):
     """ create a collection of cases for which
         only the folder is different """
@@ -75,6 +76,17 @@ class MultiFrame():
     def __radd__(self, other):
         ''' add other with self '''
         return MultiFrame(OrderedDict([(i, c.__radd__(other.cases[i]))
+                    for i, c in self.cases.items()]))
+
+
+    def __sub__(self, other):
+        ''' add self with other '''
+        return MultiFrame(OrderedDict([(i, c.__sub__(other.cases[i]))
+                    for i, c in self.cases.items()]))
+
+    def __rsub__(self, other):
+        ''' add other with self '''
+        return MultiFrame(OrderedDict([(i, c.__rsub__(other.cases[i]))
                     for i, c in self.cases.items()]))
 
 
@@ -193,6 +205,13 @@ class MultiFrame():
         fig = self.cases[cases[0]].histogram(x=x, y=y, **kwargs)
         for c in cases:
             fig = self.cases[c].histogram(x=x, y=y, figure=fig, **kwargs)
+        return fig
+
+    def cdf(self, y, x=None, **kwargs):
+        cases = list(self.cases.keys())
+        fig = self.cases[cases[0]].histogram(x=x, y=y, **kwargs)
+        for c in cases:
+            fig = self.cases[c].cdf(x=x, y=y, figure=fig, **kwargs)
         return fig
 
 
