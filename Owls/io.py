@@ -102,12 +102,16 @@ def find_datafolders(regex, path=False, exclude=None, slice_=None):
 
     folders = [_ for _ in folders if re.match(complete_regex, _)]
     folders.sort()
+
     # TODO This legacy slicing should be removed
     # and replaced by folders[slice_]
-    if slice_ == "all":
-        return folders
+    # if slice_ == "all":
+    #     return folders
     if slice_ == "latest":
-        return [folders[-1]]
+        return folders[-1]
+    else:
+        return folders
+
     # FIXME raise Exception
     # return (folders if not slice_ else folders(slice_))
 
