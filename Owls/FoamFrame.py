@@ -27,6 +27,9 @@ except:
 #                     x.values))) #TODO monkey patch to use hashes
 Database = False
 
+latestTime = slice(-1, None)
+allTimes = slice(0, None)
+
 if Database:
     case_data_base = shelve.open(os.path.expanduser('~') + "/.owls/db")
 else:
@@ -177,7 +180,7 @@ class FoamFrame(DataFrame):
     def __init__(self, *args, **kwargs):
 
         skip = kwargs.get('skiplines', 1)
-        times = kwargs.get('skiptimes', 1)
+        times = kwargs.get('readtime', slice(0, None))
         name = kwargs.get('name', 'None')
         symb = kwargs.get('symb', 'o')
         files = kwargs.get('search_files', None)
@@ -195,7 +198,7 @@ class FoamFrame(DataFrame):
         times_slice = times_range
 
         keys = ['skiplines',
-                'skiptimes',
+                'readtime',
                 'preHooks',
                 'name',
                 'symb',
