@@ -3,28 +3,147 @@ import subprocess, os, json
 from IPython.display import HTML, display
 from glob import glob
 import shutil
+from subprocess import call
 
 import numpy as np
 
-TOOLS = "pan,wheel_zoom,box_zoom,reset,save"
+from itertools import cycle
 
-colored = ["black", "blue", "fuchsia", "gray", "green",
-           "lime", "maroon", "navy", "olive", "orange", "purple",
-           "red", "silver", "teal", "yellow", "aqua"]
+try:
+    import bokeh.plotting as bk
+except:
+    print("Warning No Bokeh Installation Found")
 
-symbols_full = ["circle", "square", "triangle", "diamond", "inverted_triangle"]
 
-white2black = [
-    '#000000', '#0D0D0D', '#1A1A1A', '#262626', '#333333',
-    '#404040', '#4C4C4C', '#595959', '#666666', '#737373',
-    '#808080', '#8C8C8C', '#999999', '#A6A6A6', '#B2B2B2',
-    '#BFBFBF', '#CCCCCC', '#D9D9D9', '#E6E6E6', '#F2F2F2',
-    '#FFFFFF'][::-1]
 
-config = {
-    "color_cycle": colored,
-    "symbol_cycle": symbols_full,
-    }
+class Bokeh():
+
+    TOOLS = "pan,wheel_zoom,box_zoom,reset,save"
+
+    colored = ["black", "blue", "fuchsia", "gray", "green",
+               "lime", "maroon", "navy", "olive", "orange", "purple",
+               "red", "silver", "teal", "yellow", "aqua"]
+
+    symbols_full = ["circle", "square", "triangle", "diamond", "inverted_triangle"]
+
+    white2black = [
+        '#000000', '#0D0D0D', '#1A1A1A', '#262626', '#333333',
+        '#404040', '#4C4C4C', '#595959', '#666666', '#737373',
+        '#808080', '#8C8C8C', '#999999', '#A6A6A6', '#B2B2B2',
+        '#BFBFBF', '#CCCCCC', '#D9D9D9', '#E6E6E6', '#F2F2F2',
+        '#FFFFFF'][::-1]
+
+    config = {
+        "color_cycle": colored,
+        "symbol_cycle": symbols_full,
+        }
+
+
+    def figure(self, **kwargs):
+        return bk.figure(tools=self.TOOLS, **kwargs)
+
+    def draw(self, x, y, z, data, title, func, figure,
+            legend_prefix="", titles=None, properties=None, **kwargs):
+        # TODO Rename to _draw
+        def _label(axis, field):
+            label = kwargs.get(axis + '_label', False)
+            if label:
+                properties.plot_properties.insert(
+                    field, {axis + '_label': label})
+            else:
+                label = properties.plot_properties.select(
+                    field, axis + '_label', "None")
+            return label
+
+        def _range(axis, field):
+            from bokeh.models import Range1d
+            p_range_args = kwargs.get(axis + '_range', False)
+            if p_range_args:
+                properties.plot_properties.insert(
+                    field, {axis + '_range': p_range})
+            else:
+                p_range = properties.plot_properties.select(
+                    field, axis + '_range')
+            if not p_range:
+                return False
+            else:
+                return Range1d(start=p_range[0], end=p_range[1])
+
+        figure_properties = {"title": title}
+
+        if kwargs.get('x_range', False):
+            figure_properties.update({"x_range": kwargs.get('x_range')})
+        figure.set(**figure_properties)
+
+        if func == "quad":
+            getattr(figure, func)(
+                    top=y, bottom=0, left=x[:-1], right=x[1:], **kwargs)
+            return figure
+
+        colors = self.next_color()
+        spec_color = kwargs.get("color", False)
+        spec_legend = kwargs.get("legend", False)
+
+        # Iterate requested Data
+        y = (y if isinstance(y, list) else [y])
+        for yi in y:
+            x_data, y_data = data[x], data[yi]
+            # TODO FIXME
+            for k in ['symbols', 'order', 'colors', 'symbol']:
+                if k in kwargs.keys():
+                    kwargs.pop(k)
+            if not spec_color:
+                kwargs.update({"color": next(colors)})
+            if not spec_legend:
+                # NOTE title overrides legend, does that make sense always?
+                yi = (yi if not title else "")
+                if yi and legend_prefix:
+                    legend = legend_prefix + "-" + yi
+                if not yi and legend_prefix:
+                    legend = legend_prefix
+                if not legend_prefix:
+                    legend = yi
+
+                kwargs.update({"legend": legend})
+
+            getattr(figure, func)(x=x_data,
+                                  y=y_data,
+                                  **kwargs)
+
+        # set axis ranges and labels
+        for ax, data in {'x': x, 'y': y[0]}.items():
+            if _label(ax, data):
+                getattr(figure, ax+'axis')[0].axis_label = _label(ax, data)
+            # setattr(getattr(figure, ax + 'axis'),
+            #         'axis_label', _label(ax, data))
+            if _range(ax, data):
+                r = setattr(figure, ax+'_range', _range(ax, data))
+
+        return figure
+
+
+    def GridPlot(self, row, filename, arangement, show, style):
+        gp = bk.GridPlot(
+                children=style(rows=arangement(list(row.values()))))
+
+        # plotinterface.show
+        if filename:
+            bk.save(gp, filename)
+        if show:
+            return bk.show(gp)
+        else:
+            return gp
+
+    def next_color(self):
+        for col in cycle(self.config['color_cycle']):
+            yield col
+
+
+    def next_symbol(self):
+        for sym in cycle(self.config['symbol_cycle']):
+            yield sym
+
+intersperse = lambda e,l: sum([[x, e] for x in l],[])[:-1]
 
 
 def head(elems):
@@ -59,134 +178,32 @@ def last(elems):
 #     return figs
 
 def adjustColumn(style, whereRow, whereFigs=None, rows=None):
+    from collections import OrderedDict
     for row in whereRow(rows):
-        row = (whereFigs(row) if whereFigs else row)
-        for fig in row:
+        if isinstance(row, OrderedDict):
+            iterate = list(zip(*row.items()))[1]
+        else:
+            iterate = row
+
+        iterate = (whereFigs(iterate) if whereFigs else iterate)
+
+        for fig in iterate:
             for key, value in style.items():
                 if '.' in key:
-                    _ = key.split('.')
-                    fig = getattr(fig, _[0])
-                    key = _[1]
+                    prop, key = key.split('.')
+                    fig = getattr(fig, prop)
                 setattr(fig, key, value)
     return rows
 
 
-def figure(**kwargs):
-    import bokeh.plotting as bk
-    return bk.figure(tools=TOOLS, **kwargs)
+# def plot_cases(cases, y, order, x='Pos', legend=True, **kwargs):
+#     from .FoamFrame import FoamFrame
+#     """ plot all cases in cases dict at specified locations
+#         and latest time step """
+#     elems = [x.by_index('Loc') for x in cases.values() if type(x) is FoamFrame]
+#     return multi_merge(*elems, x=x, y=y, order=order, legend=legend, **kwargs)
 
 
-# def merge(*args, **kwargs):
-#     import bokeh.plotting as bk
-#     figure = (bk.figure() if not kwargs.get('figure', False) else
-#               kwargs.get('figure'))
-#     y = kwargs.get('y', None)
-#     x = kwargs.get('x', 'Pos')
-#     try:
-#         kwargs.pop('y')
-#         kwargs.pop('x')
-#     except:
-#         pass
-#     y = (y if type(y) == list else [y]*len(args))  # FIXME do the same for x
-#     kwargs.pop('figure')
-#     legend = kwargs.get('legend')
-#     if legend:
-#         kwargs.pop('legend')
-#     for yi, p in zip(y, args):
-#         if legend:
-#             kwargs.update({'legend': p.properties.name})
-#         override_color = p.properties.plot_properties.properties.get('Color', False)
-#         color = (override_color if override_color else next(kwargs["colors"]))
-#         p.show(x=x, y=yi, color=color, symbol=next(kwargs["symbols"]), figure=figure, **kwargs)
-#     return figure
-#
-#
-# def multi_merge(*args, **kwargs):
-#     """ call merge for all args
-#
-#         Examples:   mm=multi_merge(
-#                         sets1.latest.by_index('Loc'),
-#                         sets2.latest.by_index('Loc'),
-#                         by='[0-9]+',
-#                         x='Pos',
-#                         y='vMean'
-#                         order=[x-10,x+25])
-#
-#     """
-#     import bokeh.plotting as bk
-#     y = kwargs.get('y', None)
-#     x = kwargs.get('x', 'Pos')
-#     if kwargs.get('legend'):
-#         legend = kwargs.get('legend')
-#         kwargs.pop('legend')
-#     else:
-#         legend = False
-#         kwargs.pop('legend')
-#     plots = []
-#     c = args[0]
-#     # go through all items to be plotted
-#     items = (
-#         ((name, data) for name, data in c.items() if name in kwargs['order'])
-#         if kwargs.get('order', False) else c.items()
-#     )
-#     for nr, (name, data) in enumerate(items):
-#         sub_plots = [data]
-#         colors = next_color()
-#         symbols = next_symbol()
-#         figure = bk.figure()
-#         for c_ in args[1:]:
-#             # and through all sets to be plotted
-#             for name_, plot_ in c_.items():
-#                 if not kwargs.get('order', False):
-#                     # select by regex
-#                     # now see if we have a match
-#                     selector = kwargs.get('by', "[A-Za-z0-9_\-]")
-#                     # skip if search is empty
-#                     if (not re.search(selector, name) or
-#                         not re.search(selector, name_)):
-#                         continue
-#                     # append to subplot if same schema
-#                     if (re.search(selector, name).group()
-#                         == re.search(selector, name_).group()):
-#                         sub_plots.append(plot_)
-#                 else:
-#                     # select by name in order list
-#                     if name_ == name:
-#                         sub_plots.append(plot_)
-#         for kw in ['x', 'y']:
-#             try:
-#                 kwargs.pop(kw)
-#             except:
-#                 pass
-#         if kwargs.get('legend_pos', 0) != nr:
-#             legend = False
-#         title = (kwargs.get('titles')[nr] if kwargs.get('titles', False) else name)
-#         plots.append(merge(
-#             *sub_plots, x=x, y=y,
-#             title=title, colors=colors,
-#             symbols=symbols, figure=figure,
-#             legend=legend, **kwargs))
-#     return plots
-
-
-def plot_cases(cases, y, order, x='Pos', legend=True, **kwargs):
-    from .FoamFrame import FoamFrame
-    """ plot all cases in cases dict at specified locations
-        and latest time step """
-    elems = [x.by_index('Loc') for x in cases.values() if type(x) is FoamFrame]
-    return multi_merge(*elems, x=x, y=y, order=order, legend=legend, **kwargs)
-
-
-def next_color():
-    from itertools import cycle
-    for col in cycle(config['color_cycle']):
-        yield col
-
-
-def next_symbol():
-    from itertools import cycle
-    for sym in cycle(config['symbol_cycle']):
-        yield sym
 
 # Themes
 
@@ -244,6 +261,10 @@ cleanLegendb = partial(adjustColumn, {'legend.border_line_color': None}, all, al
 def legend(pos):
     return partial(adjustColumn, {'legend.orientation': pos}, all, all)
 
+def gplegend(pos1, pos2):
+    return partial(adjustColumn, {'legend.visible': False}, pos1, pos2)
+
+
 lastLegend = [cleanLegendIa, cleanLegendIb, cleanLegendIIa, cleanLegendIIb]
 firstLegend = [cleanLegendIc, cleanLegendId, cleanLegendIIc, cleanLegendIId]
 noLegend = [cleanLegenda, cleanLegendb]
@@ -260,6 +281,8 @@ lastLegend = [cleanLegendIa, cleanLegendIb, cleanLegendIIa, cleanLegendIIb]
 arangement = lambda x: np.array(x).reshape(greatest_divisor(len(x)),-1).tolist()
 
 default_style = [size, font, color]
+
+empty_style = [partial(adjustColumn, {}, all, all)]
 
 def greatest_divisor(number):
     if number == 1:

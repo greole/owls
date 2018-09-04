@@ -4,13 +4,10 @@ from future.builtins import *
 from collections import OrderedDict
 from itertools import cycle
 
-
-from .FoamFrame import FoamFrame
-from .plot import style as defstyle
-from .plot import arangement, compose_styles, colored
+NumberTypes = (int, float, complex)
 
 
-import bokeh.plotting as bk
+from .FoamFrame import FoamFrame, rcParams
 
 
 def multiframes(folder, names, reader, **kwargs):
@@ -32,6 +29,67 @@ class MultiFrame():
                         for name, d in input_dict.items()]
                 )
 
+    def __mul__(self, other):
+        ''' multiply self with other, e.g. Foo() * 7 '''
+        if isinstance(other, NumberTypes):
+            return MultiFrame(OrderedDict([(i, c.__mul__(other))
+                        for i, c in self.cases.items()]))
+        else: # MultiFrame
+            return MultiFrame(OrderedDict([(i, c.__mul__(other.cases[i]))
+                        for i, c in self.cases.items()]))
+
+
+
+    def __rmul__(self, other):
+        ''' multiply other with self, e.g. 7 * Foo() '''
+        if isinstance(other, NumberTypes):
+            return MultiFrame(OrderedDict([(i, c.__rmul__(other))
+                        for i, c in self.cases.items()]))
+        else: # MultiFrame
+            return MultiFrame(OrderedDict([(i, c.__rmul__(other.cases[i]))
+                        for i, c in self.cases.items()]))
+
+    def __truediv__(self, other):
+        ''' multiply self with other, e.g. Foo() * 7 '''
+        if isinstance(other, NumberTypes):
+            return MultiFrame(OrderedDict([(i, c.__truediv__(other))
+                        for i, c in self.cases.items()]))
+        else: # MultiFrame
+            return MultiFrame(OrderedDict([(i, c.__rtruediv__(other.cases[i]))
+                    for i, c in self.cases.items()]))
+
+    def __rtruediv__(self, other):
+        ''' multiply self with other, e.g. Foo() * 7 '''
+        if isinstance(other, NumberTypes):
+            return MultiFrame(OrderedDict([(i, c.__rtruediv__(other))
+                    for i, c in self.cases.items()]))
+        else: # MultiFrame
+            return MultiFrame(OrderedDict([(i, c.__rtruediv__(other.cases[i]))
+                    for i, c in self.cases.items()]))
+
+
+    def __add__(self, other):
+        ''' add self with other '''
+        return MultiFrame(OrderedDict([(i, c.__add__(other.cases[i]))
+                    for i, c in self.cases.items()]))
+
+    def __radd__(self, other):
+        ''' add other with self '''
+        return MultiFrame(OrderedDict([(i, c.__radd__(other.cases[i]))
+                    for i, c in self.cases.items()]))
+
+
+    def __sub__(self, other):
+        ''' add self with other '''
+        return MultiFrame(OrderedDict([(i, c.__sub__(other.cases[i]))
+                    for i, c in self.cases.items()]))
+
+    def __rsub__(self, other):
+        ''' add other with self '''
+        return MultiFrame(OrderedDict([(i, c.__rsub__(other.cases[i]))
+                    for i, c in self.cases.items()]))
+
+
     def __repr__(self):
         s = "MultiFrame with {} entries:\n".format(len(self.cases))
         s += "\n".join(["{}\n{}:\n{}".format(80*"=", name, c.describe())
@@ -48,7 +106,73 @@ class MultiFrame():
             self.cases = {}
 
     def __getitem__(self, field):
-        return [serie[field] for serie in self.cases.values()]
+        """ get field of all cases"""
+        return MultiFrame(OrderedDict([(key, serie[field])
+                for key, serie in self.cases.items()]))
+
+    def __setitem__(self, key, value):
+        for k, v in self.cases.items():
+            if isinstance(value, NumberTypes):
+                v.__setitem__(key, value)
+            else:
+                v.__setitem__(key, value.cases[k])
+
+    def fillna(self, value, **kwargs):
+        if not kwargs.get("inplace", False):
+            return MultiFrame(OrderedDict([(key, serie.fillna(value, **kwargs))
+                    for key, serie in self.cases.items()]))
+        else:
+            for _, s in self.cases.items():
+                s.fillna(value, **kwargs)
+
+    @property
+    def columns(self):
+        cls = []
+        for _, case in self.cases.items():
+            cls.extend(case.columns)
+        return set(cls)
+
+    def extend(self, value):
+        for c in self.columns:
+            for idx, case in self.cases.items():
+                if len(self.cases[idx][c]) == 0:
+                    self.cases[idx][c] = value
+        return self
+
+    @property
+    def latest_times(self):
+        return {k: v.latest_time for k, v in self.cases.items()}
+
+    def sensitivity(self, base, params, baseParam):
+        from pandas import Series
+        baseCase = self.cases[base]
+        for fieldName, field in baseCase.items():
+            sName = "sens" + fieldName
+            for l in baseCase.locations:
+                    baseField = baseCase.location(l)[fieldName] * 0.0
+
+                    for (name, case), param in zip(self.cases.items(), params):
+                        if (name == base):
+                            continue
+                        try:
+                            # deltaF = Series(abs((case.location(l)[fieldName].values - baseField.values)/baseField.values))
+                            deltaF = Series(case.location(l)[fieldName].values - baseField.values)
+                            print(deltaF)
+                            deltaX = abs((param - baseParam)/baseParam)
+                            # NOTE different times
+                            foo = deltaF/deltaX / (len(self.cases)-1)
+                            foo.index = baseField.index
+                            baseField += foo
+                        # delta = abs(baseCase[fieldName] - case[fieldName])/abs(baseParam-param)
+                        # print(delta)
+                        except Exception as e:
+                             print(l, fieldName, e)
+
+    def time_average(self, suffix="Avg", time_start=0.0):
+        """ compute time average of fields """
+        return MultiFrame([case.time_average(suffix, time_start)
+                           for cname, case in self.cases.items()])
+
 
     def names(self):
         return [name for name in self.cases]
@@ -56,6 +180,13 @@ class MultiFrame():
     def select(self, case):
         """ select a specific item """
         return self.cases[case]
+
+    def unselect(self, cases):
+        """ select a specific item """
+
+        return MultiFrame(OrderedDict([(key, serie)
+                for key, serie in self.cases.items() if key not in cases ]))
+
 
     def values(self):
         for case in self.cases.values():
@@ -76,42 +207,43 @@ class MultiFrame():
             fig = self.cases[c].histogram(x=x, y=y, figure=fig, **kwargs)
         return fig
 
+    def cdf(self, y, x=None, **kwargs):
+        cases = list(self.cases.keys())
+        fig = self.cases[cases[0]].histogram(x=x, y=y, **kwargs)
+        for c in cases:
+            fig = self.cases[c].cdf(x=x, y=y, figure=fig, **kwargs)
+        return fig
+
 
     def show(self, y, x='Pos', z=False, overlay="Field",
-             style=defstyle, filename=None, show=True, **kwargs):
+             style=None, filename=None, show=True, **kwargs):
         """ Display single quantity y over multiple cases
             if overlay is set all cases are plotted in to single
             graph """
         # TODO if not overlay, common part should be figure title
-        style = (compose_styles(style, []) if isinstance(style, list) else style)
+        #style = (compose_styles(style, []) if isinstance(style, list) else style)
         dashes = cycle([[8, 4], [4, 4], [4, 2], [1, 1]])
         cases = list(self.cases.keys())
-        row = self.cases[cases[0]].show(x=x, y=y, overlay=overlay,
-                                        legend_prefix=cases[0], style=style,
-                                        post_pone_style=True, titles=y, **kwargs)
-        for c, d, col in zip(cases[1:], dashes, colored[1:]):
-            row = self.cases[c].show(x=x, y=y, overlay=overlay,
-                                     legend_prefix=c, style=style,
-                                     row=row, post_pone_style=True,
-                                     line_dash=d, titles=y, color=col, **kwargs)
-        gp = bk.GridPlot(children=style(rows=arangement(list(row.values()))))
-        if filename:
-            bk.save(gp, filename)
-        if show:
-            return bk.show(gp)
-        else:
-            return gp
 
-    # def show_multi(self, ys, locs, x='Pos', style=defstyle, **kwargs):
-    #     bk.figure()
-    #     rows=[]
-    #     ys = (ys if isinstance(ys, list) else [ys])
-    #     for i, y in enumerate(ys):
-    #         figs = plot.plot_cases(self, y=y, x=x, order=locs,
-    #                 legend=True, **kwargs)
-    #         rows.append(figs)
-    #     return bk.GridPlot(children=style(rows=rows))
-    #
+        # call show method of first case instance
+        # this generates an ordered hashmap (row)
+        # of plot into which the subsequent plots
+        # are inserted.
+        row = self.cases[cases[0]].show(
+                x=x, y=y, overlay=overlay,
+                legend_prefix=cases[0], style=style,
+                post_pone_style=True, titles=y, filename=filename,
+                **kwargs)
+
+        for c, d, col in zip(cases[1:], dashes, rcParams["plotWrapper"].colored[1:]):
+            row = self.cases[c].show(
+                    x=x, y=y, overlay=overlay,
+                    legend_prefix=c, style=style,
+                    row=row, post_pone_style=True,
+                    line_dash=d, titles=y, color=col, **kwargs)
+
+        return row
+
 
     # ----------------------------------------------------------------------
     # Filter methods
@@ -190,6 +322,11 @@ class MultiFrame():
         """ Grouping delegator """
         return MultiFrame([case.by(name, func)
                            for cname, case in self.cases.items()])
+
+    def vectorize(self, func):
+        """  """
+        mfs = [(name, func(mf)) for name, mf in self.cases.items()]
+        return MultiFrame(OrderedDict(mfs))
 
     def update_plot_properties(self, field, d):
         """ update plot properties of all casese """

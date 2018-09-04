@@ -68,14 +68,15 @@ def test_finddatafolders(create_directory_tree):
 
     fold = os.path.join(base, "test_finddatafolders0") + "/"
 
-    eulerian = io.find_datafolders(io.FPNUMBER, fold)
+    eulerian = io.find_datafolders(io.FPNUMBER, fold, slice_="all")
 
     assert _all(fold, eulerian, folders)
     assert _all(fold, eulerian, ignored, negate=not_)
 
     lagrangian = io.find_datafolders(
         regex=io.FPNUMBER + "/lagrangian/[\w]*Cloud1",
-        path=fold
+        path=fold,
+        slice_="all"
     )
 
     assert _all(fold, eulerian, ignored, negate=not_)
@@ -84,7 +85,8 @@ def test_finddatafolders(create_directory_tree):
 
     sets = io.find_datafolders(
         regex= "sets/" + io.FPNUMBER,
-        path=fold
+        path=fold,
+        slice_="all"
     )
 
     assert _all(fold + "sets/", sets, folders)
@@ -92,7 +94,8 @@ def test_finddatafolders(create_directory_tree):
 
     eulerian_decomp = io.find_datafolders(
         regex="processor[0-9]\/" + io.FPNUMBER,
-        path=fold
+        path=fold,
+        slice_="all"
     )
 
 def test_findDataFiles(create_directory_tree):
@@ -106,17 +109,17 @@ def test_findDataFiles(create_directory_tree):
                 target = testdir + "{}{}/{}".format(search_fold, extra, file_)
                 assert target in result[testdir + search_fold + extra]
 
-    eulerian = io.find_datafiles(path=test_dir)
+    eulerian = io.find_datafiles(path=test_dir, times_slice="all")
     els_eulerian = len(eulerian)
     _test(test_dir, folders, files, eulerian)
 
-    sets = io.find_datafiles(path=test_dir, search="sets/" + io.FPNUMBER)
+    sets = io.find_datafiles(path=test_dir, search="sets/" + io.FPNUMBER, times_slice="all")
     _test(test_dir + "sets/", folders, files, sets)
 
-    lagrangian = io.find_datafiles(path=test_dir, search=io.FPNUMBER + "/lagrangian/[\w]*Cloud[0-9]?")
+    lagrangian = io.find_datafiles(path=test_dir, search=io.FPNUMBER + "/lagrangian/[\w]*Cloud[0-9]?", times_slice="all")
     _test(test_dir, folders, files, lagrangian, extra="/lagrangian/particleCloud1")
 
-    eulerian_decomp = io.find_datafiles(path=test_dir, search="processor[0-9]\/" + io.FPNUMBER)
+    eulerian_decomp = io.find_datafiles(path=test_dir, search="processor[0-9]\/" + io.FPNUMBER, times_slice="all")
     els_eulerian_decomp = len(eulerian_decomp)
 
     assert els_eulerian * 4 == els_eulerian_decomp

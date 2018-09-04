@@ -5,21 +5,20 @@ from __future__ import print_function
 from future.builtins import *
 
 import os
-# import re
 import shelve
-from collections import OrderedDict
+from collections import defaultdict
 
-from pandas import Series, DataFrame, Index
-# from pandas import concat
+from pandas import Series, DataFrame, Index, MultiIndex
 
-from . import plot as plt
-from .plot import style as defstyle
-from .plot import compose_styles
-from . import io
-
-import bokeh.plotting as bk
+from .io import FPNUMBER, import_foam_folder, import_logs
 
 import numpy as np
+
+try:
+    from Salvia import Gnuplot
+except:
+    Gnuplot = None
+    print("No Salvia installation found")
 
 # Series.__repr__ = (lambda x: ("Hash: {}\nTimes: {}\nLoc: {}\nValues: {}".format(
 #                     io.hash_series(x),
@@ -28,14 +27,20 @@ import numpy as np
 #                     x.values))) #TODO monkey patch to use hashes
 Database = False
 
+latestTime = slice(-1, None)
+allTimes = slice(0, None)
+
 if Database:
     case_data_base = shelve.open(os.path.expanduser('~') + "/.owls/db")
 else:
     case_data_base = dict()
 
+rcParams = {
+        "plotWrapper": Gnuplot
+        }
 
 def read_sets(folder, name="None",
-              search=io.FPNUMBER,
+              search=FPNUMBER,
               **kwargs):
     def setsfolder(folder):
         p = os.path.join(folder, "postProcessing")
@@ -51,7 +56,7 @@ def read_sets(folder, name="None",
 def read_lag(folder, files, skiplines=1,
              name="None", cloud="[A-Za-z]*Cloud1",
              preHooks=None, decomposed=False, **kwargs):
-    search = io.FPNUMBER + "/lagrangian/" + cloud
+    search = FPNUMBER + "/lagrangian/" + cloud
     search = (search if not decomposed else "processor[0-9]?/" + search)
     return FoamFrame(folder=folder, search_files=files,
                      search_pattern=search, name=name,
@@ -61,7 +66,7 @@ def read_lag(folder, files, skiplines=1,
 
 def read_eul(folder, files, skiplines=1, name="None",
              decomposed=False, preHooks=None, **kwargs):
-    search = io.FPNUMBER
+    search = FPNUMBER
     search = (search if not decomposed else "processor[0-9]?/" + search)
     return FoamFrame(folder=folder, search_files=files,
                      search_pattern=search, name=name,
@@ -76,12 +81,12 @@ def read_exp(folder, name="None", search="", **kwargs):
 
 
 def read_log(folder, keys, log_name='log', plot_properties=False, name="None"):
-    origins, df = io.import_logs(folder, log_name, keys)
+    origins, df = import_logs(folder, log_name, keys)
     ff = FoamFrame(df)
     ff.properties = Props(
         origins=origins, name=folder,
         plot_properties=plot_properties,
-        folder=folder, times=[0], symb="-",
+        folder=folder, symb="-",
         show_func="plot")
     return ff
 
@@ -94,7 +99,6 @@ isNotIn = lambda x: lambda y: x not in y
 class PlotProperties():
 
     def __init__(self):
-        from collections import defaultdict
         self.properties = defaultdict(dict)
 
     def insert(self, field, properties):
@@ -176,13 +180,13 @@ class FoamFrame(DataFrame):
     def __init__(self, *args, **kwargs):
 
         skip = kwargs.get('skiplines', 1)
-        times = kwargs.get('skiptimes', 1)
+        times = kwargs.get('readtime', slice(0, None))
         name = kwargs.get('name', 'None')
         symb = kwargs.get('symb', 'o')
         files = kwargs.get('search_files', None)
         properties = kwargs.get('properties', None)
         lines = kwargs.get('maxlines', 0)
-        search = kwargs.get('search_pattern', io.FPNUMBER)
+        search = kwargs.get('search_pattern', FPNUMBER)
         folder = kwargs.get('folder', None)
         plot_properties = kwargs.get('plot_properties', PlotProperties())
         show_func = kwargs.get('show_func', None)
@@ -194,7 +198,7 @@ class FoamFrame(DataFrame):
         times_slice = times_range
 
         keys = ['skiplines',
-                'skiptimes',
+                'readtime',
                 'preHooks',
                 'name',
                 'symb',
@@ -227,7 +231,7 @@ class FoamFrame(DataFrame):
             else:
                 print("importing", end=" ")
             print(name + ": ", end="")
-            origins, data = io.import_foam_folder(
+            origins, data = import_foam_folder(
                 path=folder,
                 search=search,
                 files=files,
@@ -239,8 +243,8 @@ class FoamFrame(DataFrame):
                 )
             try:
                 DataFrame.__init__(self, data)
-            except:
-                pass
+            except Exception as e:
+                print(e)
             self.properties = Props(
                 origins,
                 name,
@@ -333,8 +337,19 @@ class FoamFrame(DataFrame):
 
         """
         pP = (PlotProperties() if not plot_properties else plot_properties)
-        ff = FoamFrame(input_dict, folder=None)
+        elems = len(input_dict[list(input_dict.keys())[0]])
+        zeros = [0 for _ in range(elems)]
+        pos = (input_dict[("Pos")] if input_dict.get(("Pos"),False) else zeros)
+        nums = list(range(elems))
+        if input_dict.get("Pos"):
+                input_dict.pop("Pos")
+        mi = MultiIndex(
+                levels=[zeros, zeros, pos],
+                labels=[nums, nums, nums],
+                names=['Time', 'Loc', 'Pos'])
+        ff = FoamFrame(DataFrame(input_dict, index=mi), folder=None)
         ff.properties = Props("raw", name, pP, "", symb, show_func)
+        ff.index = mi
         return ff
 
     # ----------------------------------------------------------------------
@@ -384,6 +399,21 @@ class FoamFrame(DataFrame):
     def latest_time(self):
         """ return value of latest time step """
         return max(self.index.levels[0])
+
+    @property
+    def earliest_time(self):
+        """ return value of latest time step """
+        return min(self.index.levels[0])
+
+    def after(self, time):
+        return self.filter("Time", index=lambda x: x > time)
+
+    def at_time(self, time):
+        """ return latest time for case """
+        ret = self.query('Time == {}'.format(time))
+        ret.properties = self.properties
+        return ret
+
 
     def at(self, idx_name, idx_val):
         """ select from foamframe based on index name and value"""
@@ -447,160 +477,124 @@ class FoamFrame(DataFrame):
     # ----------------------------------------------------------------------
     # Plotting methods
 
-    def draw(self, x, y, z, title, func, figure, legend_prefix="", titles=None, **kwargs):
-        # TODO Rename to _draw
-        def _label(axis, field):
-            label = kwargs.get(axis + '_label', False)
-            if label:
-                self.properties.plot_properties.insert(
-                    field, {axis + '_label': label})
-            else:
-                label = self.properties.plot_properties.select(
-                    field, axis + '_label', "None")
-            return label
+    def draw(self, x, y, z, title, func, figure, data=None,
+            legend_prefix="", titles=None, **kwargs):
+        data = (data if isinstance(data, DataFrame) else self)
+        return rcParams["plotWrapper"].draw(
+                    x=x, y=y, z=z, data=data, title=title,
+                    func=func, figure=figure,
+                    legend_prefix="", titles=None,
+                    properties=self.properties, **kwargs)
 
-        def _range(axis, field):
-            from bokeh.models import Range1d
-            p_range_args = kwargs.get(axis + '_range', False)
-            if p_range_args:
-                self.properties.plot_properties.insert(
-                    field, {axis + '_range': p_range})
-            else:
-                p_range = self.properties.plot_properties.select(
-                    field, axis + '_range')
-            if not p_range:
-                return False
-            else:
-                return Range1d(start=p_range[0], end=p_range[1])
+    def histo_data(self, y, weights, bins):
+        return np.histogram(
+                y, density=True, weights=weights,
+                bins=bins)
 
-        figure_properties = {"title": title}
+    def histogram(self, y, x=None, title="", figure=False, weights=False, **kwargs):
+        figure = (figure if figure else rcParams["plotWrapper"].GnuplotFigure())
+        if weights:
+            weights = self[weights]
+        hist, edges = self.histo_data(self[y], weights, kwargs.get("bins", 50))
 
-        if kwargs.get('x_range', False):
-            figure_properties.update({"x_range": kwargs.get('x_range')})
-        figure.set(**figure_properties)
+        centres = [(edges[i] + edges[i+1])*0.5 for i in range(len(edges)-1)]
+        df = DataFrame({'centres': centres, 'hist': hist})
 
-        if func == "quad":
-            getattr(figure, func)(top=y, bottom=0, left=x[:-1], right=x[1:],
-                                  **kwargs)
-            return figure
+        return self.draw(x='centres', y='hist', z=None,
+                data=df, title=title, func="quad", figure=figure, **kwargs)
 
-        colors = plt.next_color()
-        spec_color = kwargs.get("color", False)
-        spec_legend = kwargs.get("legend", False)
-        y = (y if isinstance(y, list) else [y])
-        for yi in y:
-            x_data, y_data = self[x], self[yi]
-            # TODO FIXME
-            for k in ['symbols', 'order', 'colors', 'symbol']:
-                if k in kwargs.keys():
-                    kwargs.pop(k)
-            if not spec_color:
-                kwargs.update({"color": next(colors)})
-            if not spec_legend:
-                # NOTE title overrides legend, does that make sense always?
-                yi = (yi if not title else "")
-                if yi and legend_prefix:
-                    legend = legend_prefix + "-" + yi
-                if not yi and legend_prefix:
-                    legend = legend_prefix
-                if not legend_prefix:
-                    legend = yi
+    def cdf(self, y, x=None, title="", figure=False, weights=False, **kwargs):
+        a, b = np.histogram(self[y], weights=self[weights], bins=20, normed=True)
+        dx = b[1]-b[0]
+        cdf = np.cumsum(a)*dx
+        df = DataFrame({'centres': b[1:], 'hist': cdf})
 
-                kwargs.update({"legend": legend})
+        return self.draw(x='centres', y='hist', z=None,
+                data=df, title=title, func="line", figure=figure, **kwargs)
 
-            getattr(figure, func)(x=x_data,
-                                  y=y_data,
-                                  **kwargs)
-
-        for ax, data in {'x': x, 'y': y[0]}.items():
-            if _label(ax, data):
-                getattr(figure, ax+'axis')[0].axis_label = _label(ax, data)
-            # setattr(getattr(figure, ax + 'axis'),
-            #         'axis_label', _label(ax, data))
-            if _range(ax, data):
-                r = setattr(figure, ax+'_range', _range(ax, data))
-        return figure
-
-    def histogram(self, y, x=None, title="", figure=False, **kwargs):
-        figure = (figure if figure else plt.figure())
-        import numpy as np
-        hist, edges = np.histogram(self[y], density=True, bins=50)
-
-        return self.draw(x=edges, y=hist, z=None, title=title, func="quad", figure=figure, **kwargs)
-
-    def scatter(self, y, x='Pos', z=False, title="", figure=False, **kwargs):
-        figure = (figure if figure else plt.figure())
+    def scatter(self, y, x='Pos', z=None, title="", figure=False, **kwargs):
+        figure = (figure if figure else rcParams["plotWrapper"].GnuplotFigure())
         return self.draw(x, y, z, title, func="scatter", figure=figure, **kwargs)
 
-    def plot(self, y, x='Pos', z=False, title="", figure=False, **kwargs):
-        figure = (figure if figure else plt.figure())
+    def plot(self, y, x='Pos', z=None, title="", figure=False, **kwargs):
+        figure = (figure if figure else rcParams["plotWrapper"].GnuplotFigure())
         if kwargs.get('symbol', None):
             kwargs.pop('symbol')
         return self.draw(x, y, z, title, func="line", figure=figure, **kwargs)
 
 
     def show(self, y, x="Pos", figure=False,
-             overlay="Field", style=defstyle,
+             overlay="Field", style=None,
              legend_prefix="", post_pone_style=False,
              row=None, titles=None, **kwargs):
-        style = (compose_styles(style, []) if isinstance(style, list) else style)
+
         if kwargs.get("props", False):
             props = kwargs.pop("props")
             self.properties.plot_properties.set(props)
 
-        def create_figure(y_, f, title=""):
+        def create_figure(y_, f, title="", legend=""):
+
+            # TODO use plot wrapper class here
             if kwargs.get("title"):
                 title = kwargs.get("title")
                 kwargs.pop("title")
-            return getattr(self, self.properties.show_func)(y=y_, x=x, figure=f, legend_prefix=legend_prefix, title=title, **kwargs)
+            return getattr(self, self.properties.show_func)(
+                            y=y_, x=x, figure=f,
+                            legend_prefix=legend_prefix+legend,
+                            title=title, **kwargs)
 
         def create_figure_row(y, arow=None):
-            arow = (arow if arow else OrderedDict())
+
+            # TODO let arow be an empty mutliplot
+            if not arow:
+                fn = kwargs.get("filename")
+                arow = rcParams["plotWrapper"].GnuplotMultiplot([], filename=fn)
+
             if not self.grouped:
                 y = (y if isinstance(y, list) else [y])
                 if overlay == "Field":
+
                     # SINGLE FIGURE MUTLIPLE FIELDS
-                    fig_id, f = (figure if figure else ("".join(y), plt.figure()))
+                    ids = "".join(y)
+                    fig_id, f = (figure if figure else (ids, arow.get(ids)))
                     for yi in y:
-                        create_figure(y, f)
+                        create_figure(yi, f)
                     arow[fig_id] = f
+
                 if not overlay:
+
                     # MULTIPLE FIGURES
                     # test if figure with same id already exists
                     # so that we can plot into it
                     # otherwise create a new figure
                     for i, yi in enumerate(y):
                         title = ("" if not titles else titles[i])
-                        fig_id, f = ((yi, arow[yi])
-                                     if arow.get(yi, False)
-                                     else (yi, plt.figure(title=title)))
-                        arow[fig_id] = create_figure(yi, f, title=title)
+                        f = arow.get(yi)
+                        arow[yi] = create_figure(yi, f, title=title)
+
             if self.grouped:
                 groups = list(set(self["Group"]) if self["Group"] else set())
                 groups.sort()
                 if overlay == "Group":
                     # ALIGN ALONG GROUPS
                     # for every yi a new figure is needed
-                    #arow = (arow if arow else OrderedDict())
                     for yi in y:
-                        fig_id, f = ((yi, arow[yi])
-                                if arow.get(yi, False)
-                                else (yi, plt.figure()))
-                        colors = plt.next_color()
-                        for name in groups:
-                            color = next(colors)
-                            arow[yi] = self.at("Group", name).show(
-                                    x=x, y=yi, title=yi, figure=(fig_id, f),
-                                    post_pone_style=True, overlay="Field",
-                                    color=color, legend_prefix=legend_prefix,
-                                    legend=str(name),
+
+                        f = arow.get(yi)
+
+                        for group in groups:
+                            arow[yi] = self.at("Group", group).show(
+                                    x=x, y=yi, title=yi, figure=(yi, f),
+                                    overlay="Field",
+                                    legend_prefix=legend_prefix,
+                                    legend=str(group),
                                     **kwargs)[yi]
+
                 if overlay == "Field":
-                    # row = (arow if arow else OrderedDict())
                     for group in groups:
-                        fig_id, f = ((group, arow[group])
-                                     if arow.get(group, False)
-                                     else (group, plt.figure()))
+
+                        f = arow.get(group)
+
                         field = self.at("Group", group)
                         arow[group] = field.show(x=x, y=y, title=str(group),
                                                  figure=(group, f), overlay="Field",
@@ -610,11 +604,7 @@ class FoamFrame(DataFrame):
             return arow
 
         fig_row = create_figure_row(y, row)
-        return (fig_row
-                if post_pone_style
-                else bk.GridPlot(children=style(rows=[list(fig_row.values())]))
-               )
-
+        return fig_row
 
     def show_func(self, value):
         """ set the default plot style
@@ -697,3 +687,62 @@ class FoamFrame(DataFrame):
         ret.set_index("Group", append=True, inplace=True)
         ret.reorder_levels(['Time', 'Loc', 'Pos', 'Group'])
         return ret
+
+    # ----------------------------------------------------------------------
+    # Compute methods
+
+    def rolling_mean(self, y, x="Pos", n=10, weight=False):
+        """ compute a rolling mean, returns a Series """
+
+        lower = min(self[x])
+        upper = max(self[x])
+        delta = (upper-lower)/n
+
+        bds = [(lower + i*delta, lower + (i+1)*delta)
+                for i in range(n)]
+
+        bins = {y:[
+                self.filter(name=x, field=lambda x:  (l < x < u))[y].mean()
+                for (l,u) in bds]}
+
+        bins.update({x: [(l+u)/2.0 for (l,u) in bds]})
+
+        return self.from_dict(bins,
+                name="rl" + self.properties.name,
+                plot_properties=self.properties.plot_properties,
+                show_func="plot")
+
+    def weighted_rolling_mean(self, y, x="Pos", n=10, weight=False):
+        """ compute a rolling mean, returns a Series """
+
+        lower = min(self[x])
+        upper = max(self[x])
+        delta = (upper-lower)/n
+
+        bds = [(lower + i*delta, lower + (i+1)*delta)
+                for i in range(n)]
+
+        bins = {y: [
+                np.average(
+                    a=self.filter(name=x, field=lambda x:  (l < x < u))[y],
+                    weights=self.filter(name=x, field=lambda x:  (l < x < u))[weight])
+                for (l, u) in bds]}
+
+        bins.update({x: [(l+u)/2.0 for (l,u) in bds]})
+
+        return self.from_dict(bins,
+                name="rl" + self.properties.name,
+                plot_properties=self.properties.plot_properties,
+                show_func="plot")
+
+    def time_average(self, suffix="Avg", time_start=0.0):
+        """ compute time average of fields """
+        fs = self.after(time_start)
+        ret = fs.mean(level=["Loc", "Pos"])
+        latest = fs.latest
+        ret.index = latest.index
+        for c in self.columns:
+            latest[c+suffix] = ret[c]
+        return latest
+
+

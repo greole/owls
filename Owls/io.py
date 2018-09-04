@@ -1,4 +1,3 @@
-#!/usr/bin/ipython
 '''
 Reads and converts OpenFoam logfiles and data
 to Pandas DataFrames and Series
@@ -19,8 +18,12 @@ import hashlib
 from pandas import DataFrame, concat
 from collections import defaultdict, OrderedDict
 from IPython.display import display, clear_output
+import multiprocessing
 
 FPNUMBER = "[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?"
+
+HASH_RESULTS = False # saves approx 30%
+MULTIPROCESS = 0
 
 FOAM_HEADER = """
 /*--------------------------------*- C++ -*----------------------------------*\\
@@ -99,12 +102,16 @@ def find_datafolders(regex, path=False, exclude=None, slice_=None):
 
     folders = [_ for _ in folders if re.match(complete_regex, _)]
     folders.sort()
+
+    # TODO This legacy slicing should be removed
+    # and replaced by folders[slice_]
     # if slice_ == "all":
     #     return folders
     if slice_ == "latest":
         return folders[-1]
     else:
         return folders
+
     # FIXME raise Exception
     # return (folders if not slice_ else folders(slice_))
 
@@ -179,7 +186,6 @@ class Origins():
                     }
               }
     """
-    from collections import defaultdict
     def __init__(self):
        self.dct = defaultdict(dict)
 
@@ -309,7 +315,7 @@ def import_foam_folder(
         files,
         skiplines=1,
         maxlines=0,
-        skiptimes=1,
+        skiptimes=slice(0,None),
         exclude=None,
         times_slice=None,
         ):
@@ -327,14 +333,25 @@ def import_foam_folder(
     #df.index = MultiIndex.from_tuples(zip([],[]),names=['Loc',0])
     from collections import defaultdict
     origins = Origins()
-    els = list(fileList.items())[::skiptimes]
+    els = list(fileList.items())[skiptimes]
     for fullpath, files in els:
         time = strip_time(fullpath, path)
         df_tmp = DataFrame()
-        for fn in files:
-            #ret = read_table(StringIO.StringIO(foam_to_csv(fn)))
-            ret = read_data_file(fn, skiplines, maxlines)
-            p_bar.next()
+
+        # for fn in files:
+        #     #ret = read_table(StringIO.StringIO(foam_to_csv(fn)))
+        #     ret = read_data_file(fn, skiplines, maxlines)
+        #     p_bar.next()
+
+        args = [(fn, skiplines, maxlines, p_bar) for fn in files]
+        if MULTIPROCESS:
+            with multiprocessing.Pool(processes=MULTIPROCESS) as pool:
+                rets = pool.map(read_data_file_args, args)
+        else:
+            rets = map(read_data_file_args, args)
+
+
+        for fn, ret in zip(files, rets):
             if not ret or ret[1].empty:
                 continue
             field_names, x, hashes = ret
@@ -409,7 +426,10 @@ def read_boundary_names(fn):
             else:
                 pass
 
-def read_data_file(fn, skiplines=1, maxlines=False):
+def read_data_file_args(a):
+    return read_data_file(a[0], skiplines=a[1], maxlines=a[2], p_bar=a[3])
+
+def read_data_file(fn, skiplines=1, maxlines=False, p_bar=None):
     """  A function to read any foam data files returning data and
          index after header
     """
@@ -430,6 +450,8 @@ def read_data_file(fn, skiplines=1, maxlines=False):
             end = start + num_entries
             # FIXME this fails for eulerian/lagrangian vector fields
             # since no positional entry is produced
+            if isinstance(p_bar, ProgressBar):
+                p_bar.next()
             if is_a_vector:
                 data = list(map(lambda x: re.sub("[0-9]*\(|\)", '', x).split(),
                             content[start:end:skiplines]))
@@ -463,7 +485,10 @@ def read_data_file(fn, skiplines=1, maxlines=False):
                 df.set_index('Loc', append=True, inplace=True)
                 df.index.names=['Pos', 'Loc']
                 df = df.reorder_levels(['Loc', 'Pos'])
-                hashes = {field: int(hashlib.md5(str(data).encode('utf-8')).hexdigest(),16)}
+                if HASH_RESULTS:
+                    hashes = {field: int(hashlib.md5(str(data).encode('utf-8')).hexdigest(),16)}
+                else:
+                    hashes = {field: 0}
                 return field, df, hashes
     except Exception as e:
         if DEBUG:
@@ -475,7 +500,11 @@ def hash_series(series):
     d = series.values
     d.flags.writeable = False #TODO needed?
     s = str(list(d)).encode('utf-8')
-    return int(hashlib.md5(s).hexdigest(),16) #NOT
+    if HASH_RESULTS:
+        return int(hashlib.md5(s).hexdigest(),16) #NOT
+    else:
+        return 0
+
 
 
 def evaluate_names(fullfilename, num_entries):
@@ -501,7 +530,7 @@ def evaluate_names(fullfilename, num_entries):
             fields[0] = "Pos"
         return pos, fields
     else:
-        return "Unknown", [filename + '_' + str(i) for i in range(num_entries)]
+        return "Field", [filename + '_' + str(i) for i in range(num_entries)]
 
 
 def req_file(file_name, requested):

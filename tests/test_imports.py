@@ -11,16 +11,16 @@ def test_imports():
     from Owls import plot
 
 
-def test_importFoamFolder():
-    from Owls import io
-    path = exec_path + "/examples/buoyantCavity/"
-    euls =  io.import_foam_folder(
-        path=path,
-        search=io.FPNUMBER,
-        files=['T','U'],
-    )
-    sets =  io.import_foam_folder(
-        path=path,
-        search="sets/" + io.FPNUMBER,
-        files=False,
-    )
+# def test_importFoamFolder():
+#     from Owls import io
+#     path = exec_path + "/examples/buoyantCavity/"
+#     euls =  io.import_foam_folder(
+#         path=path,
+#         search=io.FPNUMBER,
+#         files=['T','U'],
+#     )
+#     sets =  io.import_foam_folder(
+#         path=path,
+#         search="sets/" + io.FPNUMBER,
+#         files=False,
+#     )
