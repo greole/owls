@@ -541,7 +541,7 @@ def req_file(file_name, requested):
         return file_name.split('/')[-1] in requested
 
 
-def import_logs(folder, search, keys):
+def import_logs(folder, search, keys, time_key="^Time = "):
     """
         keys = {"ExectionTime": ["ExecTime", "ClockTime"]}
 
@@ -552,9 +552,8 @@ def import_logs(folder, search, keys):
 
                     0.2
                 2
-
-
     """
+
     def find_start(log):
         """ Fast forward through file till 'Starting time loop' """
         for i, line in enumerate(log):
@@ -572,14 +571,14 @@ def import_logs(folder, search, keys):
             if re.search(key, line):
                 return col_names, list(
                         map(float,filter(lambda x:
-                        x, re.findall("[0-9]+[.]?[0-9]*[e]?[\-]?[0-9]*", line))))
+                        x, re.findall("[0-9\-]+[.]?[0-9]*[e]?[\-\+]?[0-9]*", line))))
         return None, None
 
     fold, dirs, files = next(os.walk(folder))
     logs = [fold + "/" + log for log in files if search in log]
     p_bar = ProgressBar(n_tot = len(logs))
     # Lets make sure that we find Timesteps in the log
-    keys.update({"^Time = ": ['Time']})
+    keys.update({time_key: ['Time']})
 
     for log_number, log_name in enumerate(logs):
         with open(log_name, encoding="utf-8") as log:
@@ -615,7 +614,7 @@ def import_logs(folder, search, keys):
             print("failed to process")
             print(e)
             return {}, None
-    return {}, DataFrame()
+    return {}, df #DataFrame()
 
 
 
