@@ -28,9 +28,10 @@ with open(version_py, 'w') as fh:
 packages = [
     'future',
     'numpy',
-    'pandas==0.17.1',
+    'pandas',
     'functional',
-    'Salvia'
+    'Salvia',
+    'fmpl'
     # 'bokeh==0.10.0',
     ]
 
