@@ -31,8 +31,6 @@ packages = [
     'pandas',
     'functional',
     'Salvia',
-    'fmpl'
-    # 'bokeh==0.10.0',
     ]
 
 if '--with-matplotlib' in sys.argv:
