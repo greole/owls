@@ -40,12 +40,13 @@ rcParams = {
         }
 
 def read_sets(folder, name="None",
+              sets_name="sets",
               search=FPNUMBER,
               **kwargs):
     def setsfolder(folder):
         p = os.path.join(folder, "postProcessing")
-        return (os.path.join(p, "sets") if os.path.exists(p)
-                else os.path.join(folder, "sets"))
+        return (os.path.join(p, sets_name) if os.path.exists(p)
+                else os.path.join(folder, sets_name))
 
     return FoamFrame(folder=setsfolder(folder), search_files=False,
                      search_pattern=search, name=name,
