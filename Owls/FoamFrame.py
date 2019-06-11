@@ -80,9 +80,10 @@ def read_exp(folder, name="None", search="", **kwargs):
                      show_func="scatter", **kwargs)
 
 
-def read_log(folder, keys, log_name='log', plot_properties=False, name="None"):
-    origins, df = import_logs(folder, log_name, keys)
+def read_log(folder, keys, log_name='log', plot_properties=False, name="None", **kwargs):
+    origins, df = import_logs(folder, log_name, keys, **kwargs)
     ff = FoamFrame(df)
+    plot_properties = plot_properties if plot_properties else PlotProperties()
     ff.properties = Props(
         origins=origins, name=folder,
         plot_properties=plot_properties,
