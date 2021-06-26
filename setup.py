@@ -44,7 +44,6 @@ config = {
     'version': version_git,
     'packages': [package_name],
     'install_requires': packages,
-    'data_files': [('scripts', ['scripts/snap.py'])],
     'name': package_name,
     'zip_safe': False
 }
