@@ -2,4 +2,3 @@ future
 numpy
 pandas
 functional
-Salvia
