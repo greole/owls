@@ -60,14 +60,14 @@ class Bokeh():
             p_range_args = kwargs.get(axis + '_range', False)
             if p_range_args:
                 properties.plot_properties.insert(
-                    field, {axis + '_range': p_range})
+                    field, {axis + '_range': p_range_args})
             else:
                 p_range = properties.plot_properties.select(
                     field, axis + '_range')
-            if not p_range:
+            if not p_range_args:
                 return False
             else:
-                return Range1d(start=p_range[0], end=p_range[1])
+                return Range1d(start=p_range_args[0], end=p_range_args[1])
 
         figure_properties = {"title": title}
 
