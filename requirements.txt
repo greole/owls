@@ -1,3 +1,4 @@
+ipython
 future
 numpy
 pandas
