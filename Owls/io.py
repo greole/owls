@@ -263,20 +263,22 @@ class Origins:
 class ProgressBar:
     """ A class providing progress bars """
 
-    def __init__(self, n_tot, bins=10):
+    def __init__(self, n_tot, bins=10, active=False):
         # FEATURE: Add timings
         self.tot = float(n_tot)
         self.count = 0.0
         self.cur = 0.0
+        self.active = active
 
     def next(self):
         self.count += 1.0
-        if self.count / self.tot > self.cur:
+        if self.count / self.tot > self.cur and self.active:
             print("#", end="")
             self.cur += 0.1
 
     def done(self):
-        print("[done]")
+        if self.active:
+            print("[done]")
 
 
 def strip_time(path, base):
@@ -332,6 +334,7 @@ def import_foam_folder(
     skiptimes=slice(0, None),
     exclude=None,
     times_slice=None,
+    progressbar=False,
 ):
     """ returns a Dataframe for every file in fileList """
     # import StringIO
@@ -341,7 +344,7 @@ def import_foam_folder(
     if not fileList:
         print("no files found")
         return None, DataFrame()
-    p_bar = ProgressBar(n_tot=sum([len(l) for l in fileList.values()]))
+    p_bar = ProgressBar(n_tot=sum([len(l) for l in fileList.values()]), active=progressbar)
     df = DataFrame()
     # df.index = MultiIndex.from_tuples(zip([],[]),names=['Loc',0])
     from collections import defaultdict
@@ -577,7 +580,7 @@ def req_file(file_name, requested):
         return file_name.split("/")[-1] in requested
 
 
-def import_logs(folder, search, keys, time_key="^Time = "):
+def import_logs(folder, search, keys, time_key="^Time = ", progressbar=False):
     """
     keys = {"ExectionTime": ["ExecTime", "ClockTime"]}
 
@@ -618,7 +621,7 @@ def import_logs(folder, search, keys, time_key="^Time = "):
 
     fold, dirs, files = next(os.walk(folder))
     logs = [fold + "/" + log for log in files if search in log]
-    p_bar = ProgressBar(n_tot=len(logs))
+    p_bar = ProgressBar(n_tot=len(logs), active=progressbar)
     # Lets make sure that we find Timesteps in the log
     keys.update({time_key: ["Time"]})
 

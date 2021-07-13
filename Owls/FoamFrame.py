@@ -243,6 +243,7 @@ class FoamFrame(DataFrame):
         exclude = kwargs.get("exclude", [" "])  # FIXME
         times_stride = kwargs.get("times_stride", 1)
         times_range = kwargs.get("times_range", "all")  # FIXME implement strides
+        progressbar = kwargs.get("progressbar", False)
         times_slice = times_range
 
         keys = [
@@ -289,6 +290,7 @@ class FoamFrame(DataFrame):
                 skiptimes=times,
                 exclude=exclude,
                 times_slice=times_slice,
+                progressbar=progressbar,
             )
             try:
                 DataFrame.__init__(self, data)
