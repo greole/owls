@@ -608,7 +608,7 @@ def import_logs(folder, search, keys, time_key="^Time = ", progressbar=False):
 
         for key, col_names in keys.items():
             if re.search(key, line):
-                return col_names, list(
+                return key, col_names, list(
                     map(
                         float,
                         filter(
@@ -617,7 +617,7 @@ def import_logs(folder, search, keys, time_key="^Time = ", progressbar=False):
                         ),
                     )
                 )
-        return None, None
+        return None, None, None
 
     fold, dirs, files = next(os.walk(folder))
     logs = [fold + "/" + log for log in files if search in log]
@@ -632,8 +632,8 @@ def import_logs(folder, search, keys, time_key="^Time = ", progressbar=False):
             dataDict = defaultdict(list)
             df = DataFrame()
             for line in f[start:-1]:
-                col_names, values = extract(line, keys)
-                if not col_names:
+                key, col_names, values = extract(line, keys)
+                if not col_names or not values:
                     continue
                 if col_names[0] == "Time":
                     # a new time step has begun
@@ -647,6 +647,7 @@ def import_logs(folder, search, keys, time_key="^Time = ", progressbar=False):
                     for i, col in enumerate(col_names):
                         dataDict["Time"] = time
                         dataDict[col].append(values[i])
+                    dataDict["Key"].append(key)
         p_bar.next()
         try:
             df.index = range(len(df))
@@ -654,11 +655,11 @@ def import_logs(folder, search, keys, time_key="^Time = ", progressbar=False):
             df["Loc"] = log_number
             df.set_index("Time", append=True, inplace=True)
             df.set_index("Loc", append=True, inplace=True)
-            df = df.reorder_levels(["Loc", "Time", "Id"])
+            df.set_index("Key", append=True, inplace=True)
+            df = df.reorder_levels(["Loc", "Time","Key", "Id"])
             p_bar.done()
         except Exception as e:
-            print(log_name)
-            print("failed to process")
+            print("Owls/io.py:661 failed to process", log_name)
             print(e)
             return {}, None
     return {}, df  # DataFrame()
