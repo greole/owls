@@ -30,7 +30,6 @@ packages = [
     'numpy',
     'pandas',
     'functional',
-    'Salvia',
     ]
 
 if '--with-matplotlib' in sys.argv:
