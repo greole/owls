@@ -52,7 +52,7 @@ DEBUG = True
 
 ####################### helper functions ################################
 def match(d, event):
-    """ returns d.item if reg_exp_key matches event """
+    """returns d.item if reg_exp_key matches event"""
     for reg_exp_key in d.keys():
         if re.match(reg_exp_key, event):
             return d[reg_exp_key]
@@ -154,7 +154,7 @@ def find_times(fold=None):
 
 
 def dataframe_to_foam(fullname, ftype, dataframe, boundaries):
-    """ writes an OpenFOAM field file from given dataframe """
+    """writes an OpenFOAM field file from given dataframe"""
     with open(fullname, "w", encoding="utf-8") as f:
         fname = fullname.split("/")[-1]
         time = fullname.split("/")[-2]
@@ -229,7 +229,7 @@ class Origins:
         )
 
     def hashes(self):
-        """ generator """
+        """generator"""
         # self.update_hashes()
         for time_key, time in self.dct.iteritems():
             if time_key == "hash":
@@ -261,7 +261,7 @@ class Origins:
 
 
 class ProgressBar:
-    """ A class providing progress bars """
+    """A class providing progress bars"""
 
     def __init__(self, n_tot, bins=10, active=False):
         # FEATURE: Add timings
@@ -282,7 +282,7 @@ class ProgressBar:
 
 
 def strip_time(path, base):
-    """ try to extract time from path """
+    """try to extract time from path"""
     wo_base = path.replace(base, "")
     wo_proc = re.sub("processor[0-9]?", "", wo_base)
     match = re.search(FPNUMBER, wo_proc)
@@ -294,7 +294,7 @@ def strip_time(path, base):
 
 
 def import_foam_mesh(path, exclude=None, times_slice=None):
-    """ returns a Dataframe containing the raw mesh data """
+    """returns a Dataframe containing the raw mesh data"""
     mesh_loc = "constant/polyMesh"
     if mesh_loc not in path:
         path = os.path.join(path, mesh_loc)
@@ -336,7 +336,7 @@ def import_foam_folder(
     times_slice=None,
     progressbar=False,
 ):
-    """ returns a Dataframe for every file in fileList """
+    """returns a Dataframe for every file in fileList"""
     # import StringIO
     fileList = find_datafiles(
         path, search=search, files=files, exclude=exclude, times_slice=times_slice
@@ -344,7 +344,9 @@ def import_foam_folder(
     if not fileList:
         print("no files found")
         return None, DataFrame()
-    p_bar = ProgressBar(n_tot=sum([len(l) for l in fileList.values()]), active=progressbar)
+    p_bar = ProgressBar(
+        n_tot=sum([len(l) for l in fileList.values()]), active=progressbar
+    )
     df = DataFrame()
     # df.index = MultiIndex.from_tuples(zip([],[]),names=['Loc',0])
     from collections import defaultdict
@@ -438,7 +440,7 @@ def foam_to_csv(
 
 
 def read_boundary_names(fn):
-    """ Todo use iterator method to avoid reading complete file """
+    """Todo use iterator method to avoid reading complete file"""
     with open(fn, encoding="utf-8") as f:
         boundary_names = []
         lines = reversed(f.readlines())
@@ -573,11 +575,73 @@ def evaluate_names(fullfilename, num_entries):
 
 
 def req_file(file_name, requested):
-    """ True if file name is list of requested files """
+    """True if file name is list of requested files"""
     if requested == True:
         return requested
     else:
         return file_name.split("/")[-1] in requested
+
+
+def import_log_from_str(log_str, keys, time_key="^Time = "):
+    def find_start(log):
+        """Fast forward through file till 'Starting time loop'"""
+        for i, line in enumerate(log):
+            if "Starting time loop" in line:
+                return i
+
+    def extract(line, keys):
+        """
+        returns key and values as list
+            "ExecutionTime":[0,1]
+        """
+        import re
+
+        for key, col_names in keys.items():
+            if re.search(key, line):
+                return (
+                    key,
+                    col_names,
+                    list(
+                        map(
+                            float,
+                            filter(
+                                lambda x: x,
+                                re.findall("[0-9\-]+[.]?[0-9]*[e]?[\-\+]?[0-9]*", line),
+                            ),
+                        )
+                    ),
+                )
+        return None, None, None
+
+    keys.update({time_key: ["Time"]})
+    start = find_start(log_str)
+    dataDict = defaultdict(list)
+    df = DataFrame()
+    time = 0
+    for line in log_str[start:-1]:
+        key, col_names, values = extract(line, keys)
+        if line == "End":
+            next_df = DataFrame.from_dict(dataDict, orient="index").T
+            next_df["Time"] = time
+            df = concat([df, next_df])
+            dataDict = defaultdict(list)
+        if not col_names or not values or not line:
+            continue
+        if col_names[0] == "Time":
+            # a new time step has begun
+            # flush datadict and concat to df
+            # Very slow but, so far the solution
+            # to keep subiterations attached to correct time
+            next_df = DataFrame.from_dict(dataDict, orient="index").T
+            next_df["Time"] = time
+            df = concat([df, next_df])
+            dataDict = defaultdict(list)
+            time = values[0]
+        else:
+            for i, col in enumerate(col_names):
+                dataDict[col].append(values[i])
+
+    return df.set_index("Time")
 
 
 def import_logs(folder, search, keys, time_key="^Time = ", progressbar=False):
@@ -592,32 +656,6 @@ def import_logs(folder, search, keys, time_key="^Time = ", progressbar=False):
                 0.2
             2
     """
-
-    def find_start(log):
-        """ Fast forward through file till 'Starting time loop' """
-        for i, line in enumerate(log):
-            if "Starting time loop" in line:
-                return i
-
-    def extract(line, keys):
-        """
-        returns key and values as list
-            "ExecutionTime":[0,1]
-        """
-        import re
-
-        for key, col_names in keys.items():
-            if re.search(key, line):
-                return key, col_names, list(
-                    map(
-                        float,
-                        filter(
-                            lambda x: x,
-                            re.findall("[0-9\-]+[.]?[0-9]*[e]?[\-\+]?[0-9]*", line),
-                        ),
-                    )
-                )
-        return None, None, None
 
     fold, dirs, files = next(os.walk(folder))
     logs = [fold + "/" + log for log in files if search in log]
@@ -655,8 +693,8 @@ def import_logs(folder, search, keys, time_key="^Time = ", progressbar=False):
             df["Loc"] = log_number
             df.set_index("Time", append=True, inplace=True)
             df.set_index("Loc", append=True, inplace=True)
-            df.set_index("Key", append=True, inplace=True)
-            df = df.reorder_levels(["Loc", "Time","Key", "Id"])
+            # df.set_index("Key", append=True, inplace=True)
+            df = df.reorder_levels(["Loc", "Time"])
             p_bar.done()
         except Exception as e:
             print("Owls/io.py:661 failed to process", log_name)
