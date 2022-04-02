@@ -662,45 +662,13 @@ def import_logs(folder, search, keys, time_key="^Time = ", progressbar=False):
     p_bar = ProgressBar(n_tot=len(logs), active=progressbar)
     # Lets make sure that we find Timesteps in the log
     keys.update({time_key: ["Time"]})
+    df = DataFrame()
 
     for log_number, log_name in enumerate(logs):
         with open(log_name, encoding="utf-8") as log:
-            f = log.readlines()
-            start = find_start(f)
-            dataDict = defaultdict(list)
-            df = DataFrame()
-            for line in f[start:-1]:
-                key, col_names, values = extract(line, keys)
-                if not col_names or not values:
-                    continue
-                if col_names[0] == "Time":
-                    # a new time step has begun
-                    # flush datadict and concat to df
-                    # Very slow but, so far the solution
-                    # to keep subiterations attached to correct time
-                    df = concat([df, DataFrame(dataDict)])
-                    dataDict = defaultdict(list)
-                    time = values[0]
-                else:
-                    for i, col in enumerate(col_names):
-                        dataDict["Time"] = time
-                        dataDict[col].append(values[i])
-                    dataDict["Key"].append(key)
-        p_bar.next()
-        try:
-            df.index = range(len(df))
-            df.index.names = ["Id"]
-            df["Loc"] = log_number
-            df.set_index("Time", append=True, inplace=True)
-            df.set_index("Loc", append=True, inplace=True)
-            # df.set_index("Key", append=True, inplace=True)
-            df = df.reorder_levels(["Loc", "Time"])
-            p_bar.done()
-        except Exception as e:
-            print("Owls/io.py:661 failed to process", log_name)
-            print(e)
-            return {}, None
-    return {}, df  # DataFrame()
+            f = log.read()
+            df = pd.concat([df, import_log_from_str(f, keys, time_key)])
+    return df
 
 
 def if_header_skip(content):
