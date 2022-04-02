@@ -667,7 +667,7 @@ def import_logs(folder, search, keys, time_key="^Time = ", progressbar=False):
     for log_number, log_name in enumerate(logs):
         with open(log_name, encoding="utf-8") as log:
             f = log.read()
-            df = pd.concat([df, import_log_from_str(f, keys, time_key)])
+            df = concat([df, import_log_from_str(f, keys, time_key)])
     return df
 
 
