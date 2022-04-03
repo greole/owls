@@ -582,7 +582,7 @@ def req_file(file_name, requested):
         return file_name.split("/")[-1] in requested
 
 
-def import_probe_from_str(fn):
+def import_probe(fn):
     """Import an OpenFoam probe from a string with the following format
     # Probe number (x y z)
     # header
