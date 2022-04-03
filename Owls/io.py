@@ -583,7 +583,7 @@ def req_file(file_name, requested):
 
 
 def import_probe(fn):
-    """Import an OpenFoam probe from a string with the following format
+    """Import an OpenFoam probe from a given filename. The probe has the following format
     # Probe number (x y z)
     # header
     csv with spaces as delimiter
