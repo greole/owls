@@ -15,7 +15,7 @@ import numpy as np
 import re
 import os
 import hashlib
-from pandas import DataFrame, concat
+from pandas import DataFrame, concat, read_csv
 from collections import defaultdict, OrderedDict
 from IPython.display import display, clear_output
 import multiprocessing
@@ -580,6 +580,15 @@ def req_file(file_name, requested):
         return requested
     else:
         return file_name.split("/")[-1] in requested
+
+
+def import_probe_from_str(fn):
+    """Import an OpenFoam probe from a string with the following format
+    # Probe number (x y z)
+    # header
+    csv with spaces as delimiter
+    """
+    return read_csv(fn, sep=" ", comment="#")
 
 
 def import_log_from_str(log_str, keys, time_key="^Time = "):
