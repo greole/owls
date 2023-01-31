@@ -4,13 +4,14 @@ import shutil
 
 from Owls import io
 
+
 @pytest.fixture
 def create_directory_tree(tmpdir):
     def create_files(fold, files):
-       mock_data = "\n".join(["1 2", "3 4", "5 6"])
-       for f in files:
-           handle = fold.join(f)
-           handle.write(mock_data)
+        mock_data = "\n".join(["1 2", "3 4", "5 6"])
+        for f in files:
+            handle = fold.join(f)
+            handle.write(mock_data)
 
     def create_times(basedir, times):
         for time in times:
@@ -43,18 +44,19 @@ def create_directory_tree(tmpdir):
     ignored.append("sets")
     return tmpdir.dirname, folders_str, ignored, files
 
+
 def test_finddatafolders(create_directory_tree):
-    """ based on the  create_directory_tree fixture
-        a list of folder to be found and ignored is
-        passed, so we test if finds all in folders
-        and none of ignored
+    """based on the  create_directory_tree fixture
+    a list of folder to be found and ignored is
+    passed, so we test if finds all in folders
+    and none of ignored
     """
     from operator import truth
     from operator import contains
     from operator import not_
 
-
     base, folders, ignored, _ = create_directory_tree
+
     def _all(base, files, exp, negate=truth, expansion=""):
         for e in exp:
             abs_e = base + e + expansion
@@ -74,32 +76,26 @@ def test_finddatafolders(create_directory_tree):
     assert _all(fold, eulerian, ignored, negate=not_)
 
     lagrangian = io.find_datafolders(
-        regex=io.FPNUMBER + "/lagrangian/[\w]*Cloud1",
-        path=fold,
-        slice_="all"
+        regex=io.FPNUMBER + "/lagrangian/[\w]*Cloud1", path=fold, slice_="all"
     )
 
     assert _all(fold, eulerian, ignored, negate=not_)
-    assert _all(fold, lagrangian, ignored, negate=not_,
-                    expansion="/lagrangian/particleCloud1")
-
-    sets = io.find_datafolders(
-        regex= "sets/" + io.FPNUMBER,
-        path=fold,
-        slice_="all"
+    assert _all(
+        fold, lagrangian, ignored, negate=not_, expansion="/lagrangian/particleCloud1"
     )
+
+    sets = io.find_datafolders(regex="sets/" + io.FPNUMBER, path=fold, slice_="all")
 
     assert _all(fold + "sets/", sets, folders)
     assert _all(fold + "sets/", sets, ignored, negate=not_)
 
     eulerian_decomp = io.find_datafolders(
-        regex="processor[0-9]\/" + io.FPNUMBER,
-        path=fold,
-        slice_="all"
+        regex="processor[0-9]\/" + io.FPNUMBER, path=fold, slice_="all"
     )
 
+
 def test_findDataFiles(create_directory_tree):
-    """ test if all files in the times folder are found """
+    """test if all files in the times folder are found"""
     base, folders, ignored, files = create_directory_tree
     test_dir = base + "/test_findDataFiles0/"
 
@@ -113,13 +109,21 @@ def test_findDataFiles(create_directory_tree):
     els_eulerian = len(eulerian)
     _test(test_dir, folders, files, eulerian)
 
-    sets = io.find_datafiles(path=test_dir, search="sets/" + io.FPNUMBER, times_slice="all")
+    sets = io.find_datafiles(
+        path=test_dir, search="sets/" + io.FPNUMBER, times_slice="all"
+    )
     _test(test_dir + "sets/", folders, files, sets)
 
-    lagrangian = io.find_datafiles(path=test_dir, search=io.FPNUMBER + "/lagrangian/[\w]*Cloud[0-9]?", times_slice="all")
+    lagrangian = io.find_datafiles(
+        path=test_dir,
+        search=io.FPNUMBER + "/lagrangian/[\w]*Cloud[0-9]?",
+        times_slice="all",
+    )
     _test(test_dir, folders, files, lagrangian, extra="/lagrangian/particleCloud1")
 
-    eulerian_decomp = io.find_datafiles(path=test_dir, search="processor[0-9]\/" + io.FPNUMBER, times_slice="all")
+    eulerian_decomp = io.find_datafiles(
+        path=test_dir, search="processor[0-9]\/" + io.FPNUMBER, times_slice="all"
+    )
     els_eulerian_decomp = len(eulerian_decomp)
 
     assert els_eulerian * 4 == els_eulerian_decomp
