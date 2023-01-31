@@ -4,6 +4,7 @@ import pytest
 from Owls import io
 from test_findermethods import create_directory_tree
 
+
 def test_readDataFiles(create_directory_tree):
     base, folders, ignored, files = create_directory_tree
     fn = base + "/test_readDataFiles0/sets/0/T"

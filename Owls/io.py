@@ -17,7 +17,6 @@ import os
 import hashlib
 from pandas import DataFrame, concat, read_csv
 from collections import defaultdict, OrderedDict
-from IPython.display import display, clear_output
 import multiprocessing
 
 FPNUMBER = "[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?"
@@ -310,10 +309,9 @@ def import_foam_mesh(path, exclude=None, times_slice=None):
         print("no mesh files found")
         return
     p_bar = ProgressBar(n_tot=sum([len(l) for l in fileList.values()]))
-    df = DataFrame()
-    from collections import defaultdict
+    DataFrame()
 
-    origins = Origins()
+    Origins()
     els = list(fileList.items())
     time, files = els[0]
     df_tmp = dict()
@@ -349,7 +347,6 @@ def import_foam_folder(
     )
     df = DataFrame()
     # df.index = MultiIndex.from_tuples(zip([],[]),names=['Loc',0])
-    from collections import defaultdict
 
     origins = Origins()
     els = list(fileList.items())[skiptimes]
@@ -432,7 +429,7 @@ def foam_to_csv(
         with open(fn, encoding="utf-8") as f:
             content = f.readlines()
             start, num_entries = if_header_skip(content)
-            entries = len(content[start].split())
+            len(content[start].split())
             for l in content:
                 print(re.sub("\t", ",", re.sub("[\(\)\\n]", "", l)))
     except Exception as e:
