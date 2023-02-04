@@ -11,8 +11,8 @@ authors = [{name = "greole", email = "go@hpsim.de"}]
 dynamic = ["version", "description"]
 
 dependencies = [
- "pandas"
- "numpy"
+ "pandas",
+ "numpy",
  "functional"
 ]
 
