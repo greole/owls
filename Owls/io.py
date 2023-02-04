@@ -17,7 +17,6 @@ import os
 import hashlib
 from pandas import DataFrame, concat, read_csv
 from collections import defaultdict, OrderedDict
-from IPython.display import display, clear_output
 import multiprocessing
 
 FPNUMBER = "[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?"
@@ -49,6 +48,7 @@ internalField   nonuniform List<{}>
 """
 
 DEBUG = True
+
 
 ####################### helper functions ################################
 def match(d, event):
