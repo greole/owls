@@ -8,8 +8,11 @@ import pandas as pd
 
 class LogKey:
     def __init__(
-        self, search_string: str, columns: list[str], post_fix: list[str] = None
-        append_search_to_col: bool = False
+        self,
+        search_string: str,
+        columns: list[str],
+        post_fix: list[str] = None,
+        append_search_to_col: bool = False,
     ):
         self.search_string = search_string
         self.columns = columns
