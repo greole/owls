@@ -48,7 +48,9 @@ class OFList:
         """Convert a python list to a str with OF syntax"""
         key = args[0]
         values = args[1]
-        return f'{kwargs.get("indent", "")}{key} ({" ".join(map(str,values))});{kwargs.get("nl",os.linesep)}'
+        return (
+            f'{kwargs.get("indent", "")}{key} ({" ".join(map(str,values))});{kwargs.get("nl",os.linesep)}'
+        )
 
 
 class OFVariable:
@@ -104,7 +106,8 @@ class OFDimensionSet:
 
 
 class FileParser:
-    """Abstraction of OpenFOAMs config files which contain key value pairs or key block pairs"""
+    """Abstraction of OpenFOAMs config files which contain key value pairs or key block pairs
+    """
 
     def __init__(self, **kwargs):
         pass
@@ -134,7 +137,7 @@ class FileParser:
                             pp.Word(pp.alphanums + '".-') + pp.Suppress(";")
                         )  # all kinds of values delimeted by ;
                         ^ pp.Word(
-                            pp.alphanums + '".-/'
+                            pp.alphanums + '"_.-/'
                         )  # for includes which are single strings can contain /
                     ).set_results_name("value")
                 )
@@ -205,6 +208,7 @@ class FileParser:
         # if len(self.parse) is bigger than one the parse function
         # did not consume the file entirely and something went most likely wrong
         self._dict = self.key_value_to_dict(self.parse[0][0])
+        print(self._dict)
         return self._dict
 
     def read(self, fn):
