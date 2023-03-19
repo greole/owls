@@ -184,8 +184,6 @@ def dataframe_to_foam(fullname, ftype, dataframe, boundaries):
         )
 
 
-
-
 class ProgressBar:
     """A class providing progress bars"""
 
@@ -515,10 +513,6 @@ def import_probe(fn):
     csv with spaces as delimiter
     """
     return read_csv(fn, sep=" ", comment="#")
-
-
-
-
 
 
 def if_header_skip(content):
