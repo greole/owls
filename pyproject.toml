@@ -1,10 +1,3 @@
-[tool.black]
-preview = true
-
-[tool.flake8]
-max-line-length = 88
-extend-ignore = ["E203"]
-
 [project]
 name = "Owls"
 authors = [{name = "greole", email = "go@hpsim.de"}]
@@ -26,3 +19,7 @@ doc = [
 
 [tool.black]
 preview = true
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203"]
