@@ -10,7 +10,7 @@ from collections import defaultdict
 
 from pandas import Series, DataFrame, Index, MultiIndex
 
-from .io import FPNUMBER, import_foam_folder, import_logs
+from ..io import FPNUMBER, import_foam_folder
 
 import numpy as np
 
@@ -126,18 +126,19 @@ def read_log_str(log, keys, plot_properties=False, name="None", **kwargs):
 def read_log(
     folder, keys, log_name="log", plot_properties=False, name="None", **kwargs
 ):
-    origins, df = import_logs(folder, log_name, keys, **kwargs)
-    ff = FoamFrame(df)
-    plot_properties = plot_properties if plot_properties else PlotProperties()
-    ff.properties = Props(
-        origins=origins,
-        name=folder,
-        plot_properties=plot_properties,
-        folder=folder,
-        symb="-",
-        show_func="plot",
-    )
-    return ff
+    pass
+    #origins, df = import_logs(folder, log_name, keys, **kwargs)
+    #ff = FoamFrame(df)
+    #plot_properties = plot_properties if plot_properties else PlotProperties()
+    #ff.properties = Props(
+    #    origins=origins,
+    #    name=folder,
+    #    plot_properties=plot_properties,
+    #    folder=folder,
+    #    symb="-",
+    #    show_func="plot",
+    #)
+    #return ff
 
 
 """ Filter Helper Functions """
