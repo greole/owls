@@ -23,3 +23,6 @@ doc = [
     "sphinx-autoapi",
     "myst_parser",
 ]
+
+[tool.black]
+preview = true
