@@ -130,11 +130,10 @@ class FileParser:
                     pp.Word(pp.alphanums + '"#(),|*').set_results_name("key")
                     + (
                         OFDimensionSet.parse()
+                        ^ pp.OneOrMore(pp.Word(pp.alphanums + '".-')) + pp.Suppress(";")
+                        # all kinds of values delimeted by ;
                         ^ of_dict
                         ^ OFList.parse()
-                        ^ pp.OneOrMore(
-                            pp.Word(pp.alphanums + '".-') + pp.Suppress(";")
-                        )  # all kinds of values delimeted by ;
                         ^ pp.Word(
                             pp.alphanums + '"_.-/'
                         )  # for includes which are single strings can contain /
@@ -164,8 +163,9 @@ class FileParser:
             pp.ZeroOrMore(self.single_line_comment) ^ pp.ZeroOrMore(self.key_value_pair)
         )
 
-    def convert_to_number(self, s: str):
+    def convert_to_number(self, inp: list[str]):
         """converts to number if possible, return str otherwise"""
+        s = " ".join(inp)
         try:
             return eval(s)
         except:
@@ -195,7 +195,7 @@ class FileParser:
                     elif res.get("of_list"):
                         ret.update({key: res.get("of_list").as_list()})
                     elif res.get("value"):
-                        ret.update({key: self.convert_to_number(res.get("value")[0])})
+                        ret.update({key: self.convert_to_number(res.get("value"))})
                     elif res.get("of_variable"):
                         ret.update({key: res[1]})
                     elif res.get("of_dimension_set"):
