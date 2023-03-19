@@ -164,6 +164,13 @@ class FileParser:
             pp.ZeroOrMore(self.single_line_comment) ^ pp.ZeroOrMore(self.key_value_pair)
         )
 
+    def convert_to_number(self, s: str):
+        """converts to number if possible, return str otherwise"""
+        try:
+            return eval(s)
+        except:
+            return s
+
     def key_value_to_dict(self, parse_result):
         """converts a ParseResult of a list of  key_value_pair to a python dict"""
         ret = {}
@@ -188,7 +195,7 @@ class FileParser:
                     elif res.get("of_list"):
                         ret.update({key: res.get("of_list").as_list()})
                     elif res.get("value"):
-                        ret.update({key: res.get("value")[0]})
+                        ret.update({key: self.convert_to_number(res.get("value")[0])})
                     elif res.get("of_variable"):
                         ret.update({key: res[1]})
                     elif res.get("of_dimension_set"):
@@ -203,12 +210,15 @@ class FileParser:
         self.of_comment_header = list_text[0:7]
         self.of_header = list_text[7:15]
         self.text = "\n".join(list_text[15:])
-        self.parse = self.config_parser.search_string(self.text)
+        self._dict = self.parse_str_to_dict(self.text)
+        return self._dict
+
+    def parse_str_to_dict(self, s) -> dict:
+        """Parse a given FoamDict body str to a python dictionary"""
+        self.parse = self.config_parser.search_string(s)
         # if len(self.parse) is bigger than one the parse function
         # did not consume the file entirely and something went most likely wrong
-        self._dict = self.key_value_to_dict(self.parse[0][0])
-        print(self._dict)
-        return self._dict
+        return self.key_value_to_dict(self.parse[0][0])
 
     def read(self, fn):
         """parse an OF file into a dictionary"""
@@ -230,7 +240,7 @@ class FileParser:
                 fh.write(dispatch_to_str((key, value)))
             fh.write(self.footer)
 
-    def set_key_value_pairs(self, dictionary, flush=True):
+    def set_key_value_pairs(self, dictionary: dict, flush: bool = True):
         """check if a given key exists and replaces it with the key value pair
 
         this can be used to modify the value in the file
