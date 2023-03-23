@@ -108,7 +108,8 @@ class OFDimensionSet:
 
 
 class FileParser:
-    """Abstraction of OpenFOAMs config files which contain key value pairs or key block pairs"""
+    """Abstraction of OpenFOAMs config files which contain key value pairs or key block pairs
+    """
 
     def __init__(self, **kwargs):
         pass
@@ -199,7 +200,12 @@ class FileParser:
                     elif res.get("of_list"):
                         tmp_list = res.get("of_list").as_list()
                         key = tmp_list[0]
-                        values = tuple(map(lambda x: x.replace("'","").replace('"',''), tmp_list[1:]))
+                        values = tuple(
+                            map(
+                                lambda x: x.replace("'", "").replace('"', ""),
+                                tmp_list[1:],
+                            )
+                        )
                         ret.update({key: values})
                     elif res.get("value"):
                         ret.update({key: self.convert_to_number(res.get("value"))})
