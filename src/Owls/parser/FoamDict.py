@@ -200,7 +200,7 @@ class FileParser:
                     elif res.get("of_list"):
                         tmp_list = res.get("of_list").as_list()
                         key = tmp_list[0]
-                        values = tuple(
+                        values = list(
                             map(
                                 lambda x: x.replace("'", "").replace('"', ""),
                                 tmp_list[1:],
@@ -216,7 +216,7 @@ class FileParser:
                         key = tmp_list[0]
                         values = tmp_list[1:-1]
                         values.append(float(tmp_list[-1]))
-                        ret.update({key: values})
+                        ret.update({key: tuple(values)})
             else:
                 return res
         return ret
