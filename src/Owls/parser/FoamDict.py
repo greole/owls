@@ -38,8 +38,9 @@ class OFList:
         """matches (a b c)"""
         # TODO make it recursive
         return (
-            pp.Suppress("(")
-            + pp.delimitedList(pp.Word(pp.alphanums + '_-."/'), delim=" ")
+            pp.Word(pp.alphanums)
+            + pp.Suppress("(")
+            + pp.OneOrMore(pp.Word(pp.alphanums + '_-."/'), stop_on=pp.Literal(")"))
             + pp.Suppress(")")
             + pp.Suppress(";")
         ).set_results_name("of_list")
@@ -94,7 +95,8 @@ class OFDimensionSet:
     def parse():
         """Parse OF dimension set eg  [0 2 -1 0 0 0 0]"""
         return (
-            pp.Suppress("[")
+            pp.Word(pp.alphanums)
+            + pp.Suppress("[")
             + pp.delimitedList(pp.pyparsing_common.number * 7, delim=pp.White())
             + pp.Suppress("]")
             + pp.Word(pp.alphanums + '_-."/')
@@ -126,21 +128,23 @@ class FileParser:
         of_dict = pp.Forward()
         key_val_pair = (
             pp.Group(
-                (
+                # a OpenFOAM list
+                # try to match a list first because it could be matched as a keyword accidentally
+                OFList.parse()
+                # a variable
+                ^ OFVariable.parse()
+                ^ OFDimensionSet.parse()
+                ^ (
                     pp.Word(pp.alphanums + '"#(),|*').set_results_name("key")
                     + (
-                        OFDimensionSet.parse()
-                        ^ pp.OneOrMore(pp.Word(pp.alphanums + '".-')) + pp.Suppress(";")
+                        pp.OneOrMore(pp.Word(pp.alphanums + '".-')) + pp.Suppress(";")
                         # all kinds of values delimeted by ;
                         ^ of_dict
-                        ^ OFList.parse()
                         ^ pp.Word(
                             pp.alphanums + '"_.-/'
                         )  # for includes which are single strings can contain /
                     ).set_results_name("value")
                 )
-                # a variable
-                ^ OFVariable.parse()
             )
             .ignore(pp.cStyleComment | pp.dblSlashComment)
             .set_results_name("key_value_pair")
@@ -193,13 +197,20 @@ class FileParser:
                         d = {key: self.key_value_to_dict([v for v in res.value])}
                         ret.update(d)
                     elif res.get("of_list"):
-                        ret.update({key: res.get("of_list").as_list()})
+                        tmp_list = res.get("of_list").as_list()
+                        key = tmp_list[0]
+                        values = tuple(map(lambda x: x.replace("'","").replace('"',''), tmp_list[1:]))
+                        ret.update({key: values})
                     elif res.get("value"):
                         ret.update({key: self.convert_to_number(res.get("value"))})
                     elif res.get("of_variable"):
                         ret.update({key: res[1]})
                     elif res.get("of_dimension_set"):
-                        ret.update({key: res[1]})
+                        tmp_list = res.get("of_dimension_set").as_list()
+                        key = tmp_list[0]
+                        values = tmp_list[1:-1]
+                        values.append(float(tmp_list[-1]))
+                        ret.update({key: values})
             else:
                 return res
         return ret
