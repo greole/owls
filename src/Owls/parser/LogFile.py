@@ -3,6 +3,7 @@ Reads and converts OpenFoam logfiles and data
 to Pandas DataFrames and Series
 """
 import re
+from subprocess import check_output
 import pandas as pd
 
 
@@ -96,6 +97,13 @@ class LogFile:
                 self.records.append(tmp_record)
                 tmp_record = {}
         return self.records
+
+    def is_complete(self, log_name: str) -> bool:
+        """Check for End or Finalising parallel run in last line of log"""
+        log_tail = check_output(
+            ["tail", "-n", "1", log_name],
+        )
+        return "End" in log_tail or "Finalising parallel run" in log_tail
 
     def parse(self, log_name: str):
         with open(log_name, encoding="utf-8") as log:
