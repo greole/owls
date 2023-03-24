@@ -100,9 +100,7 @@ class LogFile:
 
     def is_complete(self, log_name: str) -> bool:
         """Check for End or Finalising parallel run in last line of log"""
-        log_tail = check_output(
-            ["tail", "-n", "1", log_name],
-        )
+        log_tail = check_output(["tail", "-n", "1", log_name], text=True)
         return "End" in log_tail or "Finalising parallel run" in log_tail
 
     def parse(self, log_name: str):
