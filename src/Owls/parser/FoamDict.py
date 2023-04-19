@@ -6,6 +6,8 @@ import pyparsing as pp
 
 extended_alphanum = pp.Word(pp.alphanums + '#_-."/')
 
+#separator_str = "// " + "* " * 26 + "//"
+separator_str = "// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //"
 
 def dispatch_to_str(item, indent="", nl="\n\n"):
     """dispatch to corresponding methods"""
@@ -121,7 +123,7 @@ class FileParser:
 
     @property
     def separator(self):
-        return "// " + "* " * 26 + "//"
+        return separator_str
 
     @property
     def key_value_pair(self):
