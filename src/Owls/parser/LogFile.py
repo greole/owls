@@ -4,6 +4,7 @@ to Pandas DataFrames and Series
 """
 import re
 from subprocess import check_output
+from .FoamDict import separator_str
 import pandas as pd
 
 
@@ -33,6 +34,22 @@ class LogKey:
             self.next_key_ + 1 if self.next_key_ < len(self.post_fix) - 1 else 0
         )
         return ret
+
+class LogHeader:
+
+    def __init__(self, fn):
+        self._read_header(fn)
+        self.host = re.findall("Host[ ]*: ([\w.-]*)", self.header_str_)[0]
+
+    def _read_header(self, fn):
+        self.header_str_ = ""
+        with open(fn, encoding="utf-8") as fh:
+            for line in fh.readlines(): 
+                if separator_str in line:
+                    break
+                self.header_str_ += line
+
+
 
 
 class LogFile:
@@ -98,9 +115,9 @@ class LogFile:
                 tmp_record = {}
         return self.records
 
-    def is_complete(self, log_name: str) -> bool:
+    def is_complete(self) -> bool:
         """Check for End or Finalising parallel run in last line of log"""
-        log_tail = check_output(["tail", "-n", "1", log_name], text=True)
+        log_tail = check_output(["tail", "-n", "1", self.log_name], text=True)
         return "End" in log_tail or "Finalising parallel run" in log_tail
 
     def parse(self, log_name: str):
@@ -109,16 +126,21 @@ class LogFile:
             return self.parse_to_records(f)
 
     def parse_to_df(self, log_name: str) -> pd.DataFrame:
-        """"""
+        """Read from log_name and constructs a DataFrame """
+        # TODO call this from __init__
+        self.log_name = log_name
         df = pd.DataFrame.from_records(self.parse(log_name))
         df = df.groupby("Time").max().reset_index()
         df.set_index(keys=["Time"], inplace=True)
+        self.header = LogHeader(log_name)
         return df
 
     def import_logs(
         self, folder: str, search: str = "log", time_key: str = "^Time = "
     ) -> pd.DataFrame:
         """ """
+        # TODO remove this since LogFile should only support a single log file
+        # we should add a LogFileCollection class as a container
 
         fold, dirs, files = next(os.walk(folder))
         logs = [fold + "/" + log for log in files if search in log]
