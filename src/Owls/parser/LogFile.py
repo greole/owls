@@ -115,6 +115,7 @@ class LogFile:
                 tmp_record = {}
         return self.records
 
+    @property
     def is_complete(self) -> bool:
         """Check for End or Finalising parallel run in last line of log"""
         log_tail = check_output(["tail", "-n", "1", self.log_name], text=True)
