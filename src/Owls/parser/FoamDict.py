@@ -40,10 +40,10 @@ class OFList:
         return (
             pp.Word(pp.alphanums)
             + pp.Suppress("(")
-            + pp.OneOrMore(pp.Word(pp.alphanums + '_-."/'), stop_on=pp.Literal(")"))
+            + pp.OneOrMore(pp.Word(pp.alphanums + '_-."/'), stopOn=pp.Literal(")"))
             + pp.Suppress(")")
             + pp.Suppress(";")
-        ).set_results_name("of_list")
+        ).setResultsName("of_list")
 
     def to_str(self, *args, **kwargs):
         """Convert a python list to a str with OF syntax"""
@@ -61,7 +61,7 @@ class OFVariable:
         # TODO make it recursive
         return (
             pp.Literal("$") + pp.Word(pp.alphanums) + pp.Suppress(";")
-        ).set_results_name("of_variable")
+        ).setResultsName("of_variable")
 
     def to_str(self, *args, **kwargs):
         """Convert a python list to a str with OF syntax"""
@@ -101,7 +101,7 @@ class OFDimensionSet:
             + pp.Suppress("]")
             + pp.Word(pp.alphanums + '_-."/')
             + pp.Suppress(";")
-        ).set_results_name("of_dimension_set")
+        ).setResultsName("of_dimension_set")
 
     def to_str(self):
         pass
@@ -112,7 +112,8 @@ class FileParser:
     """
 
     def __init__(self, **kwargs):
-        pass
+        self.path = kwargs['path']
+        self._parsed_file = self.parse_file_to_dict()
 
     @property
     def footer(self):
@@ -122,6 +123,12 @@ class FileParser:
     @property
     def separator(self):
         return "// " + "* " * 26 + "//"
+
+    def get(self, key):
+        try:
+            return self._dict[key]
+        except KeyError as e:
+            print(e)
 
     @property
     def key_value_pair(self):
@@ -136,7 +143,7 @@ class FileParser:
                 ^ OFVariable.parse()
                 ^ OFDimensionSet.parse()
                 ^ (
-                    pp.Word(pp.alphanums + '"#(),|*').set_results_name("key")
+                    pp.Word(pp.alphanums + '"#(),|*').setResultsName("key")
                     + (
                         pp.OneOrMore(pp.Word(pp.alphanums + '".-')) + pp.Suppress(";")
                         # all kinds of values delimeted by ;
@@ -144,15 +151,15 @@ class FileParser:
                         ^ pp.Word(
                             pp.alphanums + '"_.-/'
                         )  # for includes which are single strings can contain /
-                    ).set_results_name("value")
+                    ).setResultsName("value")
                 )
             )
             .ignore(pp.cStyleComment | pp.dblSlashComment)
-            .set_results_name("key_value_pair")
+            .setResultsName("key_value_pair")
         )
         of_dict <<= (
             pp.Suppress("{") + pp.ZeroOrMore(key_val_pair) + pp.Suppress("}")
-        ).set_results_name("of_dict")
+        ).setResultsName("of_dict")
         return key_val_pair
 
     @property
@@ -160,7 +167,7 @@ class FileParser:
         """matches a b; or a (a b c);"""
         return pp.Group(
             pp.Literal("//") + pp.ZeroOrMore(pp.Word(pp.alphanums + '#_-."/'))
-        ).set_results_name("single_line_comment")
+        ).setResultsName("single_line_comment")
 
     @property
     def config_parser(self):
@@ -168,7 +175,7 @@ class FileParser:
             pp.ZeroOrMore(self.single_line_comment) ^ pp.ZeroOrMore(self.key_value_pair)
         )
 
-    def convert_to_number(self, inp: list[str]):
+    def convert_to_number(self, inp):
         """converts to number if possible, return str otherwise"""
         s = " ".join(inp)
         try:
@@ -181,8 +188,8 @@ class FileParser:
         ret = {}
         for res in parse_result:
             # probe if next result is str or ParseResult
-            if isinstance(res, pp.results.ParseResults):
-                if res.get_name() == "key_value_pair":
+            if isinstance(res, pp.ParseResults):
+                if res.getName() == "key_value_pair":
                     key = res.key
                     # keys starting with # need special attention to avoid overwriting
                     # them in the return dictionary
@@ -198,7 +205,7 @@ class FileParser:
                         d = {key: self.key_value_to_dict([v for v in res.value])}
                         ret.update(d)
                     elif res.get("of_list"):
-                        tmp_list = res.get("of_list").as_list()
+                        tmp_list = res.get("of_list").asList()
                         key = tmp_list[0]
                         values = list(
                             map(
@@ -232,7 +239,7 @@ class FileParser:
 
     def parse_str_to_dict(self, s) -> dict:
         """Parse a given FoamDict body str to a python dictionary"""
-        self.parse = self.config_parser.search_string(s)
+        self.parse = self.config_parser.searchString(s)
         # if len(self.parse) is bigger than one the parse function
         # did not consume the file entirely and something went most likely wrong
         return self.key_value_to_dict(self.parse[0][0])
