@@ -3,6 +3,7 @@ Reads and converts OpenFoam logfiles and data
 to Pandas DataFrames and Series
 """
 import re
+import os
 from subprocess import check_output
 import pandas as pd
 
@@ -123,8 +124,8 @@ class LogFile:
         fold, dirs, files = next(os.walk(folder))
         logs = [fold + "/" + log for log in files if search in log]
 
-        df = DataFrame()
+        df = pd.DataFrame()
 
         for log_name in logs:
-            df = concat([df, self.parse_to_df(log_name)])
+            df = pd.concat([df, self.parse_to_df(log_name)])
         return df

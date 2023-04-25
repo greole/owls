@@ -237,7 +237,6 @@ def import_foam_mesh(path, exclude=None, times_slice=None):
     df = DataFrame()
     from collections import defaultdict
 
-    origins = Origins()
     els = list(fileList.items())
     time, files = els[0]
     df_tmp = dict()
@@ -275,7 +274,7 @@ def import_foam_folder(
     # df.index = MultiIndex.from_tuples(zip([],[]),names=['Loc',0])
     from collections import defaultdict
 
-    origins = Origins()
+    origins = defaultdict()
     els = list(fileList.items())[skiptimes]
     for fullpath, files in els:
         time = strip_time(fullpath, path)
@@ -321,14 +320,17 @@ def import_foam_folder(
             for field in field_names:
                 if field == "Pos":
                     continue
-                origins.insert(time, loc, field, fn, hashes[field])
+                try:
+                    origins[time][loc][field] = fn, hashes[field]
+                except KeyError:
+                    origins[time].update({loc: {field: (fn, hashes[field])}})
         df_tmp["Time"] = time
         if df.empty:
             df = df_tmp
         else:
             df = df.append(df_tmp)
     df.set_index("Time", append=True, inplace=True)
-    if not "Loc" in df.index.names:
+    if "Loc" not in df.index.names:
         print(df)
         # df = df.reorder_levels(['Time', ])
     else:
