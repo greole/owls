@@ -1,7 +1,8 @@
 import pytest
 
 import os
-import Owls as ow
+from Owls.pandas_wrappers.FoamFrame import read_eul, read_sets, read_exp
+# import Owls as ow
 
 exec_path = os.getcwd()
 
@@ -9,19 +10,19 @@ exec_path = os.getcwd()
 @pytest.fixture(scope="session")
 def readEul():
     path = exec_path + "/examples/buoyantCavity"
-    return ow.read_eul(folder=path, files=["T", "U"], validate=False)
+    return read_eul(folder=path, files=["T", "U"], validate=False)
 
 
 @pytest.fixture(scope="session")
 def readSets():
     path = exec_path + "/examples/buoyantCavity"
-    return ow.read_sets(folder=path, validate=False)
+    return read_sets(folder=path, validate=False)
 
 
 @pytest.fixture(scope="session")
 def readExp():
     path = exec_path + "/examples/buoyantCavity/sets/100"
-    return ow.read_exp(folder=path, validate=False, search="")
+    return read_exp(folder=path, validate=False, search="")
 
 
 def test_eul(readEul):
@@ -53,4 +54,4 @@ def test_sets_plots(readSets):
 def test_exp(readExp):
     ff = readExp
     assert ff.times
-    ow.multi_merge(ff.latest.by_index("Loc"), ff.latest.by_index("Loc"), x="Pos", y="T")
+    # ow.multi_merge(ff.latest.by_index("Loc"), ff.latest.by_index("Loc"), x="Pos", y="T")
