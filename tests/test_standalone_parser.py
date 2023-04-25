@@ -82,3 +82,18 @@ def test_parser_get(setup_tmp_cDict):
     assert w_prec == 6
     assert t_prec == 6
     assert e_time == 500
+
+
+def test_parser_set(setup_tmp_cDict):
+    parser = fd.FileParser(path=setup_tmp_cDict)
+    parser.set_key_value_pairs({"writePrecision": 12})
+    parser.set_key_value_pairs({"endTime": 0.001})
+    parser.set_key_value_pairs({"writeFormat": "binary"})
+    parser.update()
+
+    w_prec = parser.get("writePrecision")  # should return 12
+    w_format = parser.get("writeFormat")  # should return "binary"
+    end_time = parser.get("endTime")  # should return 0.001
+    assert w_prec == 12
+    assert w_format == "binary"
+    assert end_time == 0.001
