@@ -35,8 +35,8 @@ class LogKey:
         )
         return ret
 
-class LogHeader:
 
+class LogHeader:
     def __init__(self, fn):
         self._read_header(fn)
         self.host = re.findall("Host[ ]*: ([\w.-]*)", self.header_str_)[0]
@@ -44,12 +44,10 @@ class LogHeader:
     def _read_header(self, fn):
         self.header_str_ = ""
         with open(fn, encoding="utf-8") as fh:
-            for line in fh.readlines(): 
+            for line in fh.readlines():
                 if separator_str in line:
                     break
                 self.header_str_ += line
-
-
 
 
 class LogFile:
@@ -127,7 +125,7 @@ class LogFile:
             return self.parse_to_records(f)
 
     def parse_to_df(self, log_name: str) -> pd.DataFrame:
-        """Read from log_name and constructs a DataFrame """
+        """Read from log_name and constructs a DataFrame"""
         # TODO call this from __init__
         self.log_name = log_name
         df = pd.DataFrame.from_records(self.parse(log_name))

@@ -7,7 +7,7 @@ import pytest
 
 exec_path = os.getcwd()
 
-control_dict = r'''/*--------------------------------*- C++ -*----------------------------------*\
+control_dict = r"""/*--------------------------------*- C++ -*----------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
@@ -55,7 +55,7 @@ runTimeModifiable true;
 
 
 // ************************************************************************* //
-'''
+"""
 
 
 @pytest.fixture
@@ -75,9 +75,9 @@ def test_setup_parser(setup_tmp_cDict):
 def test_parser_get(setup_tmp_cDict):
     parser = fd.FileParser(path=setup_tmp_cDict)
 
-    w_prec = parser.get('writePrecision')  # should return 6
-    t_prec = parser.get('timePrecision')   # should return 6
-    e_time = parser.get('endTime')         # should return 500 
+    w_prec = parser.get("writePrecision")  # should return 6
+    t_prec = parser.get("timePrecision")  # should return 6
+    e_time = parser.get("endTime")  # should return 500
 
     assert w_prec == 6
     assert t_prec == 6

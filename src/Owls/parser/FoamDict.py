@@ -6,8 +6,11 @@ import pyparsing as pp
 
 extended_alphanum = pp.Word(pp.alphanums + '#_-."/')
 
-#separator_str = "// " + "* " * 26 + "//"
-separator_str = "// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //"
+# separator_str = "// " + "* " * 26 + "//"
+separator_str = (
+    "// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //"
+)
+
 
 def dispatch_to_str(item, indent="", nl="\n\n"):
     """dispatch to corresponding methods"""
@@ -110,11 +113,14 @@ class OFDimensionSet:
 
 
 class FileParser:
-    """Abstraction of OpenFOAMs config files which contain key value pairs or key block pairs
-    """
+    """Abstraction of OpenFOAMs config files which contain key value pairs or key block pairs"""
 
     def __init__(self, **kwargs):
-        self.path = kwargs['path']
+        self.path = kwargs["path"]
+        self.update()
+
+    def _update(self):
+        """updates _parsed_file"""
         self._parsed_file = self.parse_file_to_dict()
 
     @property
