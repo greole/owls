@@ -89,7 +89,7 @@ class OFInclude:
         """Convert a python list to a str with OF syntax"""
         key = args[0].split("_")[0]
         value = args[1]
-        return f'{kwargs.get("indent", "")}{key} {value}{kwargs.get("nl",os.linesep)}'
+        return f'{kwargs.get("indent", "")}{key} "{value}"{kwargs.get("nl",os.linesep)}'
 
 
 class OFDimensionSet:
@@ -114,7 +114,8 @@ class FileParser:
     """
 
     def __init__(self, **kwargs):
-        pass
+        self.path = kwargs['path']
+        self._parsed_file = self.parse_file_to_dict()
 
     @property
     def footer(self):
@@ -124,6 +125,9 @@ class FileParser:
     @property
     def separator(self):
         return separator_str
+
+    def get(self, key, default=None):
+        return self._dict.get(key, default)
 
     @property
     def key_value_pair(self):
@@ -183,7 +187,7 @@ class FileParser:
         ret = {}
         for res in parse_result:
             # probe if next result is str or ParseResult
-            if isinstance(res, pp.results.ParseResults):
+            if isinstance(res, pp.ParseResults):
                 if res.get_name() == "key_value_pair":
                     key = res.key
                     # keys starting with # need special attention to avoid overwriting
@@ -244,9 +248,11 @@ class FileParser:
         with open(fn, "r") as fh:
             return fh.readlines()
 
-    def write_to_disk(self):
+    def write_to_disk(self, path=None):
         """writes a parsed OF file back into a file"""
         fn = self.path
+        if path is not None:
+            fn = path
         dictionary = self._dict
 
         with open(fn, "w") as fh:
