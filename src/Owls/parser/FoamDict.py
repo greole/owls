@@ -87,7 +87,7 @@ class OFInclude:
         """Convert a python list to a str with OF syntax"""
         key = args[0].split("_")[0]
         value = args[1]
-        return f'{kwargs.get("indent", "")}{key} {value}{kwargs.get("nl",os.linesep)}'
+        return f'{kwargs.get("indent", "")}{key} "{value}"{kwargs.get("nl",os.linesep)}'
 
 
 class OFDimensionSet:
@@ -249,9 +249,11 @@ class FileParser:
         with open(fn, "r") as fh:
             return fh.readlines()
 
-    def write_to_disk(self):
+    def write_to_disk(self, path=None):
         """writes a parsed OF file back into a file"""
         fn = self.path
+        if path is not None:
+            fn = path
         dictionary = self._dict
 
         with open(fn, "w") as fh:
