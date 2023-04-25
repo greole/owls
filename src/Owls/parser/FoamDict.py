@@ -40,10 +40,10 @@ class OFList:
         return (
             pp.Word(pp.alphanums)
             + pp.Suppress("(")
-            + pp.OneOrMore(pp.Word(pp.alphanums + '_-."/'), stopOn=pp.Literal(")"))
+            + pp.OneOrMore(pp.Word(pp.alphanums + '_-."/'), stop_on=pp.Literal(")"))
             + pp.Suppress(")")
             + pp.Suppress(";")
-        ).setResultsName("of_list")
+        ).set_results_name("of_list")
 
     def to_str(self, *args, **kwargs):
         """Convert a python list to a str with OF syntax"""
@@ -61,7 +61,7 @@ class OFVariable:
         # TODO make it recursive
         return (
             pp.Literal("$") + pp.Word(pp.alphanums) + pp.Suppress(";")
-        ).setResultsName("of_variable")
+        ).set_results_name("of_variable")
 
     def to_str(self, *args, **kwargs):
         """Convert a python list to a str with OF syntax"""
@@ -101,7 +101,7 @@ class OFDimensionSet:
             + pp.Suppress("]")
             + pp.Word(pp.alphanums + '_-."/')
             + pp.Suppress(";")
-        ).setResultsName("of_dimension_set")
+        ).set_results_name("of_dimension_set")
 
     def to_str(self):
         pass
@@ -143,7 +143,7 @@ class FileParser:
                 ^ OFVariable.parse()
                 ^ OFDimensionSet.parse()
                 ^ (
-                    pp.Word(pp.alphanums + '"#(),|*').setResultsName("key")
+                    pp.Word(pp.alphanums + '"#(),|*').set_results_name("key")
                     + (
                         pp.OneOrMore(pp.Word(pp.alphanums + '".-')) + pp.Suppress(";")
                         # all kinds of values delimeted by ;
@@ -151,15 +151,15 @@ class FileParser:
                         ^ pp.Word(
                             pp.alphanums + '"_.-/'
                         )  # for includes which are single strings can contain /
-                    ).setResultsName("value")
+                    ).set_results_name("value")
                 )
             )
             .ignore(pp.cStyleComment | pp.dblSlashComment)
-            .setResultsName("key_value_pair")
+            .set_results_name("key_value_pair")
         )
         of_dict <<= (
             pp.Suppress("{") + pp.ZeroOrMore(key_val_pair) + pp.Suppress("}")
-        ).setResultsName("of_dict")
+        ).set_results_name("of_dict")
         return key_val_pair
 
     @property
@@ -167,7 +167,7 @@ class FileParser:
         """matches a b; or a (a b c);"""
         return pp.Group(
             pp.Literal("//") + pp.ZeroOrMore(pp.Word(pp.alphanums + '#_-."/'))
-        ).setResultsName("single_line_comment")
+        ).set_results_name("single_line_comment")
 
     @property
     def config_parser(self):
