@@ -117,7 +117,7 @@ class FileParser:
 
     def __init__(self, **kwargs):
         self.path = kwargs["path"]
-        self.update()
+        self._update()
 
     def _update(self):
         """updates _parsed_file"""
