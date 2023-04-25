@@ -124,11 +124,8 @@ class FileParser:
     def separator(self):
         return "// " + "* " * 26 + "//"
 
-    def get(self, key):
-        try:
-            return self._dict[key]
-        except KeyError as e:
-            print(e)
+    def get(self, key, default=None):
+        return self._dict.get(key, default)
 
     @property
     def key_value_pair(self):
@@ -175,7 +172,7 @@ class FileParser:
             pp.ZeroOrMore(self.single_line_comment) ^ pp.ZeroOrMore(self.key_value_pair)
         )
 
-    def convert_to_number(self, inp):
+    def convert_to_number(self, inp: list[str]):
         """converts to number if possible, return str otherwise"""
         s = " ".join(inp)
         try:
@@ -189,7 +186,7 @@ class FileParser:
         for res in parse_result:
             # probe if next result is str or ParseResult
             if isinstance(res, pp.ParseResults):
-                if res.getName() == "key_value_pair":
+                if res.get_name() == "key_value_pair":
                     key = res.key
                     # keys starting with # need special attention to avoid overwriting
                     # them in the return dictionary
@@ -205,7 +202,7 @@ class FileParser:
                         d = {key: self.key_value_to_dict([v for v in res.value])}
                         ret.update(d)
                     elif res.get("of_list"):
-                        tmp_list = res.get("of_list").asList()
+                        tmp_list = res.get("of_list").as_list()
                         key = tmp_list[0]
                         values = list(
                             map(
@@ -239,7 +236,7 @@ class FileParser:
 
     def parse_str_to_dict(self, s) -> dict:
         """Parse a given FoamDict body str to a python dictionary"""
-        self.parse = self.config_parser.searchString(s)
+        self.parse = self.config_parser.search_string(s)
         # if len(self.parse) is bigger than one the parse function
         # did not consume the file entirely and something went most likely wrong
         return self.key_value_to_dict(self.parse[0][0])
