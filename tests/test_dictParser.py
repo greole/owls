@@ -21,3 +21,6 @@ def test_simple_parse():
 
     text = "key {foo bar;}"
     assert parser.parse_str_to_dict(text) == {"key": {"foo": "bar"}}
+
+    text = '#include "foo/bar"'
+    assert parser.parse_str_to_dict(text) == {'#include_"foo/bar"': '"foo/bar"'}
