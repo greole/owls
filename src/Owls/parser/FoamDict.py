@@ -2,6 +2,8 @@
 
 import os
 import pyparsing as pp
+from pathlib import Path
+import errno
 
 
 extended_alphanum = pp.Word(pp.alphanums + '#_-."/')
@@ -116,12 +118,17 @@ class FileParser:
     """Abstraction of OpenFOAMs config files which contain key value pairs or key block pairs"""
 
     def __init__(self, **kwargs):
-        self.path = kwargs["path"]
-        self._update()
+        self.path = kwargs.get("path")
+        if self.path:
+            if not Path(self.path).exists():
+                raise FileNotFoundError(
+                    errno.ENOENT, os.strerror(errno.ENOENT), self.path
+                )
+            self.update()
 
-    def _update(self):
+    def update(self):
         """updates _parsed_file"""
-        self._parsed_file = self.parse_file_to_dict()
+        self._parsed_file = self._parse_file_to_dict()
 
     @property
     def footer(self):
@@ -131,6 +138,10 @@ class FileParser:
     @property
     def separator(self):
         return separator_str
+
+    @property
+    def text(self):
+        return "".join(self.read(self.path))
 
     def get(self, key, default=None):
         return self._dict.get(key, default)
@@ -183,10 +194,20 @@ class FileParser:
     def convert_to_number(self, inp: list[str]):
         """converts to number if possible, return str otherwise"""
         s = " ".join(inp)
-        try:
-            return eval(s)
-        except:
-            return s
+
+        def can_convert(s, t):
+            try:
+                return True, t(s)
+            except:
+                return False, None
+
+        is_int, value = can_convert(s, int)
+        if is_int:
+            return value
+        is_float, value = can_convert(s, float)
+        if is_float:
+            return value
+        return s
 
     def key_value_to_dict(self, parse_result):
         """converts a ParseResult of a list of  key_value_pair to a python dict"""
@@ -233,13 +254,13 @@ class FileParser:
                 return res
         return ret
 
-    def parse_file_to_dict(self):
-        """parse an OpenFOAM file to an Ordered dict"""
+    def _parse_file_to_dict(self):
+        """Parse an OpenFOAM file to an Ordered dict"""
         list_text = self.read(self.path)
         self.of_comment_header = list_text[0:7]
         self.of_header = list_text[7:15]
-        self.text = "\n".join(list_text[15:])
-        self._dict = self.parse_str_to_dict(self.text)
+        text = "\n".join(list_text[15:])
+        self._dict = self.parse_str_to_dict(text)
         return self._dict
 
     def parse_str_to_dict(self, s) -> dict:
@@ -249,8 +270,8 @@ class FileParser:
         # did not consume the file entirely and something went most likely wrong
         return self.key_value_to_dict(self.parse[0][0])
 
-    def read(self, fn):
-        """parse an OF file into a dictionary"""
+    def read(self, fn) -> list[str]:
+        """Read an OF file into a list of strings"""
         with open(fn, "r") as fh:
             return fh.readlines()
 
@@ -275,6 +296,10 @@ class FileParser:
         """check if a given key exists and replaces it with the key value pair
 
         this can be used to modify the value in the file
+
+        Parameters:
+        - dictionary: key value pairs to modify
+        - flush: whether to write it directly to disk
         """
         sub_dict = dictionary.pop("set", False)
         if sub_dict:
