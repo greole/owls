@@ -94,7 +94,7 @@ class OFInclude:
         """Convert a python list to a str with OF syntax"""
         key = args[0].split("_")[0]
         value = args[1]
-        return f'{kwargs.get("indent", "")}{key} "{value}"{kwargs.get("nl",os.linesep)}'
+        return f'{kwargs.get("indent", "")}{key} {value}{kwargs.get("nl",os.linesep)}'
 
 
 class OFDimensionSet:
