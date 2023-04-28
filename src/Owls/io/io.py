@@ -19,7 +19,7 @@ from pandas import DataFrame, concat, read_csv
 from collections import defaultdict, OrderedDict
 import multiprocessing
 
-FPNUMBER = "[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?"
+FPNUMBER = r"[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?"
 
 HASH_RESULTS = False  # saves approx 30%
 MULTIPROCESS = 0
@@ -225,7 +225,7 @@ def import_foam_mesh(path, exclude=None, times_slice=None):
 
     fileList = find_datafiles(
         path,
-        search="[.\/A-Za-z]*",
+        search=r"[.\/A-Za-z]*",
         files=["faces", "points", "owner", "neighbour"],
         exclude=exclude,
         times_slice=times_slice,
@@ -360,7 +360,7 @@ def foam_to_csv(
             start, num_entries = if_header_skip(content)
             entries = len(content[start].split())
             for l in content:
-                print(re.sub("\t", ",", re.sub("[\(\)\\n]", "", l)))
+                print(re.sub("\t", ",", re.sub(r"[()\n]", "", l)))
     except Exception as e:
         print(e)
 
@@ -413,7 +413,7 @@ def read_data_file(fn, skiplines=1, maxlines=False, p_bar=None):
             if is_a_vector:
                 data = list(
                     map(
-                        lambda x: re.sub("[0-9]*\(|\)", "", x).split(),
+                        lambda x: re.sub(r"[0-9]*\(|\)", "", x).split(),
                         content[start:end:skiplines],
                     )
                 )

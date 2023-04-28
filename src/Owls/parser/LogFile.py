@@ -65,7 +65,7 @@ class LogFile:
                             float,
                             filter(
                                 lambda x: x,
-                                re.findall("[0-9\-]+[.]?[0-9]*[e]?[\-\+]?[0-9]*", line),
+                                re.findall(r"[0-9\-]+[.]?[0-9]*[e]?[\-\+]?[0-9]*", line),
                             ),
                         )
                     ),
