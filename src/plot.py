@@ -160,8 +160,8 @@ class Bokeh:
 
         return figure
 
-    def GridPlot(self, row, filename, arangement, show, style):
-        gp = bk.GridPlot(children=style(rows=arangement(list(row.values()))))
+    def GridPlot(self, row, filename, arrangement, show, style):
+        gp = bk.GridPlot(children=style(rows=arrangement(list(row.values()))))
 
         # plotinterface.show
         if filename:
@@ -314,7 +314,7 @@ legendBottomRight = legend("bottom_right")
 lastLegend = [cleanLegendIa, cleanLegendIb, cleanLegendIIa, cleanLegendIIb]
 
 
-arangement = lambda x: np.array(x).reshape(greatest_divisor(len(x)), -1).tolist()
+arrangement = lambda x: np.array(x).reshape(greatest_divisor(len(x)), -1).tolist()
 
 default_style = [size, font, color]
 

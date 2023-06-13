@@ -26,7 +26,7 @@ python setup.py install --user
 ~~~~
 
 
-If you have docker installed you can use the automaticly build docker container
+If you have docker installed you can use the automatically build docker container
 ~~~~.bash
 docker pull greole/owls
 ~~~~
@@ -83,9 +83,9 @@ s1.by_time() # group by times
 
 ## Data Visualisation
 Data can be passed to any standard python plotting library i.e. matplotlib, ggplot, seaborn.
-Currently bokeh is choosen to generate on the fly data visualisations.
+Currently bokeh is chosen to generate on the fly data visualisations.
 
-If .show is called the natural representation of the FoamFrame will be choosen, i.e. line plots for sets and scatter experimental data. To make standard calls concise the default value of x='Pos'.
+If .show is called the natural representation of the FoamFrame will be chosen, i.e. line plots for sets and scatter experimental data. To make standard calls concise the default value of x='Pos'.
 ~~~~.python
 s1.by_location().show(y=['v','u'], overlay="Field") # plot u and v for each location
 s1.by_location().show(y=['v','u'], overlay="Group") # plot u and v for each location
