@@ -74,7 +74,7 @@ def find_datafiles(
           if False time folders in cwd will be taken
     filelist: A list of file names which are accepted,
               if false all files will be returned
-    subfolder: specify wheter to search in cwd or in a specific subfolder
+    subfolder: specify whether to search in cwd or in a specific subfolder
                accepting a search pattern
     Returns:
         Ordered dict with times as key and
@@ -426,7 +426,7 @@ def read_data_file(fn, skiplines=1, maxlines=False, p_bar=None):
                     df["Pos"] = df["Pos"].astype(float)
                     df.set_index("Pos", append=True, inplace=True)
                 else:
-                    # if no pos is availible we have either
+                    # if no pos is available we have either
                     # an eulerian or lagrangian field
                     df.set_index("Loc", append=True, inplace=True)
                     df.index.names = ["Pos", "Loc"]

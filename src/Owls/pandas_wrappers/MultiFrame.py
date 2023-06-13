@@ -131,7 +131,7 @@ class MultiFrame:
     def __getitem__(self, field):
         """get field of all cases"""
         return MultiFrame(
-            OrderedDict([(key, serie[field]) for key, serie in self.cases.items()])
+            OrderedDict([(key, series[field]) for key, series in self.cases.items()])
         )
 
     def __setitem__(self, key, value):
@@ -146,8 +146,8 @@ class MultiFrame:
             return MultiFrame(
                 OrderedDict(
                     [
-                        (key, serie.fillna(value, **kwargs))
-                        for key, serie in self.cases.items()
+                        (key, series.fillna(value, **kwargs))
+                        for key, series in self.cases.items()
                     ]
                 )
             )
@@ -222,7 +222,11 @@ class MultiFrame:
 
         return MultiFrame(
             OrderedDict(
-                [(key, serie) for key, serie in self.cases.items() if key not in cases]
+                [
+                    (key, series)
+                    for key, series in self.cases.items()
+                    if key not in cases
+                ]
             )
         )
 
@@ -332,7 +336,7 @@ class MultiFrame:
         return self.filter(name="Loc", index=index)
 
     def filter_items(self, func):
-        """select items based on filter funtion
+        """select items based on filter function
 
         Example .filter_items(lambda ff: "Foo" in ff.locations)
         """

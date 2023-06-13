@@ -180,7 +180,7 @@ class Props:
 
 
 class FoamFrame(DataFrame):
-    """Data reprensentation of OpenFOAM field (eulerian and lagrangian)
+    """Data representation of OpenFOAM field (eulerian and lagrangian)
     and set files. Instantiated through read methods, e.g:
     read_sets, read_lag, read_eul, read_exp
 
@@ -217,9 +217,9 @@ class FoamFrame(DataFrame):
             lambda field: re.search('[0-9]*\.[0-9]*').group()[0]
 
     TODO:
-        use case as cases ojects with a 3-level index
+        use case as cases objects with a 3-level index
              case['u']
-             acces time of all cases -> df.iloc[df.index.isin([1],level=1)]
+             access time of all cases -> df.iloc[df.index.isin([1],level=1)]
         refactor plot into case objects itself,
             ?case.show('t','u', time_series = False)
         refactor origins
@@ -646,7 +646,7 @@ class FoamFrame(DataFrame):
             if not self.grouped:
                 y = y if isinstance(y, list) else [y]
                 if overlay == "Field":
-                    # SINGLE FIGURE MUTLIPLE FIELDS
+                    # SINGLE FIGURE MULTIPLE FIELDS
                     ids = "".join(y)
                     fig_id, f = figure if figure else (ids, arow.get(ids))
                     for yi in y:

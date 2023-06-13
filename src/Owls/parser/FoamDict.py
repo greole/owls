@@ -162,7 +162,7 @@ class FileParser:
                     pp.Word(pp.alphanums + '"#(),|*').set_results_name("key")
                     + (
                         pp.OneOrMore(pp.Word(pp.alphanums + '".-')) + pp.Suppress(";")
-                        # all kinds of values delimeted by ;
+                        # all kinds of values delimited by ;
                         ^ of_dict
                         ^ pp.Word(
                             pp.alphanums + '"_.-/'
