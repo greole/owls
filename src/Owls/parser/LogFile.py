@@ -3,9 +3,11 @@ Reads and converts OpenFoam logfiles and data
 to Pandas DataFrames and Series
 """
 import re
+import pandas as pd
+
 from subprocess import check_output
 from .FoamDict import separator_str
-import pandas as pd
+from warnings import warn
 
 
 class LogKey:
@@ -16,14 +18,40 @@ class LogKey:
         post_fix: list[str] = None,
         append_search_to_col: bool = False,
     ):
+        """Class to hold search strings for the log parser and map search
+        into DataFrame columns and names. This log key expects as many results
+        per time steps as post_fixes are present.
+
+        For example create a LogKey(
+            search_string='Solving for U',
+            columns=['init', 'final', 'iter'],
+            post_fix=[_Ux, _Uy, _Uz])
+
+        it will create a DataFrame with init_Ux, final_Ux, iter_Ux, init_Uy, ... iter_Uz columns
+
+        Parameter:
+            - search_string: string to look for in log file
+            - columns: names of the columns in resulting DataFrame
+            - post_fix: append this str to all column names 
+        """
         self.search_string = search_string
         self.columns = columns
+        self.column_names = columns
         self.post_fix = None
         if post_fix:
             self.post_fix = post_fix
+            self.column_names = []
+            for p in post_fix:
+                for c in self.columns:
+                    self.column_names.append(c + p)
         if append_search_to_col:
+            # TODO this makes post_fix and append_search_to_col mutually exclusive
             self.post_fix = ["_" + search_string] * len(columns)
+            self.column_names = [n + "_" + search_string for n in self.column_names] 
         self.next_key_ = 0
+
+    def __repr__(self):
+        return f"{self.search_string}: {','.join(self.column_names)}"
 
     @property
     def next_key(self):
@@ -128,7 +156,11 @@ class LogFile:
         """Read from log_name and constructs a DataFrame"""
         # TODO call this from __init__
         self.log_name = log_name
-        df = pd.DataFrame.from_records(self.parse(log_name))
+        records = self.parse(log_name)
+        if not records:
+            warn(f"{self.keys} produced empty sets of records for {log_name}")
+            return pd.DataFrame() 
+        df = pd.DataFrame.from_records(records)
         df = df.groupby("Time").max().reset_index()
         df.set_index(keys=["Time"], inplace=True)
         self.header = LogHeader(log_name)
@@ -147,5 +179,8 @@ class LogFile:
         df = DataFrame()
 
         for log_name in logs:
-            df = concat([df, self.parse_to_df(log_name)])
+            df2 = self.parse_to_df(log_name)
+            if df2.empty:
+                continue
+            df = concat([df, df2])
         return df
