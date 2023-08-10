@@ -17,6 +17,7 @@ class LogKey:
         columns: list[str],
         post_fix: list[str] = None,
         append_search_to_col: bool = False,
+        prepend_search_to_col: bool = False,
     ):
         """Class to hold search strings for the log parser and map search
         into DataFrame columns and names. This log key expects as many results
@@ -28,6 +29,7 @@ class LogKey:
             post_fix=[_Ux, _Uy, _Uz])
 
         it will create a DataFrame with init_Ux, final_Ux, iter_Ux, init_Uy, ... iter_Uz columns
+        where the post fix distinguish values on different lines of the log file
 
         Parameter:
             - search_string: string to look for in log file
@@ -45,23 +47,19 @@ class LogKey:
                 for c in self.columns:
                     self.column_names.append(c + p)
         if append_search_to_col:
-            # TODO this makes post_fix and append_search_to_col mutually exclusive
-            self.post_fix = ["_" + search_string] * len(columns)
+            self.post_fix = [search_string] * len(columns)
             self.column_names = [n + "_" + search_string for n in self.column_names] 
+        if prepend_search_to_col:
+            self.post_fix = [search_string] * len(columns)
+            self.column_names = [search_string + n for n in self.column_names] 
         self.next_key_ = 0
 
     def __repr__(self):
         return f"{self.search_string}: {','.join(self.column_names)}"
 
-    @property
-    def next_key(self):
-        if not self.post_fix:
-            return None
-        ret = self.post_fix[self.next_key_]
-        self.next_key_ = (
-            self.next_key_ + 1 if self.next_key_ < len(self.post_fix) - 1 else 0
-        )
-        return ret
+    def reset_next_key(self):
+        """Resets the post_fix counter"""
+        self.next_key_ = 0
 
 
 class LogHeader:
@@ -89,6 +87,11 @@ class LogFile:
             if "Starting time loop" in line:
                 return i
 
+    def reset_next_keys(self):
+        """Resets all next keys"""
+        for logkey in self.keys:
+            logkey.reset_next_key()
+
     def extract_(self, line: str):
         """Returns key and values as list
         eg "ExecutionTime":[0,1]
@@ -96,9 +99,10 @@ class LogFile:
 
         for logkey in self.keys:
             key = logkey.search_string
-            col_names = logkey.columns
-
+            next_key = logkey.next_key_
+            col_names = logkey.column_names[next_key * len(logkey.columns): (next_key + 1) * len(logkey.columns)]
             if re.search(key, line):
+                logkey.next_key_ += 1
                 return (
                     key,
                     col_names,
@@ -111,9 +115,8 @@ class LogFile:
                             ),
                         )
                     ),
-                    logkey.next_key,
                 )
-        return None, None, None, None
+        return None, None, None
 
     def parse_to_records(self, log_str: str) -> list[dict]:
         """Parse a given log_str to a list of dictionaries"""
@@ -124,7 +127,7 @@ class LogFile:
         time = 0
         tmp_record = {}
         for line in log_str[start:-1]:
-            key, col_names, values, post_fix = self.extract_(line)
+            key, col_names, values = self.extract_(line)
             if line == "End":
                 return self.records
             if not col_names or not values or not line:
@@ -132,11 +135,13 @@ class LogFile:
             if col_names[0] == "Time":
                 # a new time step has begun
                 time = values[0]
+                self.reset_next_keys()
+            # TODO check if all post_fixes have been consumed
+            # then start a new row
             else:
                 for i, col in enumerate(col_names):
                     tmp_record["Time"] = time
-                    col_name = col if not post_fix else col + post_fix
-                    tmp_record[col_name] = values[i]
+                    tmp_record[col_names[i]] = values[i]
                 self.records.append(tmp_record)
                 tmp_record = {}
         return self.records
@@ -158,7 +163,8 @@ class LogFile:
         self.log_name = log_name
         records = self.parse(log_name)
         if not records:
-            warn(f"{self.keys} produced empty sets of records for {log_name}")
+            warning =f"{self.keys} produced empty sets of records for {log_name}"
+            warn(warning)
             return pd.DataFrame() 
         df = pd.DataFrame.from_records(records)
         df = df.groupby("Time").max().reset_index()
