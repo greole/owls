@@ -217,38 +217,6 @@ def strip_time(path, base):
         return 0.0
 
 
-def import_foam_mesh(path, exclude=None, times_slice=None):
-    """returns a Dataframe containing the raw mesh data"""
-    mesh_loc = "constant/polyMesh"
-    if mesh_loc not in path:
-        path = os.path.join(path, mesh_loc)
-
-    fileList = find_datafiles(
-        path,
-        search="[.\/A-Za-z]*",
-        files=["faces", "points", "owner", "neighbour"],
-        exclude=exclude,
-        times_slice=times_slice,
-    )
-    if not fileList:
-        print("no mesh files found")
-        return
-    p_bar = ProgressBar(n_tot=sum([len(l) for l in fileList.values()]))
-    df = DataFrame()
-    from collections import defaultdict
-
-    origins = Origins()
-    els = list(fileList.items())
-    time, files = els[0]
-    df_tmp = dict()
-    for fn in files:
-        ret = read_data_file(fn, skiplines=1, maxlines=False)
-        p_bar.next()
-        field_names, x, hashes = ret
-        df_tmp[fn] = x
-    return df_tmp
-
-
 def import_foam_folder(
     path,
     search,
