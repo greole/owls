@@ -189,5 +189,5 @@ class LogFile:
             df2 = self.parse_to_df(log_name)
             if df2.empty:
                 continue
-            df = concat([df, df2])
+            df = pd.concat([df, df2])
         return df
