@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 
-import io
 import re
 from glob import glob
 from os.path import basename
@@ -13,25 +12,12 @@ from setuptools import find_packages
 from setuptools import setup
 
 
-def read(*names, **kwargs):
-    with io.open(
-        join(dirname(__file__), *names), encoding=kwargs.get("encoding", "utf8")
-    ) as fh:
-        return fh.read()
-
 
 setup(
     name="Owls",
     version="0.0.0",
     license="BSD-2-Clause",
     description="A tool to create and run OpenFOAM parameter studies",
-    long_description="%s\n%s"
-    % (
-        re.compile("^.. start-badges.*^.. end-badges", re.M | re.S).sub(
-            "", read("README.rst")
-        ),
-        re.sub(":[a-z]+:`~?(.*?)`", r"``\1``", read("CHANGELOG.rst")),
-    ),
     author="Gregor Olenik",
     author_email="go@hpsim.de",
     url="https://github.com/hpsim/obr",
