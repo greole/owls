@@ -14,12 +14,12 @@ separator_str = (
 )
 
 
-def dispatch_to_str(item, indent="", nl="\n\n"):
+def dispatch_to_str(item, indent="", nl="\n\n") -> str:
     """dispatch to corresponding methods"""
     key, value = item
     if isinstance(key, str) and key.startswith("#"):
         return OFInclude().to_str(key, value, indent=indent, nl=nl)
-    if isinstance(key, str) and key.startswith("$"):
+    if isinstance(value, str) and value.startswith("$"):
         return OFVariable().to_str(key, value, indent=indent, nl=nl)
     if key == "functions":
         return OFFunctions().to_str(key, value, indent=indent, nl=nl)
@@ -33,7 +33,7 @@ def dispatch_to_str(item, indent="", nl="\n\n"):
     elif isinstance(value, list):
         return OFList().to_str(key, value, indent=indent, nl=nl)
     try:
-        return indent + "{}\t{};{}".format(key, str(value), nl)
+        return indent + "{} {};{}".format(key, str(value), nl)
     except Exception:
         # print(e, item)
         return ""
@@ -56,9 +56,7 @@ class OFList:
         """Convert a python list to a str with OF syntax"""
         key = args[0]
         values = args[1]
-        return (
-            f'{kwargs.get("indent", "")}{key} ({" ".join(map(str,values))});{kwargs.get("nl",os.linesep)}'
-        )
+        return f'{kwargs.get("indent", "")}{key} ({" ".join(map(str,values))});{kwargs.get("nl",os.linesep)}'
 
 
 class OFVariable:
@@ -72,8 +70,12 @@ class OFVariable:
 
     def to_str(self, *args, **kwargs):
         """Convert a python list to a str with OF syntax"""
-        value = args[1]
-        return f'{kwargs.get("indent", "")}${value};{kwargs.get("nl",os.linesep)}'
+        value = args[1].replace(
+            " ", ""
+        )  # NOTE parse somehow adds a ws between $ and variable name and where removing it now
+        key = args[0]
+        print("value:", value)
+        return f'{kwargs.get("indent", "")}{key} {value};{kwargs.get("nl",os.linesep)}'
 
 
 class OFFunctions:
@@ -156,13 +158,13 @@ class FileParser:
                 # try to match a list first because it could be matched as a keyword accidentally
                 OFList.parse()
                 # a variable
-                ^ OFVariable.parse()
                 ^ OFDimensionSet.parse()
                 ^ (
                     pp.Word(pp.alphanums + '"#(),|*').set_results_name("key")
                     + (
                         pp.OneOrMore(pp.Word(pp.alphanums + '".-')) + pp.Suppress(";")
                         # all kinds of values delimited by ;
+                        ^ OFVariable.parse()
                         ^ of_dict
                         ^ pp.Word(
                             pp.alphanums + '"_.-/'
