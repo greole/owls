@@ -170,7 +170,8 @@ class FileParser:
                 ^ (
                     pp.Word(pp.alphanums + '"#(),|*').set_results_name("key")
                     + (
-                        pp.OneOrMore(pp.Word(pp.alphanums + '".-')) + pp.Suppress(";")
+                        pp.OneOrMore(pp.Word(pp.alphanums + '"._*-()|'))
+                        + pp.Suppress(";")
                         # all kinds of values delimited by ;
                         ^ OFVariable.parse()
                         ^ of_dict

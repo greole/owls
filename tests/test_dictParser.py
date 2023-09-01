@@ -6,8 +6,10 @@ def test_simple_parse():
 
     def parse_and_convert_back(text):
         result_dict = parser.parse_str_to_dict(text)
-        k, v = list(result_dict.items())[0]
-        result_text = pfd.dispatch_to_str((k, v), "", "")
+        result_text = ""
+        for k, v in result_dict.items():
+            result_text += pfd.dispatch_to_str((k, v), "", "") + "\n"
+        result_text = result_text[0:-1]
         return result_dict, result_text
 
     text = "key value;"
@@ -66,3 +68,19 @@ def test_simple_parse():
     result_dict, result_text = parse_and_convert_back(text)
     assert result_dict == {"foo": "$ bar"}
     assert result_text == text
+
+    text = """inletPatch "CFDWT_In.*";
+outletPatch "CFDWT_Out.*";
+wallPatches "(Windsor_Body.*|Windsor_Pins.*|Windsor_Base.*|CFDWT_Floor.*)";
+forcesWallPatches "(Windsor_Body|Windsor_Pins|Windsor_Base)";
+"""
+    result_dict, result_text = parse_and_convert_back(text)
+    # assert result_dict == {}
+    assert len(result_dict.items()) == 4
+    assert result_dict == {
+        "inletPatch": '"CFDWT_In.*"',
+        "outletPatch": '"CFDWT_Out.*"',
+        "wallPatches": '"(Windsor_Body.*|Windsor_Pins.*|Windsor_Base.*|CFDWT_Floor.*)"',
+        "forcesWallPatches": '"(Windsor_Body|Windsor_Pins|Windsor_Base)"',
+    }
+    assert result_text + "\n" == text
