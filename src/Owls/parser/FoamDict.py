@@ -21,6 +21,8 @@ def dispatch_to_str(item, indent="", nl="\n\n") -> str:
         return OFInclude().to_str(key, value, indent=indent, nl=nl)
     if isinstance(value, str) and value.startswith("$"):
         return OFVariable().to_str(key, value, indent=indent, nl=nl)
+    if isinstance(key, str) and key.startswith("$"):
+        return OFVariable().to_str(key, value, indent=indent, nl=nl)
     if key == "functions":
         return OFFunctions().to_str(key, value, indent=indent, nl=nl)
     if isinstance(value, dict):
@@ -70,12 +72,18 @@ class OFVariable:
 
     def to_str(self, *args, **kwargs):
         """Convert a python list to a str with OF syntax"""
-        value = args[1].replace(
-            " ", ""
-        )  # NOTE parse somehow adds a ws between $ and variable name and where removing it now
-        key = args[0]
-        print("value:", value)
-        return f'{kwargs.get("indent", "")}{key} {value};{kwargs.get("nl",os.linesep)}'
+        # NOTE variables can currently operate in two separate modes
+        # 1. in single mode
+        # 2. in key value mode
+        # depending on the mode the resulting string is build differently
+        single_mode = args[0].startswith("$_")
+        if single_mode:
+            key = "$"
+            value = args[1]
+        else:
+            key = args[0]
+            value = " " + args[1].replace(" ", "")
+        return f'{kwargs.get("indent", "")}{key}{value};{kwargs.get("nl",os.linesep)}'
 
 
 class OFFunctions:
@@ -157,7 +165,7 @@ class FileParser:
                 # a OpenFOAM list
                 # try to match a list first because it could be matched as a keyword accidentally
                 OFList.parse()
-                # a variable
+                ^ OFVariable.parse()
                 ^ OFDimensionSet.parse()
                 ^ (
                     pp.Word(pp.alphanums + '"#(),|*').set_results_name("key")

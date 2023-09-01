@@ -35,17 +35,33 @@ def test_simple_parse():
     assert result_dict == {"key": "foo bar"}
     assert result_text == text
 
-    text = "key {foo bar;}"
+    text = """key
+{
+\tfoo bar;
+}
+
+"""
     result_dict, result_text = parse_and_convert_back(text)
     assert result_dict == {"key": {"foo": "bar"}}
-    # NOTE Dont test for now since string is reformated
-    # assert result_text == text
+    assert result_text == text
 
     text = '#include "foo/bar"'
     result_dict, result_text = parse_and_convert_back(text)
     assert result_dict == {'#include_"foo/bar"': '"foo/bar"'}
     assert result_text == text
 
+    # as single variable
+    text = """foo
+{
+\t$bar;
+}
+
+"""
+    result_dict, result_text = parse_and_convert_back(text)
+    assert result_dict == {"foo": {"$_bar": "bar"}}
+    assert result_text == text
+
+    # as key value pair
     text = "foo $bar;"
     result_dict, result_text = parse_and_convert_back(text)
     assert result_dict == {"foo": "$ bar"}
