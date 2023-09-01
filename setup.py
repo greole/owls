@@ -58,7 +58,7 @@ setup(
     keywords=[
         # eg: 'keyword1', 'keyword2', 'keyword3',
     ],
-    python_requires=">=3.6",
+    python_requires=">=3.9",
     extras_require={
         # eg:
         #   'rst': ['docutils>=0.11'],
