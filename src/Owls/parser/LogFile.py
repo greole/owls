@@ -4,6 +4,7 @@ to Pandas DataFrames and Series
 """
 import re
 import pandas as pd
+import os
 
 from subprocess import check_output
 from .FoamDict import separator_str
@@ -182,7 +183,7 @@ class LogFile:
         fold, dirs, files = next(os.walk(folder))
         logs = [fold + "/" + log for log in files if search in log]
 
-        df = DataFrame()
+        df = pd.DataFrame()
 
         for log_name in logs:
             df2 = self.parse_to_df(log_name)
