@@ -7,7 +7,8 @@ dependencies = [
  "pandas",
  "numpy",
  "functional",
- "pyparsing"
+ "pyparsing",
+ "file_read_backwards"
 ]
 
 [project.optional-dependencies]

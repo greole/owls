@@ -5,10 +5,37 @@ to Pandas DataFrames and Series
 import re
 import pandas as pd
 import os
+import errno
+import logging
 
 from subprocess import check_output
 from .FoamDict import separator_str
 from warnings import warn
+from pathlib import Path
+from file_read_backwards import FileReadBackwards
+
+
+class Matcher:
+    def match(self, line: str):
+        """Call and return re.match on the given line with the child class re"""
+        ret = re.match(self.re, line)
+        if ret:
+            return ret.groupdict()
+        else:
+            return {}
+
+
+class transportEqn(Matcher):
+    def __init__(self, name):
+        self.name = name
+
+    @property
+    def re(self):
+        return (
+            rf"(?P<solverName>\w+):  Solving for {self.name}, Initial residual ="
+            r" (?P<InitialResidual>[\w+.\-]*), Final residual ="
+            r" (?P<FinalResidual>[\w+.-]*), No Iterations (?P<NoIterations>[0-9]*)"
+        )
 
 
 class LogKey:
@@ -35,7 +62,7 @@ class LogKey:
         Parameter:
             - search_string: string to look for in log file
             - columns: names of the columns in resulting DataFrame
-            - post_fix: append this str to all column names 
+            - post_fix: append this str to all column names
         """
         self.search_string = search_string
         self.columns = columns
@@ -49,10 +76,10 @@ class LogKey:
                     self.column_names.append(c + p)
         if append_search_to_col:
             self.post_fix = [search_string] * len(columns)
-            self.column_names = [n + "_" + search_string for n in self.column_names] 
+            self.column_names = [n + "_" + search_string for n in self.column_names]
         if prepend_search_to_col:
             self.post_fix = [search_string] * len(columns)
-            self.column_names = [search_string + n for n in self.column_names] 
+            self.column_names = [search_string + n for n in self.column_names]
         self.next_key_ = 0
 
     def __repr__(self):
@@ -64,9 +91,22 @@ class LogKey:
 
 
 class LogHeader:
+    """Content till the // * * // separator line"""
+
     def __init__(self, fn):
         self._read_header(fn)
-        self.host = re.findall("Host[ ]*: ([\w.-]*)", self.header_str_)[0]
+        self.Build = self._finder("Build")
+        self.Arch = self._finder("Arch").replace('"', "")
+        self.Exec = self._finder("Exec")
+        self.nProcs = int(self._finder("nProcs"))
+        self.Time = self._finder("Time")
+        self.Host = self._finder("Host")
+        self.PID = int(self._finder("PID"))
+        self.IO = self._finder("I/O")
+        self.Case = self._finder("Case")
+
+    def _finder(self, name):
+        return re.findall(name + r"[ ]*: ([\w.\-=:;\"\"\/]*)", self.header_str_)[0]
 
     def _read_header(self, fn):
         self.header_str_ = ""
@@ -76,17 +116,112 @@ class LogHeader:
                     break
                 self.header_str_ += line
 
+    @property
+    def content(self):
+        return self.header_str_
+
+
+class Initialisation:
+    def __init__(self):
+        pass
+
+
+class LogFooter:
+    """Content till last ExecutionTime ocurence"""
+
+    def __init__(self, fn):
+        self._read_footer(fn)
+
+    @property
+    def content(self):
+        return self.footer_str_
+
+    def _read_footer(self, fn):
+        footer_lst_ = []
+        with FileReadBackwards(fn, encoding="utf-8") as frb:
+            for line in frb:
+                if "ExecutionTime" in line:
+                    break
+                footer_lst_.insert(0, line)
+        self.footer_str_ = "\n".join(footer_lst_[::-1])
+
+
+class TimeStep:
+    """Content from Time = till the next occurance"""
+
+    def __init__(self, fn):
+        pass
+
 
 class LogFile:
-    def __init__(self, keys: list[LogKey], time_key: str = "^Time = "):
-        self.keys = keys
-        self.keys.append(LogKey(time_key, ["Time"]))
+    def __init__(self, fn: str, inner_loop_parser=None, frequency=1):
+        self.fn = fn
+        self.frequency = frequency
+        if not Path(self.fn).exists():
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), self.fn)
+
+    @property
+    def header(self):
+        self.header_ = LogHeader(self.fn)
+        return self.header_
+
+    @property
+    def timesteps(self):
+        self.footer_ = LogFooter(self.fn)
+        return self.footer_
+
+    @property
+    def footer(self):
+        self.footer_ = LogFooter(self.fn)
+        return self.footer_
 
     def find_start_(self, log: str) -> int:
         """Fast forward through file till 'Starting time loop'"""
         for i, line in enumerate(log):
             if "Starting time loop" in line:
                 return i
+
+    def time_steps_(self, frequency=None):
+        if not frequency:
+            frequency = self.frequency
+
+        found_starting_time_loop = False
+        found_first_time = False
+        line_buffer = ""
+
+        remaining = frequency
+        # TODO skip reading of lines if remaining > 1 entirely
+        # instead of just clearing the buffer
+
+        with open(self.fn, encoding="utf-8") as fh:
+            for line in fh.readlines():
+                if ("Starting time loop" in line) and not found_starting_time_loop:
+                    found_starting_time_loop = True
+                if line.startswith("Time =") and found_starting_time_loop:
+                    time = float(re.findall(r"Time = ([\w.\-]*)", line)[0])
+                    line_buffer = ""
+                elif "ExecutionTime = " in line:
+                    line_buffer += line
+                    remaining -= 1
+                    if remaining == 0:
+                        remaining = frequency
+                        yield time, line_buffer
+                elif found_starting_time_loop:
+                    line_buffer += line
+
+    def parse_inner_loops_(self, timestep: str):
+        """Given a parsed time step, this function parses for innner loops
+
+        Returns:
+            A tuple of the parse content and additional indices
+        """
+        if not self.inner_loop_parser:
+            yield timestep, ()
+
+    def apply_line_parser_(self, line: str, matcher: Matcher):
+        """Applies a line parser and return results"""
+        m = matcher.match(line)
+        return m if m else {}
 
     def reset_next_keys(self):
         """Resets all next keys"""
@@ -101,7 +236,9 @@ class LogFile:
         for logkey in self.keys:
             key = logkey.search_string
             next_key = logkey.next_key_
-            col_names = logkey.column_names[next_key * len(logkey.columns): (next_key + 1) * len(logkey.columns)]
+            col_names = logkey.column_names[
+                next_key * len(logkey.columns) : (next_key + 1) * len(logkey.columns)
+            ]
             if re.search(key, line):
                 logkey.next_key_ += 1
                 return (
@@ -112,7 +249,9 @@ class LogFile:
                             float,
                             filter(
                                 lambda x: x,
-                                re.findall("[0-9\-]+[.]?[0-9]*[e]?[\-\+]?[0-9]*", line),
+                                re.findall(
+                                    r"[0-9\-]+[.]?[0-9]*[e]?[\-\+]?[0-9]*", line
+                                ),
                             ),
                         )
                     ),
@@ -164,9 +303,9 @@ class LogFile:
         self.log_name = log_name
         records = self.parse(log_name)
         if not records:
-            warning =f"{self.keys} produced empty sets of records for {log_name}"
+            warning = f"{self.keys} produced empty sets of records for {log_name}"
             warn(warning)
-            return pd.DataFrame() 
+            return pd.DataFrame()
         df = pd.DataFrame.from_records(records)
         df = df.groupby("Time").max().reset_index()
         df.set_index(keys=["Time"], inplace=True)
