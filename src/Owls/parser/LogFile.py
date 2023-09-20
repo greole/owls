@@ -32,10 +32,20 @@ class transportEqn(Matcher):
     @property
     def re(self):
         return (
-            rf"(?P<solverName>\w+):  Solving for {self.name}, Initial residual ="
-            r" (?P<InitialResidual>[\w+.\-]*), Final residual ="
-            r" (?P<FinalResidual>[\w+.-]*), No Iterations (?P<NoIterations>[0-9]*)"
+            rf"(?P<{self.name}_solverName>\w+):  Solving for {self.name}, Initial residual ="
+            rf" (?P<{self.name}_InitialResidual>[\w+.\-]*), Final residual ="
+            rf" (?P<{self.name}_FinalResidual>[\w+.-]*), No Iterations (?P<{self.name}_NoIterations>[0-9]*)"
         )
+
+
+class PimpleMatcher(Matcher):
+    @property
+    def re(self):
+        return r"PIMPLE: iteration (?P<PIMPLEIteration>[0-9]*)"
+
+
+class simpleMatcher(Matcher):
+    pass
 
 
 class LogKey:
@@ -209,14 +219,39 @@ class LogFile:
                 elif found_starting_time_loop:
                     line_buffer += line
 
-    def parse_inner_loops_(self, timestep: str):
+    def parse_inner_loops_(
+        self, timestep: str, matcher: list[Matcher], spliter: list[Matcher], state
+    ):
         """Given a parsed time step, this function parses for innner loops
 
         Returns:
             A tuple of the parse content and additional indices
         """
-        if not self.inner_loop_parser:
-            yield timestep, ()
+        # if not self.inner_loop_parser:
+        #     yield timestep, ()
+        #
+        def inner_loops(timestep):
+            # TODO we need to distinguish between matches that start and end
+            # a block
+            line_buffer = []
+            state = {}
+            for line in timestep.split("\n"):
+                for s in spliter:
+                    state = self.apply_line_parser_(line, s)
+                    print("test match", line, state)
+                    if state:
+                        ret = line_buffer
+                        line_buffer = []
+                        yield state, ret
+                line_buffer.append(line)
+            yield state, line_buffer
+
+        for state, lines in inner_loops(timestep):
+            print(state, lines)
+            for line in lines:
+                for m in matcher:
+                    state.update(self.apply_line_parser_(line, m))
+        return state
 
     def apply_line_parser_(self, line: str, matcher: Matcher):
         """Applies a line parser and return results"""

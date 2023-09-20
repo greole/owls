@@ -2,6 +2,18 @@ import Owls.parser.LogFile as lfp
 import pathlib
 import pytest
 
+final_timestep_str = """
+PIMPLE: iteration 1
+smoothSolver:  Solving for Ux, Initial residual = 0.00484754, Final residual = 4.87714e-07, No Iterations 2
+smoothSolver:  Solving for Uy, Initial residual = 0.0234891, Final residual = 2.9262e-06, No Iterations 2
+smoothSolver:  Solving for Uz, Initial residual = 0.0230027, Final residual = 2.57245e-06, No Iterations 2
+nonePCG:  Solving for p, Initial residual = 0.0628781, Final residual = 0.00590879, No Iterations 9
+time step continuity errors : sum local = 1.37969e-06, global = 9.72129e-19, cumulative = 1.25296e-16
+nonePCG:  Solving for p, Initial residual = 0.0060665, Final residual = 7.59284e-07, No Iterations 149
+time step continuity errors : sum local = 1.77299e-10, global = 1.04468e-18, cumulative = 1.26341e-16
+ExecutionTime = 1.05 s  ClockTime = 2 s
+"""
+
 
 def test_logParser_raises_if_not_exist():
     fn = "does_not_exist"
@@ -44,17 +56,6 @@ def test_timeStepParser():
     timesteps = {time: cnt for time, cnt in logFile.time_steps_()}
     assert len(timesteps) == 100
 
-    final_timestep_str = """
-PIMPLE: iteration 1
-smoothSolver:  Solving for Ux, Initial residual = 0.00484754, Final residual = 4.87714e-07, No Iterations 2
-smoothSolver:  Solving for Uy, Initial residual = 0.0234891, Final residual = 2.9262e-06, No Iterations 2
-smoothSolver:  Solving for Uz, Initial residual = 0.0230027, Final residual = 2.57245e-06, No Iterations 2
-nonePCG:  Solving for p, Initial residual = 0.0628781, Final residual = 0.00590879, No Iterations 9
-time step continuity errors : sum local = 1.37969e-06, global = 9.72129e-19, cumulative = 1.25296e-16
-nonePCG:  Solving for p, Initial residual = 0.0060665, Final residual = 7.59284e-07, No Iterations 149
-time step continuity errors : sum local = 1.77299e-10, global = 1.04468e-18, cumulative = 1.26341e-16
-ExecutionTime = 1.05 s  ClockTime = 2 s
-"""
     assert timesteps[20] == final_timestep_str
 
     logFile = lfp.LogFile(fn)
@@ -62,7 +63,7 @@ ExecutionTime = 1.05 s  ClockTime = 2 s
     assert len(timesteps) == 20
 
 
-def test_lineParser():
+def test_applyLineParser():
     fn = "tests/log"
     line = (
         "smoothSolver:  Solving for Ux, Initial residual = 0.00484754, Final residual ="
@@ -71,7 +72,26 @@ def test_lineParser():
     logFile = lfp.LogFile(fn)
 
     parseResults = logFile.apply_line_parser_(line, lfp.transportEqn("Ux"))
-    assert parseResults["solverName"] == "smoothSolver"
-    assert parseResults["InitialResidual"] == "0.00484754"
-    assert parseResults["FinalResidual"] == "4.87714e-07"
-    assert parseResults["NoIterations"] == "2"
+    assert parseResults["Ux_solverName"] == "smoothSolver"
+    assert parseResults["Ux_InitialResidual"] == "0.00484754"
+    assert parseResults["Ux_FinalResidual"] == "4.87714e-07"
+    assert parseResults["Ux_NoIterations"] == "2"
+
+
+def test_parseInnerLoops():
+    matcher = [
+        lfp.transportEqn("Ux"),
+    ]
+
+    splitter = [lfp.PimpleMatcher()]
+
+    lines = """
+PIMPLE: iteration 1
+smoothSolver:  Solving for Ux, Initial residual = 0.00484754, Final residual = 4.87714e-07, No Iterations 2
+PIMPLE: iteration 2
+smoothSolver:  Solving for Ux, Initial residual = 0.00484754, Final residual = 4.87714e-07, No Iterations 2
+    """
+    fn = "tests/log"
+    logFile = lfp.LogFile(fn)
+    parseResults = logFile.parse_inner_loops_(lines, matcher, splitter, {})
+    assert parseResults == {}
