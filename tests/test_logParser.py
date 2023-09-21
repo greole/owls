@@ -11,8 +11,7 @@ nonePCG:  Solving for p, Initial residual = 0.0628781, Final residual = 0.005908
 time step continuity errors : sum local = 1.37969e-06, global = 9.72129e-19, cumulative = 1.25296e-16
 nonePCG:  Solving for p, Initial residual = 0.0060665, Final residual = 7.59284e-07, No Iterations 149
 time step continuity errors : sum local = 1.77299e-10, global = 1.04468e-18, cumulative = 1.26341e-16
-ExecutionTime = 1.05 s  ClockTime = 2 s
-"""
+ExecutionTime = 1.05 s  ClockTime = 2 s"""
 
 
 def test_logParser_raises_if_not_exist():
@@ -56,14 +55,14 @@ def test_timeStepParser():
     timesteps = {time: cnt for time, cnt in logFile.time_steps_()}
     assert len(timesteps) == 100
 
-    assert timesteps[20] == final_timestep_str
+    assert timesteps[20] == [e + "\n" for e in final_timestep_str.split("\n")]
 
     logFile = lfp.LogFile(fn)
     timesteps = {time: cnt for time, cnt in logFile.time_steps_(frequency=5)}
     assert len(timesteps) == 20
 
 
-def test_applyLineParser():
+def test_applyTransportEqnLineParser():
     fn = "tests/log"
     line = (
         "smoothSolver:  Solving for Ux, Initial residual = 0.00484754, Final residual ="
@@ -71,11 +70,31 @@ def test_applyLineParser():
     )
     logFile = lfp.LogFile(fn)
 
-    parseResults = logFile.apply_line_parser_(line, lfp.transportEqn("Ux"))
+    parseResults = lfp.apply_line_parser_(line, lfp.transportEqn("Ux"))
     assert parseResults["Ux_solverName"] == "smoothSolver"
     assert parseResults["Ux_InitialResidual"] == "0.00484754"
     assert parseResults["Ux_FinalResidual"] == "4.87714e-07"
     assert parseResults["Ux_NoIterations"] == "2"
+    assert parseResults["Ux_count"] == 1
+
+
+def test_applyCustomLineParser():
+    fn = "tests/log"
+
+    line = "[OGL LOG][Proc: 0]Ux_local_cols: call_init: 0.029 [ms]"
+    logFile = lfp.LogFile(fn)
+
+    matcher = lfp.customMatcher(
+        "Ux_local_cols",
+        (
+            r"\[OGL LOG\]\[Proc: 0\]Ux_local_cols: call_init:"
+            r" (?P<Ux_local_cols>[0-9.]*) \[ms\]"
+        ),
+    )
+
+    parseResults = lfp.apply_line_parser_(line, matcher)
+    assert parseResults != {}
+    assert parseResults["Ux_local_cols"] == "0.029"
 
 
 def test_parseInnerLoops():
@@ -83,15 +102,215 @@ def test_parseInnerLoops():
         lfp.transportEqn("Ux"),
     ]
 
-    splitter = [lfp.PimpleMatcher()]
+    splitter = lfp.PimpleMatcher()
 
     lines = """
 PIMPLE: iteration 1
 smoothSolver:  Solving for Ux, Initial residual = 0.00484754, Final residual = 4.87714e-07, No Iterations 2
 PIMPLE: iteration 2
-smoothSolver:  Solving for Ux, Initial residual = 0.00484754, Final residual = 4.87714e-07, No Iterations 2
-    """
+smoothSolver:  Solving for Ux, Initial residual = 0.00584754, Final residual = 5.87714e-07, No Iterations 2
+    """.split(
+        "\n"
+    )
     fn = "tests/log"
     logFile = lfp.LogFile(fn)
-    parseResults = logFile.parse_inner_loops_(lines, matcher, splitter, {})
-    assert parseResults == {}
+    parseResults = [d for d in logFile.parse_inner_loops_(lines, matcher, splitter, {})]
+    assert parseResults == [
+        {
+            "PIMPLEIteration": "1",
+            "PIMPLE_count": 1,
+            "Ux_FinalResidual": "4.87714e-07",
+            "Ux_InitialResidual": "0.00484754",
+            "Ux_NoIterations": "2",
+            "Ux_solverName": "smoothSolver",
+            "Ux_count": 1,
+        },
+        {
+            "PIMPLEIteration": "2",
+            "PIMPLE_count": 2,
+            "Ux_FinalResidual": "5.87714e-07",
+            "Ux_InitialResidual": "0.00584754",
+            "Ux_NoIterations": "2",
+            "Ux_solverName": "smoothSolver",
+            "Ux_count": 1,
+        },
+    ]
+
+
+def test_parseInnerLoops_innerCount():
+    lines = """
+PIMPLE: iteration 1
+nonePCG:  Solving for p, Initial residual = 0.0596912, Final residual = 0.00535372, No Iterations 9
+time step continuity errors : sum local = 1.24653e-06, global = 9.30614e-19, cumulative = 1.23404e-16
+nonePCG:  Solving for p, Initial residual = 0.00552749, Final residual = 8.77802e-07, No Iterations 149
+time step continuity errors : sum local = 2.05781e-10, global = 9.19636e-19, cumulative = 1.24324e-16
+PIMPLE: iteration 2
+nonePCG:  Solving for p, Initial residual = 0.0596912, Final residual = 0.00535372, No Iterations 9
+time step continuity errors : sum local = 1.24653e-06, global = 9.30614e-19, cumulative = 1.23404e-16
+nonePCG:  Solving for p, Initial residual = 0.00552749, Final residual = 8.77802e-07, No Iterations 149
+time step continuity errors : sum local = 2.05781e-10, global = 9.19636e-19, cumulative = 1.24324e-16
+""".split(
+        "\n"
+    )
+    fn = "tests/log"
+    logFile = lfp.LogFile(fn)
+    matcher = [
+        lfp.transportEqn("p"),
+    ]
+
+    splitter = lfp.PimpleMatcher()
+    parseResults = [d for d in logFile.parse_inner_loops_(lines, matcher, splitter, {})]
+    assert parseResults == [
+        {
+            "PIMPLEIteration": "1",
+            "PIMPLE_count": 1,
+            "p_FinalResidual": "0.00535372",
+            "p_InitialResidual": "0.0596912",
+            "p_NoIterations": "9",
+            "p_count": 1,
+            "p_solverName": "nonePCG",
+        },
+        {
+            "PIMPLEIteration": "1",
+            "PIMPLE_count": 1,
+            "p_FinalResidual": "8.77802e-07",
+            "p_InitialResidual": "0.00552749",
+            "p_NoIterations": "149",
+            "p_count": 2,
+            "p_solverName": "nonePCG",
+        },
+        {
+            "PIMPLEIteration": "2",
+            "PIMPLE_count": 2,
+            "p_FinalResidual": "0.00535372",
+            "p_InitialResidual": "0.0596912",
+            "p_NoIterations": "9",
+            "p_count": 1,
+            "p_solverName": "nonePCG",
+        },
+        {
+            "PIMPLEIteration": "2",
+            "PIMPLE_count": 2,
+            "p_FinalResidual": "8.77802e-07",
+            "p_InitialResidual": "0.00552749",
+            "p_NoIterations": "149",
+            "p_count": 2,
+            "p_solverName": "nonePCG",
+        },
+    ]
+
+
+def test_parseInnerLoops_innerCount_multiMatcher():
+    lines = """
+PIMPLE: iteration 1
+smoothSolver:  Solving for Ux, Initial residual = 0.00484754, Final residual = 4.87714e-07, No Iterations 2
+nonePCG:  Solving for p, Initial residual = 0.0596912, Final residual = 0.00535372, No Iterations 9
+time step continuity errors : sum local = 1.24653e-06, global = 9.30614e-19, cumulative = 1.23404e-16
+nonePCG:  Solving for p, Initial residual = 0.00552749, Final residual = 8.77802e-07, No Iterations 149
+time step continuity errors : sum local = 2.05781e-10, global = 9.19636e-19, cumulative = 1.24324e-16
+PIMPLE: iteration 2
+smoothSolver:  Solving for Ux, Initial residual = 0.00584754, Final residual = 5.87714e-07, No Iterations 2
+nonePCG:  Solving for p, Initial residual = 0.0596912, Final residual = 0.00535372, No Iterations 9
+time step continuity errors : sum local = 1.24653e-06, global = 9.30614e-19, cumulative = 1.23404e-16
+nonePCG:  Solving for p, Initial residual = 0.00552749, Final residual = 8.77802e-07, No Iterations 149
+time step continuity errors : sum local = 2.05781e-10, global = 9.19636e-19, cumulative = 1.24324e-16
+""".split(
+        "\n"
+    )
+    fn = "tests/log"
+    logFile = lfp.LogFile(fn)
+    matcher = [
+        lfp.transportEqn("Ux"),
+        lfp.transportEqn("p"),
+    ]
+
+    splitter = lfp.PimpleMatcher()
+    parseResults = [d for d in logFile.parse_inner_loops_(lines, matcher, splitter, {})]
+    assert len(parseResults) == 6
+    assert parseResults == [
+        {
+            "PIMPLEIteration": "1",
+            "PIMPLE_count": 1,
+            "Ux_solverName": "smoothSolver",
+            "Ux_FinalResidual": "4.87714e-07",
+            "Ux_InitialResidual": "0.00484754",
+            "Ux_NoIterations": "2",
+            "Ux_count": 1,
+        },
+        {
+            "PIMPLEIteration": "1",
+            "PIMPLE_count": 1,
+            "p_FinalResidual": "0.00535372",
+            "p_InitialResidual": "0.0596912",
+            "p_NoIterations": "9",
+            "p_count": 1,
+            "p_solverName": "nonePCG",
+        },
+        {
+            "PIMPLEIteration": "1",
+            "PIMPLE_count": 1,
+            "p_FinalResidual": "8.77802e-07",
+            "p_InitialResidual": "0.00552749",
+            "p_NoIterations": "149",
+            "p_count": 2,
+            "p_solverName": "nonePCG",
+        },
+        {
+            "PIMPLEIteration": "2",
+            "PIMPLE_count": 2,
+            "Ux_solverName": "smoothSolver",
+            "Ux_FinalResidual": "5.87714e-07",
+            "Ux_InitialResidual": "0.00584754",
+            "Ux_NoIterations": "2",
+            "Ux_count": 1,
+        },
+        {
+            "PIMPLEIteration": "2",
+            "PIMPLE_count": 2,
+            "p_FinalResidual": "0.00535372",
+            "p_InitialResidual": "0.0596912",
+            "p_NoIterations": "9",
+            "p_count": 1,
+            "p_solverName": "nonePCG",
+        },
+        {
+            "PIMPLEIteration": "2",
+            "PIMPLE_count": 2,
+            "p_FinalResidual": "8.77802e-07",
+            "p_InitialResidual": "0.00552749",
+            "p_NoIterations": "149",
+            "p_count": 2,
+            "p_solverName": "nonePCG",
+        },
+    ]
+
+
+def test_parseToRecords():
+    fn = "tests/log"
+    matcher = [
+        lfp.transportEqn("Ux"),
+        lfp.transportEqn("p"),
+    ]
+
+    logFile = lfp.LogFile(fn, matcher=matcher)
+
+    records = list(logFile.parse_to_records())
+
+    assert len(records) > 1
+    assert records[0]["Time"] == 0.2
+    assert records[0]["Ux_count"] == 1
+    assert records[1]["Time"] == 0.2
+    assert records[1]["p_count"] == 1
+
+
+def test_parseToDataFrame():
+    fn = "tests/log"
+    matcher = [
+        lfp.transportEqn("Ux"),
+        lfp.transportEqn("Uy"),
+        lfp.transportEqn("p"),
+    ]
+
+    logFile = lfp.LogFile(fn, matcher=matcher)
+
+    df = logFile.parse_to_df()

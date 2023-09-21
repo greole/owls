@@ -13,16 +13,40 @@ from .FoamDict import separator_str
 from warnings import warn
 from pathlib import Path
 from file_read_backwards import FileReadBackwards
+from copy import deepcopy
 
 
 class Matcher:
+    """Base class for a simple matcher that matches exactely one line of a log file
+    based on a given regex"""
+
+    count = 1
+
     def match(self, line: str):
         """Call and return re.match on the given line with the child class re"""
         ret = re.match(self.re, line)
         if ret:
-            return ret.groupdict()
+            ret_dict = ret.groupdict()
+            ret_dict[self.name + "_count"] = self.count
+            self.count += 1
+            return ret_dict
         else:
             return {}
+
+    def reset(self):
+        self.count = 1
+
+
+def apply_line_parser_(line: str, matcher: Matcher) -> dict:
+    """Applies a line parser and return results"""
+    m = matcher.match(line)
+    return m if m else {}
+
+
+class customMatcher(Matcher):
+    def __init__(self, name, re):
+        self.name = name
+        self.re = re
 
 
 class transportEqn(Matcher):
@@ -32,16 +56,67 @@ class transportEqn(Matcher):
     @property
     def re(self):
         return (
-            rf"(?P<{self.name}_solverName>\w+):  Solving for {self.name}, Initial residual ="
+            rf"(?P<{self.name}_solverName>\w+):  Solving for {self.name}, Initial"
+            r" residual ="
             rf" (?P<{self.name}_InitialResidual>[\w+.\-]*), Final residual ="
-            rf" (?P<{self.name}_FinalResidual>[\w+.-]*), No Iterations (?P<{self.name}_NoIterations>[0-9]*)"
+            rf" (?P<{self.name}_FinalResidual>[\w+.-]*), No Iterations"
+            rf" (?P<{self.name}_NoIterations>[0-9]*)"
         )
 
 
-class PimpleMatcher(Matcher):
+class Spliter:
+    """Base class for a splitter, where a splitter gets a list of lines and
+    yields one or more sub lists and a new state"""
+
+    inner = None
+
+    def split(self, lines: list[str]):
+        """Call and return re.match on the given line with the child class re"""
+        line_buffer = []
+        state = {}
+        for line in lines:
+            state, start = self.check_line(line)
+            # depending on kind of splitter we either start or end a match
+            # NOTE assume start of match for now
+            if state and start:
+                # Yield everything collected so far
+                # flush the buffer and reset all inner Spliter states
+                if self.inner:
+                    self.inner.reset()
+                while line_buffer:
+                    yield state, line_buffer.pop(0)
+
+            line_buffer.append(line)
+
+        # yield the remaining state and buffer
+        for line in line_buffer:
+            yield self.state, line
+
+    def reset(self):
+        """ABC function, in case concrete child does not implement a reset  function"""
+        pass
+
+
+class PimpleMatcher(Spliter, Matcher):
+    def __init__(self):
+        self.state = {}
+        self.name = "PIMPLE"
+
     @property
     def re(self):
         return r"PIMPLE: iteration (?P<PIMPLEIteration>[0-9]*)"
+
+    def check_line(self, line):
+        # The PimpleMatcher delays its state since
+        # we first find the PIMPLE: iteration No key
+        # and collect till next ocurrance
+        new_state = apply_line_parser_(line, self)
+        if new_state:
+            return_state = self.state
+            self.state = new_state
+            return return_state, True
+        else:
+            return {}, True
 
 
 class simpleMatcher(Matcher):
@@ -164,13 +239,24 @@ class TimeStep:
 
 
 class LogFile:
-    def __init__(self, fn: str, inner_loop_parser=None, frequency=1):
+    def __init__(
+        self,
+        fn: str,
+        matcher: list[Matcher] = None,
+        spliter: Spliter = None,
+        frequency=1,
+    ):
         self.fn = fn
         self.frequency = frequency
+        self.matcher = matcher
+        self.spliter = spliter if spliter else PimpleMatcher()
         if not Path(self.fn).exists():
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), self.fn)
 
     @property
+    # The PimpleMatcher delays its state since
+    # we first find the PIMPLE: iteration No key
+    # and collect till next ocurrance
     def header(self):
         self.header_ = LogHeader(self.fn)
         return self.header_
@@ -197,7 +283,7 @@ class LogFile:
 
         found_starting_time_loop = False
         found_first_time = False
-        line_buffer = ""
+        line_buffer = []
 
         remaining = frequency
         # TODO skip reading of lines if remaining > 1 entirely
@@ -209,159 +295,51 @@ class LogFile:
                     found_starting_time_loop = True
                 if line.startswith("Time =") and found_starting_time_loop:
                     time = float(re.findall(r"Time = ([\w.\-]*)", line)[0])
-                    line_buffer = ""
+                    line_buffer = []
                 elif "ExecutionTime = " in line:
-                    line_buffer += line
+                    line_buffer.append(line)
                     remaining -= 1
                     if remaining == 0:
                         remaining = frequency
-                        yield time, line_buffer
+                        ret_buffer = deepcopy(line_buffer)
+                        line_buffer = []
+                        yield time, ret_buffer
                 elif found_starting_time_loop:
-                    line_buffer += line
+                    line_buffer.append(line)
 
     def parse_inner_loops_(
-        self, timestep: str, matcher: list[Matcher], spliter: list[Matcher], state
+        self, timestep: [str], matcher: list[Matcher], spliter: Matcher, state
     ):
         """Given a parsed time step, this function parses for innner loops
 
-        Returns:
-            A tuple of the parse content and additional indices
+        Yields: a records
         """
-        # if not self.inner_loop_parser:
-        #     yield timestep, ()
-        #
-        def inner_loops(timestep):
-            # TODO we need to distinguish between matches that start and end
-            # a block
-            line_buffer = []
-            state = {}
-            for line in timestep.split("\n"):
-                for s in spliter:
-                    state = self.apply_line_parser_(line, s)
-                    print("test match", line, state)
-                    if state:
-                        ret = line_buffer
-                        line_buffer = []
-                        yield state, ret
-                line_buffer.append(line)
-            yield state, line_buffer
-
-        for state, lines in inner_loops(timestep):
-            print(state, lines)
-            for line in lines:
+        prev_inner_state = {}
+        for inner_state, line in spliter.split(timestep):
+            state.update(inner_state)
+            if not inner_state == prev_inner_state:
+                prev_inner_state = deepcopy(inner_state)
                 for m in matcher:
-                    state.update(self.apply_line_parser_(line, m))
-        return state
+                    m.reset()
+            for m in matcher:
+                res = apply_line_parser_(line, m)
+                if res:
+                    ret = deepcopy(state)
+                    ret.update(res)
+                    yield ret
 
-    def apply_line_parser_(self, line: str, matcher: Matcher):
-        """Applies a line parser and return results"""
-        m = matcher.match(line)
-        return m if m else {}
+    def parse_to_records(self) -> list[dict]:
+        for time_name, content in self.time_steps_(self.frequency):
+            for record in self.parse_inner_loops_(
+                content, self.matcher, self.spliter, {"Time": time_name}
+            ):
+                yield record
 
-    def reset_next_keys(self):
-        """Resets all next keys"""
-        for logkey in self.keys:
-            logkey.reset_next_key()
-
-    def extract_(self, line: str):
-        """Returns key and values as list
-        eg "ExecutionTime":[0,1]
-        """
-
-        for logkey in self.keys:
-            key = logkey.search_string
-            next_key = logkey.next_key_
-            col_names = logkey.column_names[
-                next_key * len(logkey.columns) : (next_key + 1) * len(logkey.columns)
-            ]
-            if re.search(key, line):
-                logkey.next_key_ += 1
-                return (
-                    key,
-                    col_names,
-                    list(
-                        map(
-                            float,
-                            filter(
-                                lambda x: x,
-                                re.findall(
-                                    r"[0-9\-]+[.]?[0-9]*[e]?[\-\+]?[0-9]*", line
-                                ),
-                            ),
-                        )
-                    ),
-                )
-        return None, None, None
-
-    def parse_to_records(self, log_str: str) -> list[dict]:
-        """Parse a given log_str to a list of dictionaries"""
-        log_str = log_str.split("\n")
-
-        start = self.find_start_(log_str)
-        self.records = []
-        time = 0
-        tmp_record = {}
-        for line in log_str[start:-1]:
-            key, col_names, values = self.extract_(line)
-            if line == "End":
-                return self.records
-            if not col_names or not values or not line:
-                continue
-            if col_names[0] == "Time":
-                # a new time step has begun
-                time = values[0]
-                self.reset_next_keys()
-            # TODO check if all post_fixes have been consumed
-            # then start a new row
-            else:
-                for i, col in enumerate(col_names):
-                    tmp_record["Time"] = time
-                    tmp_record[col_names[i]] = values[i]
-                self.records.append(tmp_record)
-                tmp_record = {}
-        return self.records
-
-    @property
-    def is_complete(self) -> bool:
-        """Check for End or Finalising parallel run in last line of log"""
-        log_tail = check_output(["tail", "-n", "1", self.log_name], text=True)
-        return "End" in log_tail or "Finalising parallel run" in log_tail
-
-    def parse(self, log_name: str):
-        with open(log_name, encoding="utf-8") as log:
-            f = log.read()
-            return self.parse_to_records(f)
-
-    def parse_to_df(self, log_name: str) -> pd.DataFrame:
-        """Read from log_name and constructs a DataFrame"""
-        # TODO call this from __init__
-        self.log_name = log_name
-        records = self.parse(log_name)
-        if not records:
-            warning = f"{self.keys} produced empty sets of records for {log_name}"
-            warn(warning)
-            return pd.DataFrame()
+    def parse_to_df(self):
+        records = list(self.parse_to_records())
         df = pd.DataFrame.from_records(records)
-        df = df.groupby("Time").max().reset_index()
-        df.set_index(keys=["Time"], inplace=True)
-        self.header = LogHeader(log_name)
-        return df
 
-    def import_logs(
-        self, folder: str, search: str = "log", time_key: str = "^Time = "
-    ) -> pd.DataFrame:
-        """ """
-        # TODO remove this since LogFile should only support a single log file
-        # we should add a LogFileCollection class as a container
-
-        fold, dirs, files = next(os.walk(folder))
-        logs = [fold + "/" + log for log in files if search in log]
-
-        df = pd.DataFrame()
-
-        for log_name in logs:
-            df2 = self.parse_to_df(log_name)
-            if df2.empty:
-                continue
-            df = pd.concat([df, df2])
-        return df
+        # FIXME currently all parsing results without a p count
+        # are assigned to first p
+        df["p_count"] = df["p_count"].fillna(1)
+        return df.groupby(["Time", "p_count"]).first().reset_index()
