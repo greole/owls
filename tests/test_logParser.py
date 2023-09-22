@@ -35,6 +35,27 @@ def test_logHeaderParser():
     assert logFile.header.nProcs == 4
 
 
+def test_logFooter():
+    fn = "tests/log"
+    logFile = lfp.LogFile(fn)
+
+    assert pathlib.Path(fn).exists()
+    assert logFile.footer.completed == True
+
+
+def test_latestTime():
+    fn = "tests/log"
+    logFile = lfp.LogFile(fn)
+
+    assert pathlib.Path(fn).exists()
+    assert logFile.latestTime.time == 20.0
+    assert logFile.latestTime.continuity_errors != {}
+    assert (
+        logFile.latestTime.continuity_errors["timeStepContErrors_cumulative"]
+        == "1.25296e-16"
+    )
+
+
 def test_footerParser():
     fn = "tests/log"
     logFile = lfp.LogFile(fn)
@@ -52,13 +73,13 @@ def test_footerParser():
 def test_timeStepParser():
     fn = "tests/log"
     logFile = lfp.LogFile(fn)
-    timesteps = {time: cnt for time, cnt in logFile.time_steps_()}
+    timesteps = {time: cnt for time, cnt in logFile._LogFile__time_steps()}
     assert len(timesteps) == 100
 
     assert timesteps[20] == [e + "\n" for e in final_timestep_str.split("\n")]
 
     logFile = lfp.LogFile(fn)
-    timesteps = {time: cnt for time, cnt in logFile.time_steps_(frequency=5)}
+    timesteps = {time: cnt for time, cnt in logFile._LogFile__time_steps(frequency=5)}
     assert len(timesteps) == 20
 
 
@@ -114,7 +135,9 @@ smoothSolver:  Solving for Ux, Initial residual = 0.00584754, Final residual = 5
     )
     fn = "tests/log"
     logFile = lfp.LogFile(fn)
-    parseResults = [d for d in logFile.parse_inner_loops_(lines, matcher, splitter, {})]
+    parseResults = [
+        d for d in logFile._LogFile__parse_inner_loops(lines, matcher, splitter, {})
+    ]
     assert parseResults == [
         {
             "PIMPLEIteration": "1",
@@ -159,7 +182,9 @@ time step continuity errors : sum local = 2.05781e-10, global = 9.19636e-19, cum
     ]
 
     splitter = lfp.PimpleMatcher()
-    parseResults = [d for d in logFile.parse_inner_loops_(lines, matcher, splitter, {})]
+    parseResults = [
+        d for d in logFile._LogFile__parse_inner_loops(lines, matcher, splitter, {})
+    ]
     assert parseResults == [
         {
             "PIMPLEIteration": "1",
@@ -225,7 +250,9 @@ time step continuity errors : sum local = 2.05781e-10, global = 9.19636e-19, cum
     ]
 
     splitter = lfp.PimpleMatcher()
-    parseResults = [d for d in logFile.parse_inner_loops_(lines, matcher, splitter, {})]
+    parseResults = [
+        d for d in logFile._LogFile__parse_inner_loops(lines, matcher, splitter, {})
+    ]
     assert len(parseResults) == 6
     assert parseResults == [
         {

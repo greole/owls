@@ -14,6 +14,7 @@ from warnings import warn
 from pathlib import Path
 from file_read_backwards import FileReadBackwards
 from copy import deepcopy
+from typing import Generator
 
 
 class Matcher:
@@ -21,6 +22,7 @@ class Matcher:
     based on a given regex"""
 
     count = 1
+    name: str = None
 
     def match(self, line: str):
         """Call and return re.match on the given line with the child class re"""
@@ -61,15 +63,29 @@ class transportEqn(Matcher):
         )
 
 
+class timeStepContErrors(Matcher):
+    def __init__(self):
+        self.name = "timeStepContErrors"
+        self.re = re.compile(
+            r"time step continuity errors : sum local ="
+            rf" (?P<{self.name}_sumLocal>[\w+.\-]*), global ="
+            rf" (?P<{self.name}_sumGlobal>[\w+.\-]*), cumulative ="
+            rf" (?P<{self.name}_cumulative>[\w+.\-]*)"
+        )
+
+
 class Spliter:
     """Base class for a splitter, where a splitter gets a list of lines and
     yields one or more sub lists and a new state"""
 
     inner = None
 
+    def check_line(self, line: str):
+        pass
+
     def split(self, lines: list[str]):
         """Call and return re.match on the given line with the child class re"""
-        line_buffer = []
+        line_buffer: list[str] = []
         state = {}
         for line in lines:
             state, start = self.check_line(line)
@@ -119,122 +135,105 @@ class simpleMatcher(Matcher):
     pass
 
 
-class LogKey:
-    def __init__(
-        self,
-        search_string: str,
-        columns: list[str],
-        post_fix: list[str] = None,
-        append_search_to_col: bool = False,
-        prepend_search_to_col: bool = False,
-    ):
-        """Class to hold search strings for the log parser and map search
-        into DataFrame columns and names. This log key expects as many results
-        per time steps as post_fixes are present.
-
-        For example create a LogKey(
-            search_string='Solving for U',
-            columns=['init', 'final', 'iter'],
-            post_fix=[_Ux, _Uy, _Uz])
-
-        it will create a DataFrame with init_Ux, final_Ux, iter_Ux, init_Uy, ... iter_Uz columns
-        where the post fix distinguish values on different lines of the log file
-
-        Parameter:
-            - search_string: string to look for in log file
-            - columns: names of the columns in resulting DataFrame
-            - post_fix: append this str to all column names
-        """
-        self.search_string = search_string
-        self.columns = columns
-        self.column_names = columns
-        self.post_fix = None
-        if post_fix:
-            self.post_fix = post_fix
-            self.column_names = []
-            for p in post_fix:
-                for c in self.columns:
-                    self.column_names.append(c + p)
-        if append_search_to_col:
-            self.post_fix = [search_string] * len(columns)
-            self.column_names = [n + "_" + search_string for n in self.column_names]
-        if prepend_search_to_col:
-            self.post_fix = [search_string] * len(columns)
-            self.column_names = [search_string + n for n in self.column_names]
-        self.next_key_ = 0
-
-    def __repr__(self):
-        return f"{self.search_string}: {','.join(self.column_names)}"
-
-    def reset_next_key(self):
-        """Resets the post_fix counter"""
-        self.next_key_ = 0
-
-
 class LogHeader:
     """Content till the // * * // separator line"""
 
     def __init__(self, fn):
-        self._read_header(fn)
-        self.Build = self._finder("Build")
-        self.Arch = self._finder("Arch").replace('"', "")
-        self.Exec = self._finder("Exec")
-        self.nProcs = int(self._finder("nProcs"))
-        self.Time = self._finder("Time")
-        self.Host = self._finder("Host")
-        self.PID = int(self._finder("PID"))
-        self.IO = self._finder("I/O")
-        self.Case = self._finder("Case")
+        self.__read_header(fn)
+        self.Build = self.__finder("Build")
+        self.Arch = self.__finder("Arch").replace('"', "")
+        self.Exec = self.__finder("Exec")
+        self.nProcs = int(self.__finder("nProcs"))
+        self.Time = self.__finder("Time")
+        self.Host = self.__finder("Host")
+        self.PID = int(self.__finder("PID"))
+        self.IO = self.__finder("I/O")
+        self.Case = self.__finder("Case")
 
-    def _finder(self, name):
-        return re.findall(name + r"[ ]*: ([\w.\-=:;\"\"\/]*)", self.header_str_)[0]
+    def __finder(self, name):
+        return re.findall(name + r"[ ]*: ([\w.\-=:;\"\"\/]*)", self.__header_str)[0]
 
-    def _read_header(self, fn):
-        self.header_str_ = ""
+    def __read_header(self, fn):
+        self.__header_str = ""
         with open(fn, encoding="utf-8") as fh:
             for line in fh.readlines():
                 if separator_str in line:
                     break
-                self.header_str_ += line
+                self.__header_str += line
 
     @property
     def content(self):
-        return self.header_str_
+        return self.__header_str
 
 
-class Initialisation:
-    def __init__(self):
-        pass
+class LastTimeStep:
+    """Reverse read of log file to get content of last time step"""
+
+    def __init__(self, fn):
+        self.__read_last_timestep(fn)
+
+    def __read_last_timestep(self, fn):
+        footer_lst_ = []
+        with FileReadBackwards(fn, encoding="utf-8") as frb:
+            for line in frb:
+                footer_lst_.insert(0, line)
+                if line.startswith("Time ="):
+                    break
+        self.__footer_str = "\n".join(footer_lst_)
+
+    @property
+    def content(self):
+        return self.__footer_str
+
+    @property
+    def time(self):
+        return float(self.__footer_str.split("\n")[0].replace("Time = ", ""))
+
+    @property
+    def continuity_errors(self):
+        for line in self.__footer_str.split("\n"):
+            if not line.startswith("time step continuity errors"):
+                continue
+            return apply_line_parser_(line, timeStepContErrors())
 
 
 class LogFooter:
     """Content till last ExecutionTime ocurence"""
 
     def __init__(self, fn):
-        self._read_footer(fn)
+        self.__read_footer(fn)
 
     @property
     def content(self):
-        return self.footer_str_
+        return self.__footer_str
 
-    def _read_footer(self, fn):
+    def __read_footer(self, fn):
         footer_lst_ = []
         with FileReadBackwards(fn, encoding="utf-8") as frb:
             for line in frb:
                 if "ExecutionTime" in line:
                     break
                 footer_lst_.insert(0, line)
-        self.footer_str_ = "\n".join(footer_lst_[::-1])
+        self.__footer_str = "\n".join(footer_lst_[::-1])
 
-
-class TimeStep:
-    """Content from Time = till the next occurance"""
-
-    def __init__(self, fn):
-        pass
+    @property
+    def completed(self):
+        return ("Finalising" in self.__footer_str) or ("End" in self.__footer_str)
 
 
 class LogFile:
+    """A parser class for OpenFOAM log files which gives access to the log file
+    header, the parsed content and the log file footer.
+
+    To parse content a list of Matcher objects are used, where a matcher can be
+    a transportEqn or an instanciated customMatcher. If the same Matcher matches
+    multiple times per time step the matcher_name_count is incremented
+
+    Additionally, a splitter subdivides a timestep
+    """
+
+    __header = None
+
     def __init__(
         self,
         fn: str,
@@ -250,30 +249,22 @@ class LogFile:
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), self.fn)
 
     @property
-    # The PimpleMatcher delays its state since
-    # we first find the PIMPLE: iteration No key
-    # and collect till next ocurrance
     def header(self):
-        self.header_ = LogHeader(self.fn)
-        return self.header_
+        if not self.__header:
+            self.__header = LogHeader(self.fn)
+        return self.__header
 
     @property
-    def timesteps(self):
-        self.footer_ = LogFooter(self.fn)
-        return self.footer_
+    def latestTime(self):
+        self.__latestTime = LastTimeStep(self.fn)
+        return self.__latestTime
 
     @property
     def footer(self):
-        self.footer_ = LogFooter(self.fn)
-        return self.footer_
+        self.__footer = LogFooter(self.fn)
+        return self.__footer
 
-    def find_start_(self, log: str) -> int:
-        """Fast forward through file till 'Starting time loop'"""
-        for i, line in enumerate(log):
-            if "Starting time loop" in line:
-                return i
-
-    def time_steps_(self, frequency=None):
+    def __time_steps(self, frequency=None):
         if not frequency:
             frequency = self.frequency
 
@@ -303,14 +294,14 @@ class LogFile:
                 elif found_starting_time_loop:
                     line_buffer.append(line)
 
-    def parse_inner_loops_(
-        self, timestep: [str], matcher: list[Matcher], spliter: Matcher, state
+    def __parse_inner_loops(
+        self, timestep: [str], matcher: list[Matcher], spliter: Spliter, state
     ):
         """Given a parsed time step, this function parses for innner loops
 
         Yields: a record
         """
-        prev_inner_state = {}
+        prev_inner_state: dict[str, str] = {}
         for inner_state, line in spliter.split(timestep):
             state.update(inner_state)
             if not inner_state == prev_inner_state:
@@ -323,9 +314,9 @@ class LogFile:
                     res.update(state)
                     yield res
 
-    def parse_to_records(self) -> list[dict]:
-        for time_name, content in self.time_steps_(self.frequency):
-            for record in self.parse_inner_loops_(
+    def parse_to_records(self) -> Generator[dict, None, None]:
+        for time_name, content in self.__time_steps(self.frequency):
+            for record in self.__parse_inner_loops(
                 content, self.matcher, self.spliter, {"Time": time_name}
             ):
                 yield record
