@@ -18,7 +18,7 @@ from typing import Generator
 
 
 class Matcher:
-    """Base class for a simple matcher that matches exactely one line of a log file
+    """Base class for a simple matcher that matches exactly one line of a log file
     based on a given regex"""
 
     count = 1
@@ -121,7 +121,7 @@ class PimpleMatcher(Spliter, Matcher):
     def check_line(self, line):
         # The PimpleMatcher delays its state since
         # we first find the PIMPLE: iteration No key
-        # and collect till next ocurrance
+        # and collect till next occurrence
         new_state = apply_line_parser_(line, self)
         if new_state:
             return_state = self.state
@@ -226,7 +226,7 @@ class LogFile:
     header, the parsed content and the log file footer.
 
     To parse content a list of Matcher objects are used, where a matcher can be
-    a transportEqn or an instanciated customMatcher. If the same Matcher matches
+    a transportEqn or an instantiated customMatcher. If the same Matcher matches
     multiple times per time step the matcher_name_count is incremented
 
     Additionally, a splitter subdivides a timestep
