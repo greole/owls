@@ -24,7 +24,7 @@ class Matcher:
 
     def match(self, line: str):
         """Call and return re.match on the given line with the child class re"""
-        ret = re.match(self.re, line)
+        ret = self.re.match(line)
         if ret:
             ret_dict = ret.groupdict()
             ret_dict[self.name + "_count"] = self.count
@@ -44,18 +44,15 @@ def apply_line_parser_(line: str, matcher: Matcher) -> dict:
 
 
 class customMatcher(Matcher):
-    def __init__(self, name, re):
+    def __init__(self, name, re_txt):
         self.name = name
-        self.re = re
+        self.re = re.compile(re_txt)
 
 
 class transportEqn(Matcher):
     def __init__(self, name):
         self.name = name
-
-    @property
-    def re(self):
-        return (
+        self.re = re.compile(
             rf"(?P<{self.name}_solverName>\w+):  Solving for {self.name}, Initial"
             r" residual ="
             rf" (?P<{self.name}_InitialResidual>[\w+.\-]*), Final residual ="
@@ -83,8 +80,10 @@ class Spliter:
                 # flush the buffer and reset all inner Spliter states
                 if self.inner:
                     self.inner.reset()
-                while line_buffer:
-                    yield state, line_buffer.pop(0)
+                line_buffer_ret = list(line_buffer)
+                line_buffer = []
+                for line_ret in line_buffer_ret:
+                    yield state, line_ret
 
             line_buffer.append(line)
 
@@ -101,10 +100,7 @@ class PimpleMatcher(Spliter, Matcher):
     def __init__(self):
         self.state = {}
         self.name = "PIMPLE"
-
-    @property
-    def re(self):
-        return r"PIMPLE: iteration (?P<PIMPLEIteration>[0-9]*)"
+        self.re = re.compile(r"PIMPLE: iteration (?P<PIMPLEIteration>[0-9]*)")
 
     def check_line(self, line):
         # The PimpleMatcher delays its state since
@@ -301,7 +297,7 @@ class LogFile:
                     remaining -= 1
                     if remaining == 0:
                         remaining = frequency
-                        ret_buffer = deepcopy(line_buffer)
+                        ret_buffer = list(line_buffer)
                         line_buffer = []
                         yield time, ret_buffer
                 elif found_starting_time_loop:
@@ -312,21 +308,20 @@ class LogFile:
     ):
         """Given a parsed time step, this function parses for innner loops
 
-        Yields: a records
+        Yields: a record
         """
         prev_inner_state = {}
         for inner_state, line in spliter.split(timestep):
             state.update(inner_state)
             if not inner_state == prev_inner_state:
-                prev_inner_state = deepcopy(inner_state)
+                prev_inner_state = dict(inner_state)
                 for m in matcher:
                     m.reset()
             for m in matcher:
                 res = apply_line_parser_(line, m)
                 if res:
-                    ret = deepcopy(state)
-                    ret.update(res)
-                    yield ret
+                    res.update(state)
+                    yield res
 
     def parse_to_records(self) -> list[dict]:
         for time_name, content in self.time_steps_(self.frequency):
