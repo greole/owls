@@ -205,6 +205,14 @@ class LastTimeStep:
                 continue
             return apply_line_parser_(line, timeStepContErrors())
 
+    @property
+    def Courant_number(self):
+        for line in self.__footer_str.split("\n"):
+            if not line.startswith("Courant Number"):
+                continue
+            return apply_line_parser_(line, CourantNumber())
+        return {"CourantNumber": 0.0}
+
 
 class LogFooter:
     """Content till last ExecutionTime ocurence"""
