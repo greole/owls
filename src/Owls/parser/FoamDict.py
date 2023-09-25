@@ -56,8 +56,15 @@ class OFList:
 
     def to_str(self, *args, **kwargs):
         """Convert a python list to a str with OF syntax"""
+        def wrap_in_quotes(s):
+            if isinstance(s, str):
+                return '"' + s + '"'
+            return s
+
         key = args[0]
         values = args[1]
+        values = list(map(wrap_in_quotes, values))
+
         return (
             f'{kwargs.get("indent", "")}{key} ({" ".join(map(str,values))});{kwargs.get("nl",os.linesep)}'
         )
