@@ -63,6 +63,15 @@ class transportEqn(Matcher):
         )
 
 
+class CourantNumber(Matcher):
+    def __init__(self):
+        self.name = "CourantNumber"
+        self.re = re.compile(
+            rf"Courant Number mean: (?P<{self.name}_mean>[0-9e.\-]*) max:"
+            rf" (?P<{self.name}_max>[0-9e.\-]*)"
+        )
+
+
 class timeStepContErrors(Matcher):
     def __init__(self):
         self.name = "timeStepContErrors"
