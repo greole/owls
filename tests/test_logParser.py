@@ -118,6 +118,20 @@ def test_applyCustomLineParser():
     assert parseResults["Ux_local_cols"] == "0.029"
 
 
+def test_CourantNumberParser():
+    fn = "tests/log"
+
+    line ="Courant Number mean: 4.8777e-04 max: 0.852134"
+    logFile = lfp.LogFile(fn)
+
+    matcher = lfp.CourantNumber()
+
+    parseResults = lfp.apply_line_parser_(line, matcher)
+    assert parseResults != {}
+    assert parseResults["CourantNumber_mean"] == "4.8777e-04"
+    assert parseResults["CourantNumber_max"] == "0.852134"
+
+
 def test_parseInnerLoops():
     matcher = [
         lfp.transportEqn("Ux"),
