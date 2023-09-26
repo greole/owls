@@ -196,7 +196,7 @@ class LastTimeStep:
 
     @property
     def time(self):
-        return float(self.__footer_str.split("\n")[0].replace("Time = ", ""))
+        return float(self.__footer_str.split("\n")[0].replace("Time = ", "").replace("s",""))
 
     @property
     def continuity_errors(self):
@@ -298,7 +298,7 @@ class LogFile:
                 if ("Starting time loop" in line) and not found_starting_time_loop:
                     found_starting_time_loop = True
                 if line.startswith("Time =") and found_starting_time_loop:
-                    time = float(re.findall(r"Time = ([\w.\-]*)", line)[0])
+                    time = float(re.findall(r"Time = ([\w.\-]*)[s]*", line)[0])
                     line_buffer = []
                 elif "ExecutionTime = " in line:
                     line_buffer.append(line)
