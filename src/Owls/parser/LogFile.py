@@ -226,7 +226,8 @@ class LastTimeStep:
         for line in self.__footer_str.split("\n"):
             if not line.startswith("ExecutionTime"):
                 continue
-            return {k: float(v) for k,v in apply_line_parser_(line, ExecutionTime()).items() }
+            return {k: float(v) for k,v in apply_line_parser_(line, ExecutionTime()).items()}
+        return {"ExecutionTime": 0.0, "ClockTime": 0.0}
 
 
 class LogFooter:
