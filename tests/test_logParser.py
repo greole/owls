@@ -56,6 +56,16 @@ def test_latestTime():
     )
 
 
+def test_ExecutionTime():
+    fn = "tests/log"
+    logFile = lfp.LogFile(fn)
+
+    assert pathlib.Path(fn).exists()
+    assert logFile.latestTime.execution_time != {}
+    assert logFile.latestTime.execution_time["ExecutionTime"] == 1.05
+    assert logFile.latestTime.execution_time["ClockTime"] == 2.0
+
+
 def test_footerParser():
     fn = "tests/log"
     logFile = lfp.LogFile(fn)

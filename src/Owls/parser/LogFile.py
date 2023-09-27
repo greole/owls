@@ -72,6 +72,14 @@ class CourantNumber(Matcher):
         )
 
 
+class ExecutionTime(Matcher):
+    def __init__(self):
+        self.name = "ExecutionTime"
+        self.re = re.compile(
+            rf"ExecutionTime = (?P<ExecutionTime>[0-9e.\-]*) s  ClockTime = (?P<ClockTime>[0-9e.\-]*) s"
+        )
+
+
 class timeStepContErrors(Matcher):
     def __init__(self):
         self.name = "timeStepContErrors"
@@ -212,6 +220,13 @@ class LastTimeStep:
                 continue
             return apply_line_parser_(line, CourantNumber())
         return {"CourantNumber": 0.0}
+
+    @property
+    def execution_time(self):
+        for line in self.__footer_str.split("\n"):
+            if not line.startswith("ExecutionTime"):
+                continue
+            return {k: float(v) for k,v in apply_line_parser_(line, ExecutionTime()).items() }
 
 
 class LogFooter:
