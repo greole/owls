@@ -56,6 +56,7 @@ class OFList:
 
     def to_str(self, *args, **kwargs):
         """Convert a python list to a str with OF syntax"""
+
         def wrap_in_quotes(s):
             if isinstance(s, str):
                 return '"' + s + '"'
