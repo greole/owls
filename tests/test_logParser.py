@@ -52,7 +52,7 @@ def test_latestTime():
     assert logFile.latestTime.continuity_errors != {}
     assert (
         logFile.latestTime.continuity_errors["timeStepContErrors_cumulative"]
-        == "1.25296e-16"
+        == 1.25296e-16
     )
 
 
@@ -131,7 +131,7 @@ def test_applyCustomLineParser():
 def test_CourantNumberParser():
     fn = "tests/log"
 
-    line ="Courant Number mean: 4.8777e-04 max: 0.852134"
+    line = "Courant Number mean: 4.8777e-04 max: 0.852134"
     logFile = lfp.LogFile(fn)
 
     matcher = lfp.CourantNumber()

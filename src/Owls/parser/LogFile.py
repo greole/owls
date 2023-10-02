@@ -45,6 +45,11 @@ def apply_line_parser_(line: str, matcher: Matcher) -> dict:
     return m if m else {}
 
 
+def eval_dict(d: dict) -> dict:
+    """maps eval over the dict values"""
+    return {k: eval(v) for k, v in d.items()}
+
+
 class customMatcher(Matcher):
     def __init__(self, name, re_txt):
         self.name = name
@@ -218,14 +223,14 @@ class LastTimeStep:
         for line in self.__footer_str.split("\n"):
             if not line.startswith("time step continuity errors"):
                 continue
-            return apply_line_parser_(line, timeStepContErrors())
+            return eval_dict(apply_line_parser_(line, timeStepContErrors()))
 
     @property
     def Courant_number(self):
         for line in self.__footer_str.split("\n"):
             if not line.startswith("Courant Number"):
                 continue
-            return apply_line_parser_(line, CourantNumber())
+            return eval_dict(apply_line_parser_(line, CourantNumber()))
         return {"CourantNumber": 0.0}
 
     @property
