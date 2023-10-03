@@ -47,7 +47,11 @@ def apply_line_parser_(line: str, matcher: Matcher) -> dict:
 
 def eval_dict(d: dict) -> dict:
     """maps eval over the dict values"""
-    return {k: eval(v) for k, v in d.items()}
+    def eval_f(s):
+        if isinstance(s, str):
+            return eval(s)
+        return s
+    return {k: eval_f(v) for k, v in d.items()}
 
 
 class customMatcher(Matcher):
@@ -214,7 +218,7 @@ class LastTimeStep:
             ret = float(
                 self.__footer_str.split("\n")[0].replace("Time = ", "").replace("s", "")
             )
-            return
+            return ret
         except Exception as e:
             print("failure to parse:\n", self.__footer_str)
 
