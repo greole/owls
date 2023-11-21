@@ -1,6 +1,6 @@
 [project]
 name = "Owls"
-description="A tool for reading and manipulating OpenFOAM dictionary files",
+description="A tool for reading and manipulating OpenFOAM dictionary files"
 authors = [{name = "greole", email = "go@hpsim.de"}]
 dynamic = ["version"]
 license = {text = "BSD-2-Clause"}
