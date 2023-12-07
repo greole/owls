@@ -379,5 +379,7 @@ class LogFile:
 
         # FIXME currently all parsing results without a p count
         # are assigned to first p
-        df["p_count"] = df["p_count"].fillna(1)
-        return df.groupby(["Time", "p_count"]).first().reset_index()
+        if "p_count" in df.columns:
+            df["p_count"] = df["p_count"].fillna(1)
+            return df.groupby(["Time", "p_count"]).first().reset_index()
+        return df
