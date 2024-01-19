@@ -47,10 +47,12 @@ def apply_line_parser_(line: str, matcher: Matcher) -> dict:
 
 def eval_dict(d: dict) -> dict:
     """maps eval over the dict values"""
+
     def eval_f(s):
         if isinstance(s, str):
             return eval(s)
         return s
+
     return {k: eval_f(v) for k, v in d.items()}
 
 

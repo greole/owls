@@ -144,7 +144,8 @@ class FileParser:
                 raise FileNotFoundError(
                     errno.ENOENT, os.strerror(errno.ENOENT), self.path
                 )
-            self.update()
+            if not kwargs.get("skip_update", False):
+                self.update()
 
     def update(self):
         """updates _parsed_file"""
