@@ -60,6 +60,14 @@ class customMatcher(Matcher):
         self.re = re.compile(re_txt)
 
 
+class PimpleConvergedMatcher(Matcher):
+    def __init__(self):
+        self.name = "PimpleConverged"
+        self.re = re.compile(
+                rf"PIMPLE: converged in\s+(?P<{self.name}_NoIterations>[0-9]*) iterations"
+        )
+
+
 class transportEqn(Matcher):
     def __init__(self, name):
         self.name = name

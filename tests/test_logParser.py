@@ -142,6 +142,19 @@ def test_CourantNumberParser():
     assert parseResults["CourantNumber_max"] == "0.852134"
 
 
+def test_PimpleConvergedMatcher():
+    fn = "tests/log"
+
+    line = "PIMPLE: converged in 28 iterations"
+    logFile = lfp.LogFile(fn)
+
+    matcher = lfp.PimpleConvergedMatcher()
+
+    parseResults = lfp.apply_line_parser_(line, matcher)
+    assert parseResults != {}
+    assert parseResults["PimpleConverged_NoIterations"] == "28"
+
+
 def test_parseInnerLoops():
     matcher = [
         lfp.transportEqn("Ux"),
