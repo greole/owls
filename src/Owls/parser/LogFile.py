@@ -194,6 +194,7 @@ class LogHeader:
         except Exception as e:
             print(f"failed to parse {self.__header_str} for {name}")
             print(e)
+            raise ValueError
         return res
 
     def __read_header(self, fn):
