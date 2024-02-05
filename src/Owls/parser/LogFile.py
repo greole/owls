@@ -188,7 +188,12 @@ class LogHeader:
         self.Case = self.__finder("Case")
 
     def __finder(self, name):
-        return re.findall(name + r"[ ]*: ([\w.\-=:;\"\"\/]*)", self.__header_str)[0]
+        res = "NA"
+        try:
+            res = re.findall(name + r"[ ]*: ([\w.\-=:;\"\"\/]*)", self.__header_str)[0]
+        except:
+            print(f"failed to parse {self.__header_str} for {name}")
+        return res
 
     def __read_header(self, fn):
         self.__header_str = ""
