@@ -191,8 +191,9 @@ class LogHeader:
         res = "NA"
         try:
             res = re.findall(name + r"[ ]*: ([\w.\-=:;\"\"\/]*)", self.__header_str)[0]
-        except:
+        except Exception as e:
             print(f"failed to parse {self.__header_str} for {name}")
+            print(e)
         return res
 
     def __read_header(self, fn):
