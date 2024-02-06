@@ -220,11 +220,9 @@ class LogHeader:
         for line in self.content.split("\n"):
             print(line)
             if line.startswith("Hosts  :"):
-                print("start count")
                 count = True
                 continue
             if count and line.startswith(")"):
-                print("end count")
                 break
             if count:
                 counter+=1
