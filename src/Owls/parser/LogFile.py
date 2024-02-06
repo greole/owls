@@ -218,7 +218,6 @@ class LogHeader:
         count = False
         counter = 0
         for line in self.content.split("\n"):
-            print(line)
             if line.startswith("Hosts  :"):
                 count = True
                 continue
