@@ -33,6 +33,7 @@ def test_logHeaderParser():
     assert logFile.header.IO == "uncollated"
     assert logFile.header.Case == "/Users/go/Downloads/periodicPlaneChannel100"
     assert logFile.header.nProcs == 4
+    assert logFile.header.nNodes == 2
 
 
 def test_logFooter():

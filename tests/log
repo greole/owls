@@ -18,6 +18,7 @@ nProcs : 4
 Hosts  :
 (
     (MacBook-Pro-8.local 4)
+    (MacBook-Pro-8.local 4)
 )
 Pstream initialized with:
     floatTransfer      : 0

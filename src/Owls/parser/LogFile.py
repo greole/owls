@@ -181,14 +181,21 @@ class LogHeader:
         self.Arch = self.__finder("Arch").replace('"', "")
         self.Exec = self.__finder("Exec")
         self.nProcs = int(self.__finder("nProcs"))
+        self.nNodes = self.count_nodes()
         self.Time = self.__finder("Time")
         self.Host = self.__finder("Host")
         self.PID = int(self.__finder("PID"))
         self.IO = self.__finder("I/O")
         self.Case = self.__finder("Case")
 
+
     def __finder(self, name):
-        return re.findall(name + r"[ ]*: ([\w.\-=:;\"\"\/]*)", self.__header_str)[0]
+        try:
+            return re.findall(name + r"[ ]*: ([\w.\-=:;\"\"\/]*)", self.__header_str)[0]
+        except Exception as e:
+            print(f"failed to parse {self.__header_str} for {name}")
+            print(e)
+            raise e
 
     def __read_header(self, fn):
         self.__header_str = ""
@@ -197,6 +204,30 @@ class LogHeader:
                 if separator_str in line:
                     break
                 self.__header_str += line
+
+    def count_nodes(self):
+        """Counts on how many different nodes a simulation was started """
+        #Hosts  :
+        #(
+        #   (hkn0203.localdomain 76)
+        #   (hkn0204.localdomain 76)
+        #   (hkn0205.localdomain 76)
+        #   (hkn0206.localdomain 76)
+        #   (hkn0208.localdomain 76)
+        #)
+        count = False
+        counter = 0
+        for line in self.content.split("\n"):
+            if line.startswith("Hosts  :"):
+                count = True
+                continue
+            if count and line.startswith(")"):
+                break
+            if count:
+                counter+=1
+        return counter-1
+
+
 
     @property
     def content(self):
