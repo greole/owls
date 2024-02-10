@@ -1,5 +1,0 @@
-ipython
-future
-numpy
-pandas
-functional

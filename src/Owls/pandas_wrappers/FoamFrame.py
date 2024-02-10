@@ -10,7 +10,7 @@ from collections import defaultdict
 
 from pandas import Series, DataFrame, Index, MultiIndex
 
-from .io import FPNUMBER, import_foam_folder, import_logs
+from ..io import FPNUMBER, import_foam_folder
 
 import numpy as np
 
@@ -126,18 +126,19 @@ def read_log_str(log, keys, plot_properties=False, name="None", **kwargs):
 def read_log(
     folder, keys, log_name="log", plot_properties=False, name="None", **kwargs
 ):
-    origins, df = import_logs(folder, log_name, keys, **kwargs)
-    ff = FoamFrame(df)
-    plot_properties = plot_properties if plot_properties else PlotProperties()
-    ff.properties = Props(
-        origins=origins,
-        name=folder,
-        plot_properties=plot_properties,
-        folder=folder,
-        symb="-",
-        show_func="plot",
-    )
-    return ff
+    pass
+    # origins, df = import_logs(folder, log_name, keys, **kwargs)
+    # ff = FoamFrame(df)
+    # plot_properties = plot_properties if plot_properties else PlotProperties()
+    # ff.properties = Props(
+    #    origins=origins,
+    #    name=folder,
+    #    plot_properties=plot_properties,
+    #    folder=folder,
+    #    symb="-",
+    #    show_func="plot",
+    # )
+    # return ff
 
 
 """ Filter Helper Functions """
@@ -179,7 +180,7 @@ class Props:
 
 
 class FoamFrame(DataFrame):
-    """Data reprensentation of OpenFOAM field (eulerian and lagrangian)
+    """Data representation of OpenFOAM field (eulerian and lagrangian)
     and set files. Instantiated through read methods, e.g:
     read_sets, read_lag, read_eul, read_exp
 
@@ -216,9 +217,9 @@ class FoamFrame(DataFrame):
             lambda field: re.search('[0-9]*\.[0-9]*').group()[0]
 
     TODO:
-        use case as cases ojects with a 3-level index
+        use case as cases objects with a 3-level index
              case['u']
-             acces time of all cases -> df.iloc[df.index.isin([1],level=1)]
+             access time of all cases -> df.iloc[df.index.isin([1],level=1)]
         refactor plot into case objects itself,
             ?case.show('t','u', time_series = False)
         refactor origins
@@ -226,7 +227,6 @@ class FoamFrame(DataFrame):
     """
 
     def __init__(self, *args, **kwargs):
-
         skip = kwargs.get("skiplines", 1)
         times = kwargs.get("readtime", slice(0, None))
         name = kwargs.get("name", "None")
@@ -345,7 +345,7 @@ class FoamFrame(DataFrame):
             case_data_base[folder] = origins.dct
 
     def source(self, col):
-        """ find corresponding file for column """
+        """find corresponding file for column"""
         # return get time loc  and return dict for every column
         # latest.source['u']
         return
@@ -360,7 +360,7 @@ class FoamFrame(DataFrame):
         return FoamFrame
 
     def _is_idx(self, item):
-        """ test if item is column or idx """
+        """test if item is column or idx"""
         itemt = type(item)
         # if item is Series of booleans
         # it cant be an index
@@ -388,7 +388,7 @@ class FoamFrame(DataFrame):
         pP = PlotProperties() if not plot_properties else plot_properties
         elems = len(input_dict[list(input_dict.keys())[0]])
         zeros = [0 for _ in range(elems)]
-        pos = input_dict[("Pos")] if input_dict.get(("Pos"), False) else zeros
+        pos = input_dict["Pos"] if input_dict.get("Pos", False) else zeros
         nums = list(range(elems))
         if input_dict.get("Pos"):
             input_dict.pop("Pos")
@@ -410,12 +410,12 @@ class FoamFrame(DataFrame):
 
     @property
     def times(self):
-        """ return times for case """
+        """return times for case"""
         return set([_[0] for _ in self.index.values])
 
     @property
     def locations(self):
-        """ return times for case """
+        """return times for case"""
         return set([_[1] for _ in self.index.values])
 
     # ----------------------------------------------------------------------
@@ -440,32 +440,32 @@ class FoamFrame(DataFrame):
 
     @property
     def latest(self):
-        """ return latest time for case """
+        """return latest time for case"""
         ret = self.query("Time == {}".format(self.latest_time))
         ret.properties = self.properties
         return ret
 
     @property
     def latest_time(self):
-        """ return value of latest time step """
+        """return value of latest time step"""
         return max(self.index.levels[0])
 
     @property
     def earliest_time(self):
-        """ return value of latest time step """
+        """return value of latest time step"""
         return min(self.index.levels[0])
 
     def after(self, time):
         return self.filter("Time", index=lambda x: x > time)
 
     def at_time(self, time):
-        """ return latest time for case """
+        """return latest time for case"""
         ret = self.query("Time == {}".format(time))
         ret.properties = self.properties
         return ret
 
     def at(self, idx_name, idx_val):
-        """ select from foamframe based on index name and value"""
+        """select from foamframe based on index name and value"""
         # TODO FIX This
         ret = self[self.index.get_level_values(idx_name) == idx_val]
         # match = [(val in idx_val)
@@ -478,19 +478,19 @@ class FoamFrame(DataFrame):
         return ret
 
     def id(self, loc):
-        """ Return FoamFrame based on location """
+        """Return FoamFrame based on location"""
         return self.at(idx_name="Pos", idx_val=loc)
 
     def location(self, loc):
-        """ Return FoamFrame based on location """
+        """Return FoamFrame based on location"""
         return self.at(idx_name="Loc", idx_val=loc)
 
     def loc_names(self, key):
-        """ search for all index names matching keyword"""
+        """search for all index names matching keyword"""
         return [_ for _ in self.index.get_level_values("Loc") if key in _]
 
     def field_names(self, key):
-        """ search for all field names matching keyword"""
+        """search for all field names matching keyword"""
         return [_ for _ in self.columns if key in _]
 
     # ----------------------------------------------------------------------
@@ -507,13 +507,13 @@ class FoamFrame(DataFrame):
         return self
 
     def rename(self, search, replace):
-        """ rename field names based on regex """
+        """rename field names based on regex"""
         import re
 
         self.columns = [re.sub(search, replace, name) for name in self.columns]
 
     def rename_idx(self, search, replace):
-        """ rename field names based on regex """
+        """rename field names based on regex"""
         self.index = Index(
             [(t, replace if x == search else x, i) for t, x, i in list(self.index)],
             names=self.index.names,
@@ -619,13 +619,11 @@ class FoamFrame(DataFrame):
         titles=None,
         **kwargs
     ):
-
         if kwargs.get("props", False):
             props = kwargs.pop("props")
             self.properties.plot_properties.set(props)
 
         def create_figure(y_, f, title="", legend=""):
-
             # TODO use plot wrapper class here
             if kwargs.get("title"):
                 title = kwargs.get("title")
@@ -640,7 +638,6 @@ class FoamFrame(DataFrame):
             )
 
         def create_figure_row(y, arow=None):
-
             # TODO let arow be an empty mutliplot
             if not arow:
                 fn = kwargs.get("filename")
@@ -649,8 +646,7 @@ class FoamFrame(DataFrame):
             if not self.grouped:
                 y = y if isinstance(y, list) else [y]
                 if overlay == "Field":
-
-                    # SINGLE FIGURE MUTLIPLE FIELDS
+                    # SINGLE FIGURE MULTIPLE FIELDS
                     ids = "".join(y)
                     fig_id, f = figure if figure else (ids, arow.get(ids))
                     for yi in y:
@@ -658,7 +654,6 @@ class FoamFrame(DataFrame):
                     arow[fig_id] = f
 
                 if not overlay:
-
                     # MULTIPLE FIGURES
                     # test if figure with same id already exists
                     # so that we can plot into it
@@ -675,7 +670,6 @@ class FoamFrame(DataFrame):
                     # ALIGN ALONG GROUPS
                     # for every yi a new figure is needed
                     for yi in y:
-
                         f = arow.get(yi)
 
                         for group in groups:
@@ -692,7 +686,6 @@ class FoamFrame(DataFrame):
 
                 if overlay == "Field":
                     for group in groups:
-
                         f = arow.get(group)
 
                         field = self.at("Group", group)
@@ -717,7 +710,7 @@ class FoamFrame(DataFrame):
         self.properties.show_func = value
 
     def set_plot_properties(self, **values):
-        """ set plot properties  """
+        """set plot properties"""
         self.properties.plot_properties.set(values)
 
     # ----------------------------------------------------------------------
@@ -797,7 +790,7 @@ class FoamFrame(DataFrame):
     # Compute methods
 
     def rolling_mean(self, y, x="Pos", n=10, weight=False):
-        """ compute a rolling mean, returns a Series """
+        """compute a rolling mean, returns a Series"""
 
         lower = min(self[x])
         upper = max(self[x])
@@ -822,7 +815,7 @@ class FoamFrame(DataFrame):
         )
 
     def weighted_rolling_mean(self, y, x="Pos", n=10, weight=False):
-        """ compute a rolling mean, returns a Series """
+        """compute a rolling mean, returns a Series"""
 
         lower = min(self[x])
         upper = max(self[x])
@@ -850,7 +843,7 @@ class FoamFrame(DataFrame):
         )
 
     def time_average(self, suffix="Avg", time_start=0.0):
-        """ compute time average of fields """
+        """compute time average of fields"""
         fs = self.after(time_start)
         ret = fs.mean(level=["Loc", "Pos"])
         latest = fs.latest
