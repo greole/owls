@@ -234,7 +234,7 @@ class LastTimeStep:
 
     @property
     def continuity_errors(self):
-        for line in self.__footer_str.split("\n"):
+        for line in reversed(self.__footer_str.split("\n")):
             if not line.startswith("time step continuity errors"):
                 continue
             return eval_dict(apply_line_parser_(line, timeStepContErrors()))
