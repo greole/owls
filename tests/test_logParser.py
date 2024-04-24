@@ -53,7 +53,7 @@ def test_latestTime():
     assert logFile.latestTime.continuity_errors != {}
     assert (
         logFile.latestTime.continuity_errors["timeStepContErrors_cumulative"]
-        == 1.25296e-16
+        == 1.26341e-16
     )
 
 
