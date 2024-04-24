@@ -37,6 +37,11 @@ def test_simple_parse():
     assert result_dict == {"key": "foo bar"}
     assert result_text == text
 
+    text = "p_rgh foo bar;"
+    result_dict, result_text = parse_and_convert_back(text)
+    assert result_dict == {"p_rgh": "foo bar"}
+    assert result_text == text
+
     text = """key
 {
 \tfoo bar;
