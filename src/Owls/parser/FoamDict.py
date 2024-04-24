@@ -179,7 +179,7 @@ class FileParser:
                 ^ OFVariable.parse()
                 ^ OFDimensionSet.parse()
                 ^ (
-                    pp.Word(pp.alphanums + '"#(),|*').set_results_name("key")
+                    pp.Word(pp.alphanums + '"_#(),|*').set_results_name("key")
                     + (
                         pp.OneOrMore(pp.Word(pp.alphanums + '"._*-()|'))
                         + pp.Suppress(";")
