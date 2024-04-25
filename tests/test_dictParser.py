@@ -37,6 +37,33 @@ def test_simple_parse():
     assert result_dict == {"key": "foo bar"}
     assert result_text == text
 
+    text = "p_rgh foo bar;"
+    result_dict, result_text = parse_and_convert_back(text)
+    assert result_dict == {"p_rgh": "foo bar"}
+    assert result_text == text
+
+    text = """p_rgh
+{
+\tfoo bar;
+}
+
+"""
+
+    result_dict, result_text = parse_and_convert_back(text)
+    assert result_dict == {"p_rgh": {"foo": "bar"}}
+    assert result_text == text
+
+    text = """\"p_rgh|foo|p_bar\"
+{
+\tfoo bar;
+\t$p;
+}
+
+"""
+    result_dict, result_text = parse_and_convert_back(text)
+    assert result_dict == {'"p_rgh|foo|p_bar"': {"foo": "bar", "$_p": "p"}}
+    assert result_text == text
+
     text = """key
 {
 \tfoo bar;
