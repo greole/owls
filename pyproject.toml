@@ -1,0 +1,28 @@
+[project]
+name = "Owls"
+description="A tool for reading and manipulating OpenFOAM dictionary files"
+authors = [{name = "greole", email = "go@hpsim.de"}]
+dynamic = ["version"]
+license = {text = "BSD-2-Clause"}
+dependencies = [
+ "pandas",
+ "numpy",
+ "functional",
+ "pyparsing>=3.0.0",
+ "file_read_backwards"
+]
+requires-python = ">=3.9"
+
+[project.optional-dependencies]
+doc = [
+    "sphinx~=4.2.0",
+    "sphinx-autoapi",
+    "myst_parser",
+]
+
+[tool.black]
+preview = true
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203"]
